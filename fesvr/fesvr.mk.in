@@ -1,0 +1,26 @@
+#=========================================================================
+# Modular C++ Build System Subproject Makefile Fragment
+#=========================================================================
+# Please read the documenation in 'mcppbs-uguide.txt' for more details
+# on how the Modular C++ Build System works.
+
+fesvr_intdeps  = @fesvr_intdeps@
+fesvr_cppflags = @fesvr_cppflags@
+fesvr_ldflags  = @fesvr_ldflags@
+fesvr_libs     = @fesvr_libs@
+
+fesvr_hdrs = \
+	common.h \
+	interface.h \
+	elf.h \
+	htif.h \
+	htif_isasim.h \
+	memif.h \
+	syscall.h \
+
+fesvr_srcs = \
+	elf.cc \
+	htif_isasim.cc \
+	memif.cc \
+	syscall.cc \
+	pylink.cc \
