@@ -22,7 +22,7 @@ sysret_t appsys_open(htif_t* htif, memif_t* memif,
 {
   char name[len];
   memif->read(pname,len,(uint8_t*)name);
-  return (sysret_t){open(name,mode,flags,mode),errno};
+  return (sysret_t){open(name,flags,mode),errno};
 }
 
 sysret_t appsys_read(htif_t* htif, memif_t* memif,
