@@ -100,6 +100,8 @@ void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
     if(end_pad)
       htif->read_chunk(new_addr+new_len-align, align, new_bytes+new_len-align);
 
+    memcpy(new_bytes+offset,bytes,len);
+
     try
     {
       write(new_addr,new_len,new_bytes);
