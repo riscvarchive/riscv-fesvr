@@ -113,6 +113,27 @@ sysret_t appsys_unlink(htif_t* htif, memif_t* memif,
   return (sysret_t){unlink(name),errno};
 }
 
+sysret_t appsys_getmainvars(htif_t* htif, memif_t* memif,
+  addr_t pbuf, reg_t limit)
+{
+  extern char mainvars[0x1000];
+  extern long* mainvars_longp;
+  extern size_t mainvars_sz;
+
+  for (int i=1; i<=mainvars_longp[0]; i++)
+    mainvars_longp[i] += pbuf;
+
+  sysret_t ret;
+  if (mainvars_sz < limit)
+    ret = (sysret_t){0,0};
+  else
+    ret = (sysret_t){-1,ENOMEM};
+
+  memif->write(pbuf, std::min(mainvars_sz, limit), (uint8_t*)mainvars);
+
+  return ret;
+}
+
 typedef sysret_t (*syscall_t)(htif_t*,memif_t*,reg_t,reg_t,reg_t,reg_t);
 
 void dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
@@ -133,6 +154,7 @@ void dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
   syscall_table[84] = (void*)appsys_lstat;
   syscall_table[9] = (void*)appsys_link;
   syscall_table[10] = (void*)appsys_unlink;
+  syscall_table[201] = (void*)appsys_getmainvars;
 
   syscall_t p;
   reg_t n = magicmem[0];

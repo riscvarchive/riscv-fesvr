@@ -3,6 +3,10 @@
 #include "elf.h"
 #include "syscall.h"
 
+char mainvars[0x1000];
+long* mainvars_longp = (long*)mainvars;
+size_t mainvars_sz;
+
 extern "C"
 {
 
@@ -48,6 +52,22 @@ void htif_write_cr(char* htif, int coreid, int regnum, reg_t val)
 void frontend_syscall(char* htif, char* memif, addr_t mm)
 {
   dispatch_syscall((htif_t*)htif, (memif_t*)memif, mm);
+}
+
+void mainvars_argc(int argc)
+{
+  mainvars_longp[0] = argc;
+  mainvars_longp[argc+1] = 0; // argv[argc] = NULL
+  mainvars_longp[argc+2] = 0; // envp = NULL
+  mainvars_sz = (argc+3) * sizeof(long);
+}
+
+void mainvars_argv(int idx, int len, char* arg)
+{
+  len++; // count the NULL pointer as well
+  mainvars_longp[idx+1] = mainvars_sz;
+  memcpy(&mainvars[mainvars_sz], arg, len);
+  mainvars_sz += len;
 }
 
 }

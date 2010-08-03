@@ -5,14 +5,20 @@ from fesvr_htif import *
 from fesvr_tmif import *
 
 if len(sys.argv) < 2:
-  print "usage: %s elfs" % sys.argv[0]
-  sys.exit(0)
+  print "usage: %s pk bin args" % sys.argv[0]
+  sys.exit(-1)
 
 htif = htif_isasim_t()
 tmif = tmif_t(htif)
 
-for i in range(1, len(sys.argv)):
-  tmif.load_elf(sys.argv[i])
+tmif.load_elf(sys.argv[1]) # pk
+tmif.load_elf(sys.argv[2]) # bin
+
+target_argc = len(sys.argv)-2
+target_argv = sys.argv[2:len(sys.argv)]
+tmif.mainvars_argc(target_argc)
+for i in range(target_argc):
+  tmif.mainvars_argv(i, len(target_argv[i]), target_argv[i])
 
 tmif.start()
 

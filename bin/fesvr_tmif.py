@@ -23,3 +23,9 @@ class tmif_t:
 
   def syscall(self, mm):
     fesvr_pylink.handle.frontend_syscall(self.htif, self.memif, mm)
+
+  def mainvars_argc(self, argc):
+    fesvr_pylink.handle.mainvars_argc(argc)
+
+  def mainvars_argv(self, idx, len, arg):
+    fesvr_pylink.handle.mainvars_argv(idx, len, arg)
