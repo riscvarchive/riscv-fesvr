@@ -1,21 +1,38 @@
 #! /usr/bin/python
 
+import os
 import sys
 from fesvr_htif import *
 from fesvr_tmif import *
 
+kpath = os.getenv('RISCV_KERNEL_PATH')
+if kpath == None:
+  print "set environment variable RISCV_KERNEL"
+  sys.exit(-1)
+
+kernel = ''
+for path in kpath.split(':'):
+  test = path + '/pk'
+  if os.access(test, os.F_OK):
+    kernel = test
+    break
+
+if kernel == '':
+  print "can't find proxy kernel in path '%s'" % kpath
+  sys.exit(-1)
+
 if len(sys.argv) < 2:
-  print "usage: %s pk bin args" % sys.argv[0]
+  print "usage: %s bin args" % sys.argv[0]
   sys.exit(-1)
 
 htif = htif_isasim_t()
 tmif = tmif_t(htif)
 
-tmif.load_elf(sys.argv[1]) # pk
-tmif.load_elf(sys.argv[2]) # bin
+tmif.load_elf(kernel) # pk
+tmif.load_elf(sys.argv[1]) # bin
 
-target_argc = len(sys.argv)-2
-target_argv = sys.argv[2:len(sys.argv)]
+target_argc = len(sys.argv)-1
+target_argv = sys.argv[1:len(sys.argv)]
 tmif.mainvars_argc(target_argc)
 for i in range(target_argc):
   tmif.mainvars_argv(i, len(target_argv[i]), target_argv[i])
