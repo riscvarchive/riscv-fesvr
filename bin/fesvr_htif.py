@@ -4,7 +4,7 @@ import fesvr_pylink
 
 class htif_isasim_t:
 
-  def __init__(self):
+  def __init__(self, args):
     fhostr, fhostw = os.pipe()
     thostr, thostw = os.pipe()
 
@@ -17,7 +17,7 @@ class htif_isasim_t:
       assert 0, "fork() error"
 
     if h == 0:
-      os.execvp('riscv-isa-run', ['riscv-isa-run', '-f'+str(fhostr), '-t'+str(thostw)])
+      os.execvp('riscv-isa-run', ['riscv-isa-run'] + args + ['-f'+str(fhostr), '-t'+str(thostw)])
     else:
       os.close(fhostr)
       os.close(thostw)

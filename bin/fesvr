@@ -21,18 +21,27 @@ if kernel == '':
   print "can't find proxy kernel in path '%s'" % kpath
   sys.exit(-1)
 
-if len(sys.argv) < 2:
-  print "usage: %s bin args" % sys.argv[0]
+start = 1
+for a in sys.argv[1:]:
+  if len(a) > 1 and a[0] == '-':
+    start = start+1
+  else:
+    break
+htif_args = sys.argv[1:start]
+args = sys.argv[start:]
+
+if len(args) < 1:
+  print "usage: %s bin [args]" % sys.argv[0]
   sys.exit(-1)
 
-htif = htif_isasim_t()
+htif = htif_isasim_t(htif_args)
 tmif = tmif_t(htif)
 
 tmif.load_elf(kernel) # pk
-tmif.load_elf(sys.argv[1]) # bin
+tmif.load_elf(args[0]) # bin
 
-target_argc = len(sys.argv)-1
-target_argv = sys.argv[1:len(sys.argv)]
+target_argv = args
+target_argc = len(target_argv)
 tmif.mainvars_argc(target_argc)
 for i in range(target_argc):
   tmif.mainvars_argv(i, len(target_argv[i]), target_argv[i])
