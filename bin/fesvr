@@ -7,7 +7,7 @@ from fesvr_tmif import *
 
 kpath = os.getenv('RISCV_KERNEL_PATH')
 if kpath == None:
-  print "set environment variable RISCV_KERNEL"
+  print "set environment variable RISCV_KERNEL_PATH"
   sys.exit(-1)
 
 kernel = ''
