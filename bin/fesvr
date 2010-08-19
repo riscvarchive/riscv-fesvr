@@ -5,20 +5,15 @@ import sys
 from fesvr_htif import *
 from fesvr_tmif import *
 
-kpath = os.getenv('RISCV_KERNEL_PATH')
-if kpath == None:
-  print "set environment variable RISCV_KERNEL_PATH"
-  sys.exit(-1)
-
 kernel = ''
-for path in kpath.split(':'):
-  test = path + '/pk'
+for path in os.getenv('PATH').split(':'):
+  test = path + '/riscv-pk'
   if os.access(test, os.F_OK):
     kernel = test
     break
 
 if kernel == '':
-  print "can't find proxy kernel in path '%s'" % kpath
+  print "can't find riscv-pk in PATH"
   sys.exit(-1)
 
 start = 1
