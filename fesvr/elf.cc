@@ -21,24 +21,34 @@ void load_elf(const char* fn, memif_t* memif)
   close(fd);
 
   demand(size >= sizeof(Elf64_Ehdr), "truncated ELF!");
-  const Elf64_Ehdr* eh = (const Elf64_Ehdr*)buf;
+  const Elf64_Ehdr* eh64 = (const Elf64_Ehdr*)buf;
+  demand(strncmp((const char*)eh64->e_ident,ELFMAG,strlen(ELFMAG)) == 0, "bad ELF!");
 
-  const uint32_t* magic = (const uint32_t*)eh->e_ident;
-  demand(*magic == *(const uint32_t*)ELFMAG, "not a host-endian ELF!");
-  demand(size >= eh->e_phoff + eh->e_phnum*sizeof(Elf64_Phdr), "bad ELF!");
-  const Elf64_Phdr* phs = (const Elf64_Phdr*)(buf+eh->e_phoff);
+  #define LOAD_ELF do { \
+    eh = (typeof(eh))buf; \
+    demand(size >= eh->e_phoff + eh->e_phnum*sizeof(*ph), "bad ELF!"); \
+    ph = (typeof(ph))(buf+eh->e_phoff); \
+    for(int i = 0; i < eh->e_phnum; i++, ph++) { \
+      if(ph->p_type == SHT_PROGBITS && ph->p_memsz) { \
+        demand(size >= ph->p_offset + ph->p_filesz, "bad ELF!"); \
+        memif->write(ph->p_vaddr, ph->p_filesz, (uint8_t*)buf + ph->p_offset); \
+        memif->write(ph->p_vaddr + ph->p_filesz, ph->p_memsz - ph->p_filesz, NULL); \
+      } \
+    } \
+  } while(0)
 
-  for(int i = 0; i < eh->e_phnum; i++)
+  if(eh64->e_ident[EI_CLASS] == ELFCLASS32)
   {
-    const Elf64_Phdr* ph = &phs[i];
-    if(ph->p_type == SHT_PROGBITS && ph->p_memsz)
-    {
-      demand(size >= ph->p_offset + ph->p_filesz, "truncated ELF!");
-      demand(ph->p_memsz >= ph->p_filesz, "bad ELF!");
-
-      memif->write(ph->p_vaddr, ph->p_filesz, (uint8_t*)buf + ph->p_offset);
-      memif->write(ph->p_vaddr + ph->p_filesz, ph->p_memsz - ph->p_filesz, NULL);
-    }
+    Elf32_Ehdr* eh;
+    Elf32_Phdr* ph;
+    LOAD_ELF;
+  }
+  else
+  {
+    demand(eh64->e_ident[EI_CLASS] == ELFCLASS64, "bad ELF!");
+    Elf64_Ehdr* eh;
+    Elf64_Phdr* ph;
+    LOAD_ELF;
   }
 
   munmap(buf, size);
