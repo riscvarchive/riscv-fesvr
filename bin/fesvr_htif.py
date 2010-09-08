@@ -1,4 +1,5 @@
 import os
+import signal
 import fcntl
 import fesvr_pylink
 
@@ -12,14 +13,18 @@ class htif_isasim_t:
     fcntl.fcntl(thostr, fcntl.F_SETFL, fcntl.fcntl(thostr, fcntl.F_GETFL) & ~os.O_NONBLOCK)
 
     try:
-      h = os.fork()
+      pid = os.fork()
     except OSError:
       assert 0, "fork() error"
 
-    if h == 0:
+    if pid == 0:
       os.execvp('riscv-isa-run', ['riscv-isa-run'] + args + ['-f'+str(fhostr), '-t'+str(thostw)])
     else:
       os.close(fhostr)
       os.close(thostw)
 
+    self.pid = pid
     self.cinst = fesvr_pylink.handle.new_htif_isasim(thostr, fhostw)
+
+  def kill(self):
+    os.kill(self.pid, signal.SIGKILL)

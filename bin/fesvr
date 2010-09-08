@@ -61,4 +61,4 @@ else:
     print "*** PASSED ***"
   else:
     print "*** FAILED *** (tohost = %d)" % code
-  tmif.stop()
+  htif.kill()
