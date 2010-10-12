@@ -15,12 +15,14 @@ fesvr_hdrs = \
 	elf.h \
 	htif.h \
 	htif_isasim.h \
+	htif_rtlsim.h \
 	memif.h \
 	syscall.h \
 
 fesvr_srcs = \
 	elf.cc \
 	htif_isasim.cc \
+	htif_rtlsim.cc \
 	memif.cc \
 	syscall.cc \
 	pylink.cc \

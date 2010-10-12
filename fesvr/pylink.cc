@@ -1,4 +1,5 @@
 #include "htif_isasim.h"
+#include "htif_rtlsim.h"
 #include "memif.h"
 #include "elf.h"
 #include "syscall.h"
@@ -13,6 +14,13 @@ extern "C"
 char* new_htif_isasim(int fdin, int fdout)
 {
   htif_isasim_t* htif = new htif_isasim_t(fdin, fdout);
+
+  return (char*)htif;
+}
+
+char* new_htif_rtlsim(int fdin, int fdout)
+{
+  htif_rtlsim_t* htif = new htif_rtlsim_t(fdin, fdout);
 
   return (char*)htif;
 }

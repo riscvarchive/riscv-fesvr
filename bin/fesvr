@@ -6,14 +6,17 @@ from fesvr_htif import *
 from fesvr_tmif import *
 
 pkrun = True
+simtype = 0 # isa=0,rtl=1
 
 htif_args = []
 start = 1
 for a in sys.argv[1:]:
-  if len(a) > 1 and a[0] == '-':
+  if len(a) > 1 and (a[0] == '-' or a[0] == '+'):
     start = start+1
     if a == '-testrun':
       pkrun = False
+    elif a == '-rtl':
+      simtype = 1
     else:
       htif_args.append(a)
   else:
@@ -35,7 +38,13 @@ if len(args) < 1:
   print "usage: %s bin [args]" % sys.argv[0]
   sys.exit(-1)
 
-htif = htif_isasim_t(htif_args)
+if simtype == 0:
+  htif = htif_isasim_t(htif_args)
+elif simtype == 1:
+  htif = htif_rtlsim_t(htif_args)
+else:
+  assert 0, "unspecified simtype"
+
 tmif = tmif_t(htif)
 
 if pkrun:
