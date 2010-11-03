@@ -17,6 +17,9 @@ for a in sys.argv[1:]:
       pkrun = False
     elif a == '-rtl':
       simtype = 1
+    elif a == '-gl':
+      simtype = 1
+      htif_args += ['-ucli','-do','run.tcl']
     else:
       htif_args.append(a)
   else:
