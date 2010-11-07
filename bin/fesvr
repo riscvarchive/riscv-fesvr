@@ -73,4 +73,6 @@ else:
     print "*** PASSED ***"
   else:
     print "*** FAILED *** (tohost = %d)" % code
+  if simtype == 1:
+    tmif.stop()
   htif.kill()
