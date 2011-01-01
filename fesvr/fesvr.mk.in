@@ -7,7 +7,7 @@
 fesvr_intdeps  = @fesvr_intdeps@
 fesvr_cppflags = @fesvr_cppflags@
 fesvr_ldflags  = @fesvr_ldflags@
-fesvr_libs     = @fesvr_libs@
+fesvr_libs     = libfesvr.a
 
 fesvr_hdrs = \
 	common.h \
@@ -16,6 +16,7 @@ fesvr_hdrs = \
 	htif.h \
 	htif_isasim.h \
 	htif_rtlsim.h \
+	htif_hexwriter.h \
 	memif.h \
 	syscall.h \
 
@@ -23,6 +24,10 @@ fesvr_srcs = \
 	elf.cc \
 	htif_isasim.cc \
 	htif_rtlsim.cc \
+	htif_hexwriter.cc \
 	memif.cc \
 	syscall.cc \
 	pylink.cc \
+
+fesvr_install_prog_srcs = \
+  elf2hex.cc \
