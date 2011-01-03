@@ -5,9 +5,9 @@
 
 int main(int argc, char** argv)
 {
-  if(argc != 3)
+  if(argc != 4)
   {
-    std::cerr << "Usage: " << argv[0] << " <width> <elf_file>" << std::endl;
+    std::cerr << "Usage: " << argv[0] << " <width> <depth> <elf_file>" << std::endl;
     return 1;
   }
 
@@ -18,9 +18,16 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  htif_hexwriter_t htif(width);
+  unsigned depth = atoi(argv[2]);
+  if(depth == 0 || (depth & (depth-1)))
+  {
+    std::cerr << "depth must be nonzero and a power of 2" << std::endl;
+    return 1;
+  }
+
+  htif_hexwriter_t htif(width,depth);
   memif_t memif(&htif);
-  load_elf(argv[2],&memif);
+  load_elf(argv[3],&memif);
   std::cout << htif;
 
   return 0;

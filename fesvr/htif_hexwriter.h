@@ -11,7 +11,7 @@ const size_t MEMORY_WIDTH = 16; // in bytes
 class htif_hexwriter_t : public htif_t
 {
 public:
-  htif_hexwriter_t(size_t _width) : width(_width) {}
+  htif_hexwriter_t(size_t w, size_t d) : width(w),depth(d) {}
   virtual ~htif_hexwriter_t() {}
 
   void start() { abort(); }
@@ -24,6 +24,7 @@ public:
 
 protected:
   size_t width;
+  size_t depth;
   std::map<addr_t,std::vector<char> > mem;
 
   friend std::ostream& operator<< (std::ostream&, const htif_hexwriter_t&);
