@@ -34,7 +34,10 @@ void htif_rtlsim_t::read_packet(rtl_packet_t* p, int expected_seqno)
 
 void htif_rtlsim_t::write_packet(const rtl_packet_t* p)
 {
-  int size = p->data_size + offsetof(rtl_packet_t, data);
+  int size = offsetof(rtl_packet_t, data);
+  if(p->cmd == RTL_CMD_WRITE_MEM || p->cmd == RTL_CMD_WRITE_CONTROL_REG)
+    size += p->data_size;
+    
   int bytes = write(fdout, p, size);
   if (bytes < size)
     throw rtl_io_error("write failed");
@@ -43,7 +46,7 @@ void htif_rtlsim_t::write_packet(const rtl_packet_t* p)
 void htif_rtlsim_t::start()
 {
   int start = 0x40000000;
-  int len = 16*1024;
+  int len = 1024;
   uint8_t buf[len];
   read_chunk(start, len, buf, IF_MEM);
 

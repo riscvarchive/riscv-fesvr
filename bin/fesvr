@@ -20,6 +20,10 @@ for a in sys.argv[1:]:
     elif a == '-gl':
       simtype = 1
       htif_args += ['-ucli','-do','run.tcl']
+    elif a == '-fpgartl':
+      simtype = 2
+    elif a == '-rs232':
+      simtype = 3
     else:
       htif_args.append(a)
   else:
@@ -45,6 +49,10 @@ if simtype == 0:
   htif = htif_isasim_t(htif_args)
 elif simtype == 1:
   htif = htif_rtlsim_t(htif_args)
+elif simtype == 2:
+  htif = htif_fpga_rtlsim_t(htif_args)
+elif simtype == 3:
+  htif = htif_rs232_t(htif_args)
 else:
   assert 0, "unspecified simtype"
 
