@@ -76,19 +76,19 @@ htif_eth_t::htif_eth_t(const char* interface, bool _rtlsim)
   }
   else
   {
-    // get MAC address of local ethernet device
-    struct ifreq ifr;
-    strcpy(ifr.ifr_name, interface);
-    if(ioctl(sock, SIOCGIFHWADDR, (char*)&ifr) == -1)
-      throw std::runtime_error("ioctl() failed!");
-    memcpy(&src_mac, &ifr.ifr_ifru.ifru_hwaddr.sa_data, sizeof(src_mac));
-
     // setuid root to open a raw socket.  if we fail, too bad
     seteuid(0);
     sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     seteuid(getuid());
     if(sock < 0)
       throw std::runtime_error("socket() failed!");
+
+    // get MAC address of local ethernet device
+    struct ifreq ifr;
+    strcpy(ifr.ifr_name, interface);
+    if(ioctl(sock, SIOCGIFHWADDR, (char*)&ifr) == -1)
+      throw std::runtime_error("ioctl() failed!");
+    memcpy(&src_mac, &ifr.ifr_ifru.ifru_hwaddr.sa_data, sizeof(src_mac));
 
     memset(&src_addr, 0, sizeof(src_addr));
     src_addr.sll_ifindex = if_nametoindex(interface);
@@ -122,6 +122,11 @@ void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
       debug("read failed (%s)\n",strerror(errno));
       continue;
     }
+
+  debug("read packet\n");
+  for(int i = 0; i < bytes; i++)
+    debug("%x ",((unsigned char*)&packet)[i]);
+  debug("\n");
 
     if(packet.ethertype != htons(HTIF_ETHERTYPE))
     {
