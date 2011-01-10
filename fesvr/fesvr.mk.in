@@ -18,6 +18,8 @@ fesvr_hdrs = \
 	htif_rtlsim.h \
 	htif_rs232.h \
 	htif_hexwriter.h \
+	htif_eth.h \
+	htif-packet.h \
 	memif.h \
 	syscall.h \
 

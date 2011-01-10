@@ -3,6 +3,9 @@
 #include "interface.h"
 #include "htif_rtlsim.h"
 
+#define HTIF_MAX_DATA_SIZE RTL_MAX_DATA_SIZE
+#include "htif-packet.h"
+
 htif_rtlsim_t::htif_rtlsim_t(int _fdin, int _fdout)
 : fdin(_fdin), fdout(_fdout), seqno(1)
 {
@@ -12,40 +15,40 @@ htif_rtlsim_t::~htif_rtlsim_t()
 {
 }
 
-void htif_rtlsim_t::read_packet(rtl_packet_t* p, int expected_seqno)
+void htif_rtlsim_t::read_packet(packet_t* p, int expected_seqno)
 {
-  int bytes = read(fdin, p, sizeof(rtl_packet_t));
-  if (bytes == -1 || bytes < (int)offsetof(rtl_packet_t, data))
-    throw rtl_io_error("read failed");
+  int bytes = read(fdin, p, sizeof(packet_t));
+  if (bytes == -1 || bytes < (int)offsetof(packet_t, data))
+    throw io_error("read failed");
   if (p->seqno != expected_seqno)
-    throw rtl_bad_seqno_error(); 
+    throw bad_seqno_error(); 
   switch (p->cmd)
   {
-    case RTL_CMD_ACK:
-      if (p->data_size != bytes - offsetof(rtl_packet_t, data))
-        throw rtl_packet_error("bad payload size!");
+    case HTIF_CMD_ACK:
+      if (p->data_size != bytes - offsetof(packet_t, data))
+        throw packet_error("bad payload size!");
       break;
-    case RTL_CMD_NACK:
-      throw rtl_packet_error("nack!");
+    case HTIF_CMD_NACK:
+      throw packet_error("nack!");
     default:
-      throw rtl_packet_error("illegal command");
+      throw packet_error("illegal command");
   }
 }
 
-void htif_rtlsim_t::write_packet(const rtl_packet_t* p)
+void htif_rtlsim_t::write_packet(const packet_t* p)
 {
-  int size = offsetof(rtl_packet_t, data);
-  if(p->cmd == RTL_CMD_WRITE_MEM || p->cmd == RTL_CMD_WRITE_CONTROL_REG)
+  int size = offsetof(packet_t, data);
+  if(p->cmd == HTIF_CMD_WRITE_MEM || p->cmd == HTIF_CMD_WRITE_CONTROL_REG)
     size += p->data_size;
     
   int bytes = write(fdout, p, size);
   if (bytes < size)
-    throw rtl_io_error("write failed");
+    throw io_error("write failed");
 }
 
 void htif_rtlsim_t::start()
 {
-  rtl_packet_t p = {RTL_CMD_START, seqno, 0, 0};
+  packet_t p = {HTIF_CMD_START, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);
   seqno++;
@@ -53,7 +56,7 @@ void htif_rtlsim_t::start()
 
 void htif_rtlsim_t::stop()
 {
-  rtl_packet_t p = {RTL_CMD_STOP, seqno, 0, 0};
+  packet_t p = {HTIF_CMD_STOP, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);
   seqno++;
@@ -64,13 +67,13 @@ void htif_rtlsim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
   demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx read_chunk misaligned", taddr);
   demand(len % chunk_align() == 0, "len=%ld read_chunk misaligned", len);
 
-  rtl_packet_t req;
-  rtl_packet_t resp;
+  packet_t req;
+  packet_t resp;
 
   if (cmd == IF_MEM)
-    req.cmd = RTL_CMD_READ_MEM;
+    req.cmd = HTIF_CMD_READ_MEM;
   else if (cmd == IF_CREG)
-    req.cmd = RTL_CMD_READ_CONTROL_REG;
+    req.cmd = HTIF_CMD_READ_CONTROL_REG;
   else
     demand(0, "unreachable");
 
@@ -99,13 +102,13 @@ void htif_rtlsim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, in
   demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx write_chunk misaligned", taddr);
   demand(len % chunk_align() == 0, "len=%ld write_chunk misaligned", len);
 
-  rtl_packet_t req;
-  rtl_packet_t resp;
+  packet_t req;
+  packet_t resp;
 
   if (cmd == IF_MEM)
-    req.cmd = RTL_CMD_WRITE_MEM;
+    req.cmd = HTIF_CMD_WRITE_MEM;
   else if (cmd == IF_CREG)
-    req.cmd = RTL_CMD_WRITE_CONTROL_REG;
+    req.cmd = HTIF_CMD_WRITE_CONTROL_REG;
   else
     demand(0, "unreachable");
 

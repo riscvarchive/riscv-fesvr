@@ -18,4 +18,6 @@ public:
   virtual size_t chunk_align() = 0;
 };
 
+struct packet_t;
+
 #endif // __HTIF_H

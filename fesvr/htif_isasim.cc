@@ -3,6 +3,9 @@
 #include "interface.h"
 #include "htif_isasim.h"
 
+#define HTIF_MAX_DATA_SIZE ISASIM_MAX_DATA_SIZE
+#include "htif-packet.h"
+
 htif_isasim_t::htif_isasim_t(int _fdin, int _fdout)
 : fdin(_fdin), fdout(_fdout), seqno(1)
 {
@@ -21,11 +24,11 @@ void htif_isasim_t::read_packet(packet_t* p, int expected_seqno)
     throw bad_seqno_error(); 
   switch (p->cmd)
   {
-    case APP_CMD_ACK:
+    case HTIF_CMD_ACK:
       if (p->data_size != bytes - offsetof(packet_t, data))
         throw packet_error("bad payload size!");
       break;
-    case APP_CMD_NACK:
+    case HTIF_CMD_NACK:
       throw packet_error("nack!");
     default:
       throw packet_error("illegal command");
@@ -42,7 +45,7 @@ void htif_isasim_t::write_packet(const packet_t* p)
 
 void htif_isasim_t::start()
 {
-  packet_t p = {APP_CMD_START, seqno, 0, 0};
+  packet_t p = {HTIF_CMD_START, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);
   seqno++;
@@ -50,7 +53,7 @@ void htif_isasim_t::start()
 
 void htif_isasim_t::stop()
 {
-  packet_t p = {APP_CMD_STOP, seqno, 0, 0};
+  packet_t p = {HTIF_CMD_STOP, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);
   seqno++;
@@ -65,15 +68,15 @@ void htif_isasim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
   packet_t resp;
 
   if (cmd == IF_MEM)
-    req.cmd = APP_CMD_READ_MEM;
+    req.cmd = HTIF_CMD_READ_MEM;
   else if (cmd == IF_CREG)
-    req.cmd = APP_CMD_READ_CONTROL_REG;
+    req.cmd = HTIF_CMD_READ_CONTROL_REG;
   else
     demand(0, "unreachable");
 
   while (len)
   {
-    size_t sz = std::min(len, APP_MAX_DATA_SIZE);
+    size_t sz = std::min(len, ISASIM_MAX_DATA_SIZE);
 
     req.seqno = seqno;
     req.data_size = sz;
@@ -100,15 +103,15 @@ void htif_isasim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, in
   packet_t resp;
 
   if (cmd == IF_MEM)
-    req.cmd = APP_CMD_WRITE_MEM;
+    req.cmd = HTIF_CMD_WRITE_MEM;
   else if (cmd == IF_CREG)
-    req.cmd = APP_CMD_WRITE_CONTROL_REG;
+    req.cmd = HTIF_CMD_WRITE_CONTROL_REG;
   else
     demand(0, "unreachable");
 
   while (len)
   {
-    size_t sz = std::min(len, APP_MAX_DATA_SIZE);
+    size_t sz = std::min(len, ISASIM_MAX_DATA_SIZE);
 
     req.seqno = seqno;
     req.data_size = sz;
@@ -140,5 +143,5 @@ void htif_isasim_t::write_cr(int coreid, int regnum, reg_t val)
 
 size_t htif_isasim_t::chunk_align()
 {
-  return APP_DATA_ALIGN;
+  return ISASIM_DATA_ALIGN;
 }
