@@ -1,6 +1,7 @@
 #include "htif_isasim.h"
 #include "htif_rtlsim.h"
 #include "htif_rs232.h"
+#include "htif_eth.h"
 #include "memif.h"
 #include "elf.h"
 #include "syscall.h"
@@ -29,6 +30,13 @@ char* new_htif_rtlsim(int fdin, int fdout)
 char* new_htif_rs232(const char* tty)
 {
   htif_rs232_t* htif = new htif_rs232_t(tty);
+
+  return (char*)htif;
+}
+
+char* new_htif_eth(const char* tty, int sim)
+{
+  htif_eth_t* htif = new htif_eth_t(tty, bool(sim));
 
   return (char*)htif;
 }

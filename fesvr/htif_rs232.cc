@@ -19,7 +19,7 @@
 htif_rs232_t::htif_rs232_t(const char* tty)
 : seqno(1)
 {
-  debug("opening s\n",tty);
+  debug("opening %s\n",tty);
   fd = open(tty,O_RDWR|O_NOCTTY);
   assert(fd != -1);
 

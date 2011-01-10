@@ -116,7 +116,34 @@ class htif_rs232_t:
   def __init__(self, args):
     self.pid = os.getpid()
 
-    self.cinst = fesvr_pylink.handle.new_htif_rs232("/dev/ttyUSB0")
+    for str in args:
+      (a,b,c) = str.partition('=')
+      if a == '+if':
+        interface = c
+    interface
+
+    self.cinst = fesvr_pylink.handle.new_htif_rs232(interface)
+
+  def kill(self):
+    os.kill(self.pid, signal.SIGKILL)
+
+class htif_eth_t:
+
+  def __init__(self, args):
+    self.pid = os.getpid()
+
+    sim = 0
+
+    for str in args:
+      (a,b,c) = str.partition('=')
+      if a == '+if':
+        interface = c
+      if a == '+sim':
+        sim = 1
+
+    interface
+
+    self.cinst = fesvr_pylink.handle.new_htif_eth(interface, sim)
 
   def kill(self):
     os.kill(self.pid, signal.SIGKILL)
