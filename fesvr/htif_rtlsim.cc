@@ -45,11 +45,6 @@ void htif_rtlsim_t::write_packet(const rtl_packet_t* p)
 
 void htif_rtlsim_t::start()
 {
-  int start = 0x40000000;
-  int len = 1024;
-  uint8_t buf[len];
-  read_chunk(start, len, buf, IF_MEM);
-
   rtl_packet_t p = {RTL_CMD_START, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);

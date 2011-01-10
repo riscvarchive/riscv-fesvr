@@ -8,24 +8,29 @@
 #include "common.h"
 #include "interface.h"
 #include "htif_rs232.h"
+#include "memif.h"
+
+#define debug(...)
+//#define debug(...) fprintf(stderr,__VA_ARGS__)
 
 htif_rs232_t::htif_rs232_t(const char* tty)
 : seqno(1)
 {
+  debug("opening s\n",tty);
   fd = open(tty,O_RDWR|O_NOCTTY);
   assert(fd != -1);
 
   struct termios tio;
   memset(&tio,0,sizeof(tio));
 
-  tio.c_cflag = B38400;
+  tio.c_cflag = B9600;
   tio.c_iflag = IGNPAR;
   tio.c_oflag = 0;
   tio.c_lflag = 0;
   tio.c_cc[VTIME] = 0;
   tio.c_cc[VMIN] = 1; // read in 8 byte chunks
 
-  tcflush(fd, TCIFLUSH);
+  tcflush(fd, TCIOFLUSH);
   tcsetattr(fd, TCSANOW, &tio);
 }
 
@@ -35,19 +40,17 @@ htif_rs232_t::~htif_rs232_t()
 
 void htif_rs232_t::read_packet(rs232_packet_t* p, int expected_seqno)
 {
-  printf("read packet\n");
+  debug("read packet\n");
   int bytes = 16;
   for(int i = 0; i < bytes; i++)
   {
     assert(read(fd, ((char*)p)+i, 1) == 1);
     if(i == 15)
       bytes += p->data_size;
+    debug("%x ",((unsigned char*)p)[i]);
+    fflush(stdout);
   }
-
-  printf("%d\n",bytes);
-  for(int i = 0; i < bytes; i++)
-    printf("%x ",((unsigned char*)p)[i]);
-  printf("\n");
+  debug("\n");
 
   if (bytes == -1 || bytes < (int)offsetof(rs232_packet_t, data))
     throw rs232_io_error("read failed");
@@ -72,7 +75,11 @@ void htif_rs232_t::write_packet(const rs232_packet_t* p)
   if(p->cmd == RS232_CMD_WRITE_MEM || p->cmd == RS232_CMD_WRITE_CONTROL_REG)
     size += p->data_size;
     
-  printf("write packet\n");
+  debug("write packet\n");
+  for(int i = 0; i < size; i++)
+    debug("%x ",((const unsigned char*)p)[i]);
+  debug("\n");
+
   int bytes = write(fd, p, size);
   if (bytes < size)
     throw rs232_io_error("write failed");
@@ -80,11 +87,6 @@ void htif_rs232_t::write_packet(const rs232_packet_t* p)
 
 void htif_rs232_t::start()
 {
-  int start = 0x40000000;
-  int len = 1024;
-  uint8_t buf[len];
-  read_chunk(start, len, buf, IF_MEM);
-
   rs232_packet_t p = {RS232_CMD_START, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);
