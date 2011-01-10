@@ -6,7 +6,7 @@ from fesvr_htif import *
 from fesvr_tmif import *
 
 pkrun = True
-simtype = 0 # isa=0,rtl=1
+simtype = 0 # isa=0,rtl=1,2=fpgartl,3=rs232
 
 htif_args = []
 start = 1
@@ -81,7 +81,7 @@ else:
     print "*** PASSED ***"
   else:
     print "*** FAILED *** (tohost = %d)" % code
-  if simtype == 1:
+  if simtype > 0:
     tmif.stop()
   else:
     htif.kill()
