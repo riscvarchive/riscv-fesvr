@@ -1,4 +1,10 @@
 #include <algorithm>
+#include <sys/types.h>
+#include <termios.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <assert.h>
+#include <fcntl.h>
 #include "common.h"
 #include "interface.h"
 #include "htif_rs232.h"
@@ -6,6 +12,21 @@
 htif_rs232_t::htif_rs232_t(const char* tty)
 : seqno(1)
 {
+  fd = open(tty,O_RDWR|O_NOCTTY);
+  assert(fd != -1);
+
+  struct termios tio;
+  memset(&tio,0,sizeof(tio));
+
+  tio.c_cflag = B38400;
+  tio.c_iflag = IGNPAR;
+  tio.c_oflag = 0;
+  tio.c_lflag = 0;
+  tio.c_cc[VTIME] = 0;
+  tio.c_cc[VMIN] = 1; // read in 8 byte chunks
+
+  tcflush(fd, TCIFLUSH);
+  tcsetattr(fd, TCSANOW, &tio);
 }
 
 htif_rs232_t::~htif_rs232_t()
@@ -15,11 +36,19 @@ htif_rs232_t::~htif_rs232_t()
 void htif_rs232_t::read_packet(rs232_packet_t* p, int expected_seqno)
 {
   printf("read packet\n");
-  int bytes = read(fdin, p, sizeof(rs232_packet_t));
-  printf("%d bytes %d\n",bytes,sizeof(rs232_packet_t));
+  int bytes = 16;
   for(int i = 0; i < bytes; i++)
-    printf("%x ",((char*)p)[i]);
+  {
+    assert(read(fd, ((char*)p)+i, 1) == 1);
+    if(i == 15)
+      bytes += p->data_size;
+  }
+
+  printf("%d\n",bytes);
+  for(int i = 0; i < bytes; i++)
+    printf("%x ",((unsigned char*)p)[i]);
   printf("\n");
+
   if (bytes == -1 || bytes < (int)offsetof(rs232_packet_t, data))
     throw rs232_io_error("read failed");
   if (p->seqno != expected_seqno)
@@ -44,7 +73,7 @@ void htif_rs232_t::write_packet(const rs232_packet_t* p)
     size += p->data_size;
     
   printf("write packet\n");
-  int bytes = write(fdout, p, size);
+  int bytes = write(fd, p, size);
   if (bytes < size)
     throw rs232_io_error("write failed");
 }

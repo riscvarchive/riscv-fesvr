@@ -114,7 +114,9 @@ class htif_fpga_rtlsim_t:
 class htif_rs232_t:
 
   def __init__(self, args):
-    self.cinst = fesvr_pylink.handle.new_htif_rtlsim("/dev/ttyUSB0")
+    self.pid = os.getpid()
+
+    self.cinst = fesvr_pylink.handle.new_htif_rs232("/dev/ttyUSB0")
 
   def kill(self):
     os.kill(self.pid, signal.SIGKILL)
