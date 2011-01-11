@@ -9,7 +9,7 @@
 const size_t ETH_DATA_ALIGN = 8;
 const size_t ETH_MAX_DATA_SIZE = 8;
 
-const short HTIF_ETHERTYPE = 0x8888;
+const unsigned short HTIF_ETHERTYPE = 0x8888;
 
 class htif_eth_t : public htif_t
 {

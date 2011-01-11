@@ -27,7 +27,7 @@ struct eth_packet_t
 {
   char dst_mac[6];
   char src_mac[6];
-  short ethertype;
+  unsigned short ethertype;
   short pad;
   packet_t htif_packet;
 };
@@ -112,6 +112,7 @@ htif_eth_t::~htif_eth_t()
 void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
 {
   int bytes;
+
   while(true)
   {
     eth_packet_t packet;
@@ -129,6 +130,9 @@ void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
     }
 
     *p = packet.htif_packet;
+    bytes -= offsetof(eth_packet_t, htif_packet);
+
+    break;
   }
 
   debug("read packet\n");
@@ -143,8 +147,8 @@ void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
   switch (p->cmd)
   {
     case HTIF_CMD_ACK:
-      if (p->data_size != bytes - offsetof(packet_t, data))
-        throw packet_error("bad payload size!");
+      //if (p->data_size != bytes - offsetof(packet_t, data))
+      //  throw packet_error("bad payload size!");
       break;
     case HTIF_CMD_NACK:
       throw packet_error("nack!");
