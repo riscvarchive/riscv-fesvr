@@ -113,12 +113,13 @@ void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
 {
   int bytes;
 
-  while(true)
+  for(int timeouts = 0; timeouts < 3; )
   {
     eth_packet_t packet;
 
     if((bytes = read(sock, (char*)&packet, sizeof(packet))) == -1)
     {
+      timeouts++;
       debug("read failed (%s)\n",strerror(errno));
       continue;
     }
