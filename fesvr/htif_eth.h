@@ -33,7 +33,7 @@ protected:
   char src_mac[6];
   char dst_mac[6];
 
-  short seqno;
+  uint16_t seqno;
   bool rtlsim;
 };
 

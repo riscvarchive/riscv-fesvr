@@ -20,8 +20,8 @@
 #define HTIF_MAX_DATA_SIZE ETH_MAX_DATA_SIZE
 #include "htif-packet.h"
 
-//#define debug(...)
-#define debug(...) fprintf(stderr,__VA_ARGS__)
+#define debug(...)
+//#define debug(...) fprintf(stderr,__VA_ARGS__)
 
 struct eth_packet_t
 {
