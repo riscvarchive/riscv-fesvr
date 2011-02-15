@@ -1,5 +1,6 @@
 #include "htif_isasim.h"
 #include "htif_rtlsim.h"
+#include "htif_csim.h"
 #include "htif_rs232.h"
 #include "htif_eth.h"
 #include "memif.h"
@@ -23,6 +24,13 @@ char* new_htif_isasim(int fdin, int fdout)
 char* new_htif_rtlsim(int fdin, int fdout)
 {
   htif_rtlsim_t* htif = new htif_rtlsim_t(fdin, fdout);
+
+  return (char*)htif;
+}
+
+char* new_htif_csim(int fdin, int fdout)
+{
+  htif_csim_t* htif = new htif_csim_t(fdin, fdout);
 
   return (char*)htif;
 }

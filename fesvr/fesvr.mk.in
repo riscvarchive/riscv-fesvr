@@ -16,6 +16,7 @@ fesvr_hdrs = \
 	htif.h \
 	htif_isasim.h \
 	htif_rtlsim.h \
+	htif_csim.h \
 	htif_rs232.h \
 	htif_hexwriter.h \
 	htif_eth.h \
@@ -27,6 +28,7 @@ fesvr_srcs = \
 	elf.cc \
 	htif_isasim.cc \
 	htif_rtlsim.cc \
+	htif_csim.cc \
 	htif_rs232.cc \
 	htif_hexwriter.cc \
 	htif_eth.cc \

@@ -6,7 +6,7 @@ from fesvr_htif import *
 from fesvr_tmif import *
 
 pkrun = True
-simtype = 0 # isa=0,rtl=1,2=fpgartl,3=rs232,4=eth
+simtype = 0 # isa=0,rtl=1,2=fpgartl,3=rs232,4=eth,5=csim
 
 htif_args = []
 start = 1
@@ -26,6 +26,8 @@ for a in sys.argv[1:]:
       simtype = 3
     elif a == '-eth':
       simtype = 4
+    elif a == '-c':
+      simtype = 5
     else:
       htif_args.append(a)
   else:
@@ -57,6 +59,8 @@ elif simtype == 3:
   htif = htif_rs232_t(htif_args)
 elif simtype == 4:
   htif = htif_eth_t(htif_args)
+elif simtype == 5:
+  htif = htif_csim_t(htif_args)
 else:
   assert 0, "unspecified simtype"
 
