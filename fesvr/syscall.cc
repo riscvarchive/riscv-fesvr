@@ -71,7 +71,7 @@ sysret_t appsys_fstat(htif_t* htif, memif_t* memif,
 }
 
 sysret_t appsys_stat(htif_t* htif, memif_t* memif,
-                     addr_t pname, reg_t len, reg_t fd, addr_t pbuf)
+                     addr_t pname, reg_t len, addr_t pbuf)
 {
   char name[len];
   memif->read(pname,len,(uint8_t*)name);
@@ -84,7 +84,7 @@ sysret_t appsys_stat(htif_t* htif, memif_t* memif,
 }
 
 sysret_t appsys_lstat(htif_t* htif, memif_t* memif,
-                     addr_t pname, reg_t len, reg_t fd, addr_t pbuf)
+                     addr_t pname, reg_t len, addr_t pbuf)
 {
   char name[len];
   memif->read(pname,len,(uint8_t*)name);
