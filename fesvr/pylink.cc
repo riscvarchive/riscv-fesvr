@@ -96,7 +96,7 @@ void mainvars_argc(int argc)
 
 void mainvars_argv(int idx, int len, char* arg)
 {
-  len++; // count the NULL pointer as well
+  len++; // count the null terminator as well
   mainvars_longp[idx+1] = mainvars_sz;
   memcpy(&mainvars[mainvars_sz], arg, len);
   mainvars_sz += len;

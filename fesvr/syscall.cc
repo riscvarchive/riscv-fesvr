@@ -37,6 +37,18 @@ sysret_t appsys_read(htif_t* htif, memif_t* memif,
   return ret;
 }
 
+sysret_t appsys_pread(htif_t* htif, memif_t* memif,
+                     reg_t fd, addr_t pbuf, reg_t len, reg_t off)
+{
+  char* buf = (char*)malloc(len);
+  demand(buf,"malloc failure!");
+  sysret_t ret = {pread(fd,buf,len,off),errno};
+  if(ret.result != (reg_t)-1)
+    memif->write(pbuf,ret.result,(uint8_t*)buf);
+  free(buf);
+  return ret;
+}
+
 sysret_t appsys_write(htif_t* htif, memif_t* memif,
                       reg_t fd, addr_t pbuf, reg_t len)
 {
@@ -44,6 +56,17 @@ sysret_t appsys_write(htif_t* htif, memif_t* memif,
   demand(buf,"malloc failure!");
   memif->read(pbuf,len,(uint8_t*)buf);
   sysret_t ret = {write(fd,buf,len),errno};
+  free(buf);
+  return ret;
+}
+
+sysret_t appsys_pwrite(htif_t* htif, memif_t* memif,
+                      reg_t fd, addr_t pbuf, reg_t len, reg_t off)
+{
+  char* buf = (char*)malloc(len);
+  demand(buf,"malloc failure!");
+  memif->read(pbuf,len,(uint8_t*)buf);
+  sysret_t ret = {pwrite(fd,buf,len,off),errno};
   free(buf);
   return ret;
 }
@@ -154,6 +177,8 @@ void dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
   syscall_table[84] = (void*)appsys_lstat;
   syscall_table[9] = (void*)appsys_link;
   syscall_table[10] = (void*)appsys_unlink;
+  syscall_table[180] = (void*)appsys_pread;
+  syscall_table[181] = (void*)appsys_pwrite;
   syscall_table[201] = (void*)appsys_getmainvars;
 
   syscall_t p;

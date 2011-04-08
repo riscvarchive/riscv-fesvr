@@ -73,8 +73,8 @@ if pkrun:
   tmif.mainvars_argc(target_argc)
   for i in range(target_argc):
     tmif.mainvars_argv(i, len(target_argv[i]), target_argv[i])
-
-tmif.load_elf(args[0]) # bin
+else:
+  tmif.load_elf(args[0]) # bin
 
 tmif.start()
 
