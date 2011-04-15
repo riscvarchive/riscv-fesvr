@@ -4,8 +4,8 @@
 #include "interface.h"
 #include "htif.h"
 
-const size_t RTL_DATA_ALIGN = 8;
-const size_t RTL_MAX_DATA_SIZE = 8;
+const size_t RTL_DATA_ALIGN = 16;
+const size_t RTL_MAX_DATA_SIZE = 16;
 
 class htif_rtlsim_t : public htif_t
 {
