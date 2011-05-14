@@ -105,10 +105,11 @@ class htif_fpga_rtlsim_t:
 
     if pid == 0:
       args = ['work.glbl','work.sim_top']+args
-      args = ['-sv_lib','../../lib/disasm-modelsim']+args
-      args = ['-sv_lib','../../lib/htif-modelsim']+args
-      args = ['-vopt','-voptargs=-O5']+args
+      args = ['-sv_lib','../../../lib/htif-modelsim']+args
+      args = ['-sv_lib','../../../lib/mac_fedriver']+args
+      args = ['-vopt','-voptargs=-O5','-voptargs=+acc']+args
       #args = ['-novopt']+args
+      args = ['-hazards']+args
       args = ['-L',os.environ['XILINX']+'/verilog/mti_se/6.6a/lin64/unisims_ver']+args
       args = ['-L',os.environ['XILINX']+'/verilog/mti_se/6.6a/lin64/secureip']+args
       args = ['-L','work']+args
