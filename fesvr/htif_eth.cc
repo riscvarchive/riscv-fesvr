@@ -213,7 +213,7 @@ void htif_eth_t::stop()
 void htif_eth_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 {
   demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx read_chunk misaligned", taddr);
-  demand(len % chunk_align() == 0, "len=%ld read_chunk misaligned", len);
+  demand((cmd == IF_CREG && (len % ETH_REG_ALIGN == 0)) || (len % chunk_align() == 0), "len=%ld read_chunk misaligned", len);
 
   packet_t req;
   packet_t resp;
@@ -248,7 +248,7 @@ void htif_eth_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 void htif_eth_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
 {
   demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx write_chunk misaligned", taddr);
-  demand(len % chunk_align() == 0, "len=%ld write_chunk misaligned", len);
+  demand((cmd == IF_CREG && len % ETH_REG_ALIGN == 0) || (len % chunk_align() == 0), "len=%ld write_chunk misaligned", len);
 
   packet_t req;
   packet_t resp;

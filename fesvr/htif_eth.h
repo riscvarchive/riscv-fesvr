@@ -5,9 +5,9 @@
 #include <netpacket/packet.h>
 #include "interface.h"
 #include "htif.h"
-
-const size_t ETH_DATA_ALIGN = 8;
-const size_t ETH_MAX_DATA_SIZE = 8;
+const size_t ETH_REG_ALIGN = 8;
+const size_t ETH_DATA_ALIGN = 16;
+const size_t ETH_MAX_DATA_SIZE = 16;
 
 const unsigned short HTIF_ETHERTYPE = 0x8888;
 
