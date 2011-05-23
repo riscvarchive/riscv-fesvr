@@ -137,14 +137,14 @@ reg_t htif_rtlsim_t::read_cr(int coreid, int regnum)
   reg_t val;
   do
   {
-    read_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
+    read_chunk((addr_t)coreid<<16|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
   } while (val == 0);
   return val;
 }
 
 void htif_rtlsim_t::write_cr(int coreid, int regnum, reg_t val)
 {
-  write_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
+  write_chunk((addr_t)coreid<<16|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
 }
 
 size_t htif_rtlsim_t::chunk_align()
