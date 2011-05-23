@@ -8,6 +8,7 @@ from fesvr_tmif import *
 pkrun = True
 simtype = 0 # isa=0,rtl=1,2=fpgartl,3=rs232,4=eth,5=csim
 
+coreid = 0
 htif_args = []
 start = 1
 for a in sys.argv[1:]:
@@ -28,6 +29,8 @@ for a in sys.argv[1:]:
       simtype = 4
     elif a == '-c':
       simtype = 5
+    elif a.find('-core') != -1:
+      coreid = int(a.split('=')[1])
     else:
       htif_args.append(a)
   else:
@@ -80,11 +83,11 @@ tmif.start()
 
 if pkrun:
   while True:
-    mm = tmif.run_until_tohost()
+    mm = tmif.run_until_tohost(coreid)
     tmif.syscall(mm)
-    tmif.write_fromhost(1)
+    tmif.write_fromhost(coreid, 1)
 else:
-  code = tmif.run_until_tohost()
+  code = tmif.run_until_tohost(coreid)
   if code == 1:
     print "*** PASSED ***"
   else:

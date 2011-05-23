@@ -12,11 +12,11 @@ class tmif_t:
   def stop(self):
     fesvr_pylink.handle.htif_stop(self.htif)
 
-  def run_until_tohost(self):
-    return fesvr_pylink.handle.htif_read_cr(self.htif, 0, 16)
+  def run_until_tohost(self, coreid):
+    return fesvr_pylink.handle.htif_read_cr(self.htif, coreid, 16)
 
-  def write_fromhost(self, val):
-    fesvr_pylink.handle.htif_write_cr(self.htif, 0, 17, val)
+  def write_fromhost(self, coreid, val):
+    fesvr_pylink.handle.htif_write_cr(self.htif, coreid, 17, val)
 
   def load_elf(self, fn):
     fesvr_pylink.handle.load_elf(fn, self.memif)
