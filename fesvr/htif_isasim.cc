@@ -43,7 +43,7 @@ void htif_isasim_t::write_packet(const packet_t* p)
     throw io_error("write failed");
 }
 
-void htif_isasim_t::start()
+void htif_isasim_t::start(int coreid)
 {
   packet_t p = {HTIF_CMD_START, seqno, 0, 0};
   write_packet(&p);
@@ -51,7 +51,7 @@ void htif_isasim_t::start()
   seqno++;
 }
 
-void htif_isasim_t::stop()
+void htif_isasim_t::stop(int coreid)
 {
   packet_t p = {HTIF_CMD_STOP, seqno, 0, 0};
   write_packet(&p);

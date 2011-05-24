@@ -14,8 +14,8 @@ public:
   htif_hexwriter_t(size_t w, size_t d) : width(w),depth(d) {}
   virtual ~htif_hexwriter_t() {}
 
-  void start() { abort(); }
-  void stop() { abort(); }
+  void start(int coreid) { abort(); }
+  void stop(int coreid) { abort(); }
   void read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd=IF_MEM);
   void write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd=IF_MEM);
   reg_t read_cr(int coreid, int regnum) { abort(); }

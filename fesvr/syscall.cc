@@ -13,7 +13,7 @@ struct sysret_t
 
 sysret_t appsys_exit(htif_t* htif, memif_t* memif, reg_t code)
 {
-  htif->stop();
+  htif->stop(0); // coreid doesn't matter, stop shuts down everything
   exit(code);
 }
 

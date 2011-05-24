@@ -46,7 +46,7 @@ void htif_csim_t::write_packet(const packet_t* p)
     throw io_error("write failed");
 }
 
-void htif_csim_t::start()
+void htif_csim_t::start(int coreid)
 {
   packet_t p = {HTIF_CMD_START, seqno, 0, 0};
   write_packet(&p);
@@ -54,7 +54,7 @@ void htif_csim_t::start()
   seqno++;
 }
 
-void htif_csim_t::stop()
+void htif_csim_t::stop(int coreid)
 {
   packet_t p = {HTIF_CMD_STOP, seqno, 0, 0};
   write_packet(&p);

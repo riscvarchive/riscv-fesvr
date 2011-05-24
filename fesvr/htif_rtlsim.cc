@@ -46,17 +46,18 @@ void htif_rtlsim_t::write_packet(const packet_t* p)
     throw io_error("write failed");
 }
 
-void htif_rtlsim_t::start()
+void htif_rtlsim_t::start(int coreid)
 {
-  packet_t p = {HTIF_CMD_START, seqno, 0, 0};
+  printf("start here! coreid=%d\n", coreid);
+  packet_t p = {HTIF_CMD_START, seqno, 0, coreid << 16};
   write_packet(&p);
   read_packet(&p, seqno);
   seqno++;
 }
 
-void htif_rtlsim_t::stop()
+void htif_rtlsim_t::stop(int coreid)
 {
-  packet_t p = {HTIF_CMD_STOP, seqno, 0, 0};
+  packet_t p = {HTIF_CMD_STOP, seqno, 0, coreid << 16};
   write_packet(&p);
   read_packet(&p, seqno);
   seqno++;

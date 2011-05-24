@@ -79,7 +79,7 @@ if pkrun:
 else:
   tmif.load_elf(args[0]) # bin
 
-tmif.start()
+tmif.start(coreid)
 
 if pkrun:
   while True:
@@ -93,6 +93,6 @@ else:
   else:
     print "*** FAILED *** (tohost = %d)" % code
   if simtype > 0:
-    tmif.stop()
+    tmif.stop(coreid)
   else:
     htif.kill()

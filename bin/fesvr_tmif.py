@@ -6,11 +6,11 @@ class tmif_t:
     self.htif = htif.cinst
     self.memif = fesvr_pylink.handle.new_memif(self.htif)
 
-  def start(self):
-    fesvr_pylink.handle.htif_start(self.htif)
+  def start(self, coreid):
+    fesvr_pylink.handle.htif_start(self.htif, coreid)
 
-  def stop(self):
-    fesvr_pylink.handle.htif_stop(self.htif)
+  def stop(self, coreid):
+    fesvr_pylink.handle.htif_stop(self.htif, coreid)
 
   def run_until_tohost(self, coreid):
     return fesvr_pylink.handle.htif_read_cr(self.htif, coreid, 16)

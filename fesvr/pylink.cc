@@ -61,14 +61,14 @@ void load_elf(const char* fn, char* memif)
   load_elf(fn, (memif_t*)memif);
 }
 
-void htif_start(char* htif)
+void htif_start(char* htif, int coreid)
 {
-  ((htif_t*)htif)->start();
+  ((htif_t*)htif)->start(coreid);
 }
 
-void htif_stop(char* htif)
+void htif_stop(char* htif, int coreid)
 {
-  ((htif_t*)htif)->stop();
+  ((htif_t*)htif)->stop(coreid);
 }
 
 reg_t htif_read_cr(char* htif, int coreid, int regnum)
