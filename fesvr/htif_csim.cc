@@ -135,10 +135,7 @@ void htif_csim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int 
 reg_t htif_csim_t::read_cr(int coreid, int regnum)
 {
   reg_t val;
-  do
-  {
-    read_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
-  } while (val == 0);
+  read_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
   return val;
 }
 

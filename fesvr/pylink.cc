@@ -71,6 +71,18 @@ void htif_stop(char* htif, int coreid)
   ((htif_t*)htif)->stop(coreid);
 }
 
+reg_t htif_read_cr_until_change(char* htif, int coreid, int regnum)
+{
+  reg_t val;
+
+  do
+  {
+    val = ((htif_t*)htif)->read_cr(coreid, regnum);
+  } while (val == 0);
+
+  return val;
+}
+
 reg_t htif_read_cr(char* htif, int coreid, int regnum)
 {
   return ((htif_t*)htif)->read_cr(coreid, regnum);

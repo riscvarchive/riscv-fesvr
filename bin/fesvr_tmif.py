@@ -12,6 +12,9 @@ class tmif_t:
   def stop(self, coreid):
     fesvr_pylink.handle.htif_stop(self.htif, coreid)
 
+  def read_cr_until_change(self, coreid, regidx):
+    return fesvr_pylink.handle.htif_read_cr_until_change(self.htif, coreid, regidx)
+
   def read_cr(self, coreid, regidx):
     return fesvr_pylink.handle.htif_read_cr(self.htif, coreid, regidx)
 
@@ -19,7 +22,7 @@ class tmif_t:
     fesvr_pylink.handle.htif_write_cr(self.htif, coreid, regidx, val)
 
   def run_until_tohost(self, coreid):
-    return self.read_cr(coreid, 16)
+    return self.read_cr_until_change(coreid, 16)
 
   def write_fromhost(self, coreid, val):
     self.write_cr(coreid, 17, val)
