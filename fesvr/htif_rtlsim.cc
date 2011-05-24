@@ -48,7 +48,6 @@ void htif_rtlsim_t::write_packet(const packet_t* p)
 
 void htif_rtlsim_t::start(int coreid)
 {
-  printf("start here! coreid=%d\n", coreid);
   packet_t p = {HTIF_CMD_START, seqno, 0, coreid << 16};
   write_packet(&p);
   read_packet(&p, seqno);
