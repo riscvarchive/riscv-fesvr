@@ -31,8 +31,8 @@ void load_elf(const char* fn, memif_t* memif)
     for(int i = 0; i < eh->e_phnum; i++, ph++) { \
       if(ph->p_type == SHT_PROGBITS && ph->p_memsz) { \
         demand(size >= ph->p_offset + ph->p_filesz, "bad ELF!"); \
-        memif->write(ph->p_vaddr, ph->p_filesz, (uint8_t*)buf + ph->p_offset); \
-        memif->write(ph->p_vaddr + ph->p_filesz, ph->p_memsz - ph->p_filesz, NULL); \
+        memif->write(ph->p_paddr, ph->p_filesz, (uint8_t*)buf + ph->p_offset); \
+        memif->write(ph->p_paddr + ph->p_filesz, ph->p_memsz - ph->p_filesz, NULL); \
       } \
     } \
   } while(0)

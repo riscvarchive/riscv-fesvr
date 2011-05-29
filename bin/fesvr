@@ -6,6 +6,7 @@ from fesvr_htif import *
 from fesvr_tmif import *
 
 pkrun = True
+testrun = False
 simtype = 0 # isa=0,rtl=1,2=fpgartl,3=rs232,4=eth,5=csim
 
 coreid = 0
@@ -15,6 +16,9 @@ for a in sys.argv[1:]:
   if len(a) > 1 and (a[0] == '-' or a[0] == '+'):
     start = start+1
     if a == '-testrun':
+      testrun = True
+      pkrun = False
+    if a == '-nopk':
       pkrun = False
     elif a == '-rtl':
       simtype = 1
@@ -81,7 +85,7 @@ else:
 
 tmif.start(coreid)
 
-if pkrun:
+if not testrun:
   while True:
     mm = tmif.run_until_tohost(coreid)
     tmif.syscall(mm)
