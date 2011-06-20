@@ -1,0 +1,102 @@
+#! /usr/bin/python
+
+import os
+import sys
+from fesvr_htif import *
+from fesvr_tmif import *
+
+pkrun = True
+testrun = False
+simtype = 0 # isa=0,rtl=1,2=fpgartl,3=rs232,4=eth,5=csim
+
+coreid = 0
+htif_args = []
+start = 1
+for a in sys.argv[1:]:
+  if len(a) > 1 and (a[0] == '-' or a[0] == '+'):
+    start = start+1
+    if a == '-testrun':
+      testrun = True
+      pkrun = False
+    if a == '-nopk':
+      pkrun = False
+    elif a == '-rtl':
+      simtype = 1
+    elif a == '-gl':
+      simtype = 1
+      htif_args += ['-ucli','-do','run.tcl']
+    elif a == '-fpgartl':
+      simtype = 2
+    elif a == '-rs232':
+      simtype = 3
+    elif a == '-eth':
+      simtype = 4
+    elif a == '-c':
+      simtype = 5
+    elif a.find('-core') != -1:
+      coreid = int(a.split('=')[1])
+    else:
+      htif_args.append(a)
+  else:
+    break
+args = sys.argv[start:]
+
+if pkrun:
+  kernel = ''
+  for path in os.getenv('PATH').split(':'):
+    test = path + '/riscv-pk'
+    if os.access(test, os.F_OK):
+      kernel = test
+      break
+  if kernel == '':
+    print "can't find riscv-pk in PATH"
+    sys.exit(-1)
+
+if len(args) < 1:
+  print "usage: %s bin [args]" % sys.argv[0]
+  sys.exit(-1)
+
+if simtype == 0:
+  htif = htif_isasim_t(htif_args)
+elif simtype == 1:
+  htif = htif_rtlsim_t(htif_args)
+elif simtype == 2:
+  htif = htif_fpga_rtlsim_t(htif_args)
+elif simtype == 3:
+  htif = htif_rs232_t(htif_args)
+elif simtype == 4:
+  htif = htif_eth_t(htif_args)
+elif simtype == 5:
+  htif = htif_csim_t(htif_args)
+else:
+  assert 0, "unspecified simtype"
+
+tmif = tmif_t(htif)
+
+if pkrun:
+  tmif.load_elf(kernel) # pk
+  target_argv = args
+  target_argc = len(target_argv)
+  tmif.mainvars_argc(target_argc)
+  for i in range(target_argc):
+    tmif.mainvars_argv(i, len(target_argv[i]), target_argv[i])
+else:
+  tmif.load_elf(args[0]) # bin
+
+tmif.start(coreid)
+
+if not testrun:
+  while True:
+    mm = tmif.run_until_tohost(coreid)
+    tmif.syscall(mm)
+    tmif.write_fromhost(coreid, 1)
+else:
+  code = tmif.run_until_tohost(coreid)
+  if code == 1:
+    print "*** PASSED ***"
+  else:
+    print "*** FAILED *** (tohost = %d)" % code
+  if simtype > 0:
+    tmif.stop(coreid)
+  else:
+    htif.kill()
