@@ -552,7 +552,7 @@ PACKAGE_STRING='Frontend Server ?'
 PACKAGE_BUGREPORT='Yunsup Lee'
 PACKAGE_URL=''
 
-ac_unique_file="fesvr/common.h"
+ac_unique_file="fesvr/htif.h"
 ac_subst_vars='LTLIBOBJS
 LIBOBJS
 fesvr_extra_libs

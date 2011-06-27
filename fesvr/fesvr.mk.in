@@ -21,6 +21,7 @@ fesvr_hdrs = \
 	htif_eth.h \
 	htif-packet.h \
 	memif.h \
+	pylink.h \
 	syscall.h \
 
 fesvr_srcs = \
