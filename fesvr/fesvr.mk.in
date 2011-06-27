@@ -10,7 +10,6 @@ fesvr_ldflags  = @fesvr_ldflags@
 fesvr_libs     = libfesvr.a
 
 fesvr_hdrs = \
-	common.h \
 	interface.h \
 	elf.h \
 	htif.h \

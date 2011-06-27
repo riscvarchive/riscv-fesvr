@@ -12,7 +12,6 @@
 #include <sys/un.h>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include "common.h"
 #include "interface.h"
 #include "htif_eth.h"
 #include "memif.h"
@@ -35,6 +34,9 @@ struct eth_packet_t
 htif_eth_t::htif_eth_t(const char* interface, bool _rtlsim)
 : seqno(1), rtlsim(_rtlsim)
 {
+#ifndef __linux__
+  assert(0);
+#else
   if(rtlsim)
   {
     const char* socket_path = interface;
@@ -103,6 +105,7 @@ htif_eth_t::htif_eth_t(const char* interface, bool _rtlsim)
     if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(struct timeval)) == -1)
       throw std::runtime_error("setsockopt() failed!");
   }
+#endif
 }
 
 htif_eth_t::~htif_eth_t()
@@ -212,8 +215,8 @@ void htif_eth_t::stop(int coreid)
 
 void htif_eth_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 {
-  demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx read_chunk misaligned", taddr);
-  demand((cmd == IF_CREG && (len % ETH_REG_ALIGN == 0)) || (len % chunk_align() == 0), "len=%ld read_chunk misaligned", len);
+  assert(cmd == IF_CREG || taddr % chunk_align() == 0);
+  assert((cmd == IF_CREG && (len % ETH_REG_ALIGN == 0)) || (len % chunk_align() == 0));
 
   packet_t req;
   packet_t resp;
@@ -223,7 +226,7 @@ void htif_eth_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
   else if (cmd == IF_CREG)
     req.cmd = HTIF_CMD_READ_CONTROL_REG;
   else
-    demand(0, "unreachable");
+    assert(0);
 
   while (len)
   {
@@ -247,8 +250,8 @@ void htif_eth_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 
 void htif_eth_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
 {
-  demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx write_chunk misaligned", taddr);
-  demand((cmd == IF_CREG && len % ETH_REG_ALIGN == 0) || (len % chunk_align() == 0), "len=%ld write_chunk misaligned", len);
+  assert(cmd == IF_CREG || taddr % chunk_align() == 0);
+  assert((cmd == IF_CREG && len % ETH_REG_ALIGN == 0) || (len % chunk_align() == 0));
 
   packet_t req;
   packet_t resp;
@@ -258,7 +261,7 @@ void htif_eth_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int c
   else if (cmd == IF_CREG)
     req.cmd = HTIF_CMD_WRITE_CONTROL_REG;
   else
-    demand(0, "unreachable");
+    assert(0);
 
   while (len)
   {

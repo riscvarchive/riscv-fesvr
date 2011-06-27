@@ -1,8 +1,8 @@
 #ifndef __HTIF_H
 #define __HTIF_H
 
-#include "common.h"
 #include "interface.h"
+#include <string.h>
 
 class htif_t
 {

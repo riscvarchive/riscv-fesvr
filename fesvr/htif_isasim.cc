@@ -1,5 +1,5 @@
 #include <algorithm>
-#include "common.h"
+#include <assert.h>
 #include "interface.h"
 #include "htif_isasim.h"
 
@@ -61,8 +61,8 @@ void htif_isasim_t::stop(int coreid)
 
 void htif_isasim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 {
-  demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx read_chunk misaligned", taddr);
-  demand(len % chunk_align() == 0, "len=%ld read_chunk misaligned", len);
+  assert(cmd == IF_CREG || taddr % chunk_align() == 0);
+  assert(len % chunk_align() == 0);
 
   packet_t req;
   packet_t resp;
@@ -72,7 +72,7 @@ void htif_isasim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
   else if (cmd == IF_CREG)
     req.cmd = HTIF_CMD_READ_CONTROL_REG;
   else
-    demand(0, "unreachable");
+    assert(0);
 
   while (len)
   {
@@ -96,8 +96,8 @@ void htif_isasim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 
 void htif_isasim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
 {
-  demand(cmd == IF_CREG || taddr % chunk_align() == 0, "taddr=%016lx write_chunk misaligned", taddr);
-  demand(len % chunk_align() == 0, "len=%ld write_chunk misaligned", len);
+  assert(cmd == IF_CREG || taddr % chunk_align() == 0);
+  assert(len % chunk_align() == 0);
 
   packet_t req;
   packet_t resp;
@@ -107,7 +107,7 @@ void htif_isasim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, in
   else if (cmd == IF_CREG)
     req.cmd = HTIF_CMD_WRITE_CONTROL_REG;
   else
-    demand(0, "unreachable");
+    assert(0);
 
   while (len)
   {

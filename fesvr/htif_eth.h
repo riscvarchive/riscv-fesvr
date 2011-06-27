@@ -2,12 +2,23 @@
 #define __HTIF_ETH_H
 
 #include <sys/socket.h>
-#include <netpacket/packet.h>
 #include "interface.h"
 #include "htif.h"
 const size_t ETH_REG_ALIGN = 8;
 const size_t ETH_DATA_ALIGN = 16;
 const size_t ETH_MAX_DATA_SIZE = 16;
+
+#ifdef __linux__
+#include <netpacket/packet.h>
+typedef struct sockaddr_ll sockaddr_ll_t;
+#else
+#include <sys/types.h>
+#include <net/if.h>
+#include <net/if_dl.h>
+#include <net/if_types.h>
+#include <net/ndrv.h>
+typedef struct sockaddr sockaddr_ll_t;
+#endif
 
 const unsigned short HTIF_ETHERTYPE = 0x8888;
 
@@ -29,7 +40,7 @@ public:
 
 protected:
   int sock;
-  struct sockaddr_ll src_addr;
+  sockaddr_ll_t src_addr;
   char src_mac[6];
   char dst_mac[6];
 

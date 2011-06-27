@@ -1,12 +1,13 @@
 #include <iostream>
+#include <assert.h>
 #include "htif_hexwriter.h"
 
 void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 {
-  demand(cmd == IF_MEM && taddr % chunk_align() == 0, "taddr=%016lx read_chunk misaligned", taddr);
-  demand(len % chunk_align() == 0, "len=%ld read_chunk misaligned", len);
-  demand(taddr < width*depth, "taddr=%016lx read_chunk out of bounds", taddr);
-  demand(taddr+len <= width*depth, "taddr=%016lx read_chunk out of bounds", taddr);
+  assert(cmd == IF_MEM && taddr % chunk_align() == 0);
+  assert(len % chunk_align() == 0);
+  assert(taddr < width*depth);
+  assert(taddr+len <= width*depth);
 
   while(len)
   {
@@ -24,10 +25,10 @@ void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cm
 
 void htif_hexwriter_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
 {
-  demand(cmd == IF_MEM && taddr % chunk_align() == 0, "taddr=%016lx write_chunk misaligned", taddr);
-  demand(len % chunk_align() == 0, "len=%ld write_chunk misaligned", len);
-  demand(taddr < width*depth, "taddr=%016lx write_chunk out of bounds", taddr);
-  demand(taddr+len <= width*depth, "taddr=%016lx write_chunk out of bounds", taddr);
+  assert(cmd == IF_MEM && taddr % chunk_align() == 0);
+  assert(len % chunk_align() == 0);
+  assert(taddr < width*depth);
+  assert(taddr+len <= width*depth);
 
   while(len)
   {

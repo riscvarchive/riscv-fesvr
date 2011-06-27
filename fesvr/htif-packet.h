@@ -2,6 +2,8 @@
 # error "You fool!  Define your HTIF_MAX_DATA_SIZE!"
 #endif
 
+#include <stdexcept>
+
 enum
 {
   HTIF_CMD_READ_MEM,

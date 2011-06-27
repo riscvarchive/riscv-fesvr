@@ -4,6 +4,9 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <stdlib.h>
+#include <assert.h>
+#include <algorithm>
 
 struct sysret_t
 {
@@ -29,7 +32,7 @@ sysret_t appsys_read(htif_t* htif, memif_t* memif,
                      reg_t fd, addr_t pbuf, reg_t len)
 {
   char* buf = (char*)malloc(len);
-  demand(buf,"malloc failure!");
+  assert(buf);
   sysret_t ret = {read(fd,buf,len),errno};
   if(ret.result != (reg_t)-1)
     memif->write(pbuf,ret.result,(uint8_t*)buf);
@@ -41,7 +44,7 @@ sysret_t appsys_pread(htif_t* htif, memif_t* memif,
                      reg_t fd, addr_t pbuf, reg_t len, reg_t off)
 {
   char* buf = (char*)malloc(len);
-  demand(buf,"malloc failure!");
+  assert(buf);
   sysret_t ret = {pread(fd,buf,len,off),errno};
   if(ret.result != (reg_t)-1)
     memif->write(pbuf,ret.result,(uint8_t*)buf);
@@ -53,7 +56,7 @@ sysret_t appsys_write(htif_t* htif, memif_t* memif,
                       reg_t fd, addr_t pbuf, reg_t len)
 {
   char* buf = (char*)malloc(len);
-  demand(buf,"malloc failure!");
+  assert(buf);
   memif->read(pbuf,len,(uint8_t*)buf);
   sysret_t ret = {write(fd,buf,len),errno};
   free(buf);
@@ -64,7 +67,7 @@ sysret_t appsys_pwrite(htif_t* htif, memif_t* memif,
                       reg_t fd, addr_t pbuf, reg_t len, reg_t off)
 {
   char* buf = (char*)malloc(len);
-  demand(buf,"malloc failure!");
+  assert(buf);
   memif->read(pbuf,len,(uint8_t*)buf);
   sysret_t ret = {pwrite(fd,buf,len,off),errno};
   free(buf);
@@ -137,7 +140,7 @@ sysret_t appsys_unlink(htif_t* htif, memif_t* memif,
 }
 
 sysret_t appsys_getmainvars(htif_t* htif, memif_t* memif,
-  addr_t pbuf, reg_t limit)
+  addr_t pbuf, size_t limit)
 {
   extern char mainvars[0x1000];
   extern long* mainvars_longp;
@@ -181,12 +184,9 @@ void dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
   syscall_table[181] = (void*)appsys_pwrite;
   syscall_table[201] = (void*)appsys_getmainvars;
 
-  syscall_t p;
   reg_t n = magicmem[0];
-  if(n >= sizeof(syscall_table)/sizeof(void*) || !syscall_table[n])
-    demand(0,"bad syscall #%ld!",n);
-  else
-    p = (syscall_t)syscall_table[n];
+  assert(n < sizeof(syscall_table)/sizeof(void*) && syscall_table[n]);
+  syscall_t p = (syscall_t)syscall_table[n];
 
   sysret_t ret = p(htif,memif,magicmem[1],magicmem[2],magicmem[3],magicmem[4]);
 
