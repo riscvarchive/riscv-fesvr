@@ -3,6 +3,7 @@
 
 #include <map>
 #include <vector>
+#include <stdlib.h>
 #include "interface.h"
 #include "htif.h"
 
