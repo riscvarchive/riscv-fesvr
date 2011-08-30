@@ -2,6 +2,7 @@
 #define __INTERFACE_H
 
 #include <stdint.h>
+#include <stddef.h>
 
 enum
 {
