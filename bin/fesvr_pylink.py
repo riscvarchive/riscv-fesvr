@@ -37,7 +37,7 @@ handle.htif_read_cr.argtypes = [ctypes.c_void_p, ctypes.c_int]
 handle.htif_write_cr.restype = None
 handle.htif_write_cr.argtypes = [ctypes.c_void_p, ctypes.c_int, ctypes.c_int64]
 
-handle.frontend_syscall.restype = None
+handle.frontend_syscall.restype = ctypes.c_int
 handle.frontend_syscall.argtypes = [ctypes.c_void_p, ctypes.c_void_p, ctypes.c_int64]
 
 handle.mainvars_argc.restype = None

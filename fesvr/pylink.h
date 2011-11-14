@@ -25,7 +25,7 @@ reg_t htif_read_cr_until_change(void* htif, int coreid, int regnum);
 reg_t htif_read_cr(void* htif, int coreid, int regnum);
 void htif_write_cr(void* htif, int coreid, int regnum, reg_t val);
 
-void frontend_syscall(void* htif, void* memif, addr_t mm);
+int frontend_syscall(void* htif, void* memif, addr_t mm);
 void mainvars_argc(int argc);
 void mainvars_argv(int idx, int len, char* arg);
 

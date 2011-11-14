@@ -14,10 +14,13 @@ struct sysret_t
   reg_t err;
 };
 
+static int done = 0;
+
 sysret_t appsys_exit(htif_t* htif, memif_t* memif, reg_t code)
 {
   htif->stop(0); // coreid doesn't matter, stop shuts down everything
-  exit(code);
+  done = 1;
+  return (sysret_t){0, 0};
 }
 
 sysret_t appsys_open(htif_t* htif, memif_t* memif,
@@ -162,7 +165,7 @@ sysret_t appsys_getmainvars(htif_t* htif, memif_t* memif,
 
 typedef sysret_t (*syscall_t)(htif_t*,memif_t*,reg_t,reg_t,reg_t,reg_t);
 
-void dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
+int dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
 {
   reg_t magicmem[5];
   memif->read(mm,sizeof(magicmem),(uint8_t*)magicmem);
@@ -191,4 +194,6 @@ void dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
   sysret_t ret = p(htif,memif,magicmem[1],magicmem[2],magicmem[3],magicmem[4]);
 
   memif->write(mm,sizeof(ret),(uint8_t*)&ret);
+
+  return done;
 }

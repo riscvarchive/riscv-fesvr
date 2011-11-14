@@ -79,9 +79,10 @@ void htif_write_cr(void* htif, int coreid, int regnum, reg_t val)
   ((htif_t*)htif)->write_cr(coreid, regnum, val);
 }
 
-void frontend_syscall(void* htif, void* memif, addr_t mm)
+#include <stdio.h>
+int frontend_syscall(void* htif, void* memif, addr_t mm)
 {
-  dispatch_syscall((htif_t*)htif, (memif_t*)memif, mm);
+  return dispatch_syscall((htif_t*)htif, (memif_t*)memif, mm);
 }
 
 void mainvars_argc(int argc)

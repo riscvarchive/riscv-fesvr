@@ -2,6 +2,7 @@
 
 import os
 import sys
+import termios
 from fesvr_htif import *
 from fesvr_tmif import *
 
@@ -86,10 +87,27 @@ else:
 tmif.start(coreid)
 
 if not testrun:
+  reset_termios = False
+  if not pkrun and os.isatty(0):
+    # if we're using the PK, we want canonical-mode input so C programs
+    # can interact with the host console natively without any special
+    # terminal support in the PK.  if we're not using the PK, provide a
+    # non-canonical terminal.
+    reset_termios = True
+    old_tios = termios.tcgetattr(0)
+    new_tios = termios.tcgetattr(0)
+    new_tios[3] = new_tios[3] & ~(termios.ICANON | termios.ECHO | termios.ICANON)
+    new_tios[6][termios.VMIN] = 0
+    termios.tcsetattr(0, termios.TCSANOW, new_tios)
+
   while True:
     mm = tmif.run_until_tohost(coreid)
-    tmif.syscall(mm)
+    if tmif.syscall(mm):
+      break
     tmif.write_fromhost(coreid, 1)
+
+  if reset_termios:
+    termios.tcsetattr(0, termios.TCSANOW, old_tios)
 else:
   code = tmif.run_until_tohost(coreid)
   if code == 1:
