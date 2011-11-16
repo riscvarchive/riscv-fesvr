@@ -48,6 +48,10 @@ void htif_rtlsim_t::write_packet(const packet_t* p)
 
 void htif_rtlsim_t::start(int coreid)
 {
+  // write memory size (in MB) and # cores in words 0, 1
+  uint32_t buf[4] = {256,1,0,0};
+  write_chunk(0, 16, (uint8_t *)buf, IF_MEM);
+
   packet_t p = {HTIF_CMD_START, seqno, 0, coreid << 16};
   write_packet(&p);
   read_packet(&p, seqno);
