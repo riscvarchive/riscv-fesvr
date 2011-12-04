@@ -19,7 +19,7 @@ for a in sys.argv[1:]:
     if a == '-testrun':
       testrun = True
       pkrun = False
-    if a == '-nopk':
+    elif a == '-nopk':
       pkrun = False
     elif a == '-rtl':
       simtype = 1

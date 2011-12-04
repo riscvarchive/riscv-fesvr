@@ -221,6 +221,8 @@ $(2)_dylibname = lib$(1).so
 $$($(2)_dylibname) : $$($(2)_objs)
 	$(CXX) -shared -o $$@ $$^
 
+$(2)_junk += $$($(2)_dylibname)
+
 # Build a library for this subproject
 
 $(2)_libname = lib$(1).a

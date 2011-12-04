@@ -48,6 +48,10 @@ void htif_csim_t::write_packet(const packet_t* p)
 
 void htif_csim_t::start(int coreid)
 {
+  // write memory size (in MB) and # cores in words 0, 1
+  uint32_t buf[4] = {32,1,0,0};
+  write_chunk(0, 16, (uint8_t *)buf, IF_MEM);
+ 
   packet_t p = {HTIF_CMD_START, seqno, 0, 0};
   write_packet(&p);
   read_packet(&p, seqno);
@@ -64,8 +68,9 @@ void htif_csim_t::stop(int coreid)
 
 void htif_csim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 {
+//  printf("htif_csim_t::read_chunk(%lx, %ld, %p, %d)\n", taddr, len, dst, cmd);
   assert(cmd == IF_CREG || taddr % chunk_align() == 0);
-  assert(len % chunk_align() == 0);
+  assert(cmd == IF_CREG || len % chunk_align() == 0);
 
   packet_t req;
   packet_t resp;
@@ -100,7 +105,7 @@ void htif_csim_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
 void htif_csim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
 {
   assert(cmd == IF_CREG || taddr % chunk_align() == 0);
-  assert(len % chunk_align() == 0);
+  assert(cmd == IF_CREG || len % chunk_align() == 0);
 
   packet_t req;
   packet_t resp;
@@ -132,16 +137,18 @@ void htif_csim_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int 
   }
 }
 
+//#include <stdio.h>
 reg_t htif_csim_t::read_cr(int coreid, int regnum)
 {
   reg_t val;
-  read_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
+//  printf("htif_csim_t::read_cr(%d, %d)\n", coreid, regnum);
+  read_chunk((addr_t)coreid<<16|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
   return val;
 }
 
 void htif_csim_t::write_cr(int coreid, int regnum, reg_t val)
 {
-  write_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
+  write_chunk((addr_t)coreid<<16|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
 }
 
 size_t htif_csim_t::chunk_align()
