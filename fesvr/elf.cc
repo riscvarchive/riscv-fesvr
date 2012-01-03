@@ -5,9 +5,31 @@
 #include <unistd.h>
 #include "elf.h"
 #include "memif.h"
+#include <stdlib.h>
 
 void load_elf(const char* fn, memif_t* memif)
 {
+// memory test
+#if 1
+  #define N 4097
+  memif->write(0, 4*N, NULL);
+  uint32_t* x = new uint32_t[N];
+  
+  for(int i = 0; i < N; i++)
+  {
+    x[i] = rand();
+    memif->write(4*i, 4, (uint8_t*)&x[i]);
+  }
+  
+  for(int i = 0; i < N; i++)
+  {
+    uint32_t tmp;
+    memif->read(4*i, 4, (uint8_t*)&tmp);
+    assert(x[i] == tmp);
+  }
+  delete [] x;
+#endif
+
   int fd = open(fn, O_RDONLY);
   assert(fd != -1);
 

@@ -5,8 +5,8 @@
 #include "interface.h"
 #include "htif.h"
 const size_t ETH_REG_ALIGN = 8;
-const size_t ETH_DATA_ALIGN = 16;
-const size_t ETH_MAX_DATA_SIZE = 16;
+const size_t ETH_DATA_ALIGN = 64;
+const size_t ETH_MAX_DATA_SIZE = 64;
 
 #ifdef __linux__
 #include <netpacket/packet.h>
