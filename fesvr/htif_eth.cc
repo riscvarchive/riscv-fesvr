@@ -200,7 +200,7 @@ void htif_eth_t::write_packet(const packet_t* p)
 void htif_eth_t::start(int coreid)
 {
   // write memory size (in MB) and # cores in words 0, 1
-  uint32_t buf[16] = {32,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  uint32_t buf[16] = {512,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
   write_chunk(0, 64, (uint8_t *)buf, IF_MEM);
 
   packet_t p = {HTIF_CMD_START, seqno, 0, coreid << 16};
