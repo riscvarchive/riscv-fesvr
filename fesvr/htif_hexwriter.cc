@@ -2,9 +2,8 @@
 #include <assert.h>
 #include "htif_hexwriter.h"
 
-void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
+void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
 {
-  assert(cmd == IF_MEM && taddr % chunk_align() == 0);
   assert(len % chunk_align() == 0);
   assert(taddr < width*depth);
   assert(taddr+len <= width*depth);
@@ -23,9 +22,8 @@ void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cm
   }
 }
 
-void htif_hexwriter_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
+void htif_hexwriter_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
 {
-  assert(cmd == IF_MEM && taddr % chunk_align() == 0);
   assert(len % chunk_align() == 0);
   assert(taddr < width*depth);
   assert(taddr+len <= width*depth);

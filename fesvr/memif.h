@@ -34,9 +34,7 @@
 
 #include <stdint.h>
 #include <string.h>
-#include "interface.h"
-
-class htif_t;
+#include "htif.h"
 
 class memif_t
 {

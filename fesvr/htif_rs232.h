@@ -1,31 +1,32 @@
 #ifndef __HTIF_RS232_H
 #define __HTIF_RS232_H
 
-#include "interface.h"
 #include "htif.h"
-
-const size_t RS232_DATA_ALIGN = 8;
-const size_t RS232_MAX_DATA_SIZE = 8;
 
 class htif_rs232_t : public htif_t
 {
-public:
+ public:
   htif_rs232_t(const char* tty);
-  virtual ~htif_rs232_t();
-  void read_packet(packet_t* p, int expected_seqno);
-  void write_packet(const packet_t* p);
+  ~htif_rs232_t();
 
-  void start(int coreid);
-  void stop(int coreid);
-  void read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd=IF_MEM);
-  void write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd=IF_MEM);
-  reg_t read_cr(int coreid, int regnum);
-  void write_cr(int coreid, int regnum, reg_t val);
-  size_t chunk_align();
+  void start(int coreid)
+  {
+    // write memory size (in MB) and # cores in words 0, 1
+    uint32_t buf[16] = {512,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+    write_chunk(0, sizeof(buf), (uint8_t *)buf);
+  
+    htif_t::start(coreid);
+  }
 
-protected:
+ protected:
+  ssize_t read(void* buf, size_t max_size);
+  ssize_t write(const void* buf, size_t size);
+
+  size_t chunk_max_size() { return 64; }
+  size_t chunk_align() { return 64; }
+
+ private:
   int fd;
-  uint16_t seqno;
 };
 
 #endif // __HTIF_RS232_H

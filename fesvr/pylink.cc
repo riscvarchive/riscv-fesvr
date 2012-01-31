@@ -1,12 +1,12 @@
 #include "pylink.h"
-#include "htif_isasim.h"
-#include "htif_rtlsim.h"
 #include "htif_csim.h"
+#include "htif_isasim.h"
 #include "htif_rs232.h"
 #include "htif_eth.h"
 #include "memif.h"
 #include "elf.h"
 #include "syscall.h"
+#include <stdlib.h>
 
 char mainvars[0x1000];
 long* mainvars_longp = (long*)mainvars;

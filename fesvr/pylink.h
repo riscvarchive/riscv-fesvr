@@ -1,7 +1,7 @@
 #ifndef _PYLINK_H
 #define _PYLINK_H
 
-#include "interface.h"
+#include "htif.h"
 
 #ifdef __cplusplus
 extern "C"

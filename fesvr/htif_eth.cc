@@ -1,3 +1,4 @@
+#include "htif_eth.h"
 #include <algorithm>
 #include <sys/types.h>
 #include <termios.h>
@@ -12,12 +13,6 @@
 #include <sys/un.h>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include "interface.h"
-#include "htif_eth.h"
-#include "memif.h"
-
-#define HTIF_MAX_DATA_SIZE ETH_MAX_DATA_SIZE
-#include "htif-packet.h"
 
 #define debug(...)
 //#define debug(...) fprintf(stderr,__VA_ARGS__)
@@ -28,11 +23,12 @@ struct eth_packet_t
   char src_mac[6];
   unsigned short ethertype;
   short pad;
-  packet_t htif_packet;
+  packet_header_t htif_header;
+  char htif_payload[ETH_MAX_DATA_SIZE];
 };
 
 htif_eth_t::htif_eth_t(const char* interface, bool _rtlsim)
-: seqno(1), rtlsim(_rtlsim)
+: rtlsim(_rtlsim)
 {
 #ifndef __linux__
   assert(0);
@@ -110,27 +106,28 @@ htif_eth_t::htif_eth_t(const char* interface, bool _rtlsim)
 
 htif_eth_t::~htif_eth_t()
 {
+  close(sock);
 }
 
-void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
+ssize_t htif_eth_t::read(void* buf, size_t max_size)
 {
-  int bytes;
+  ssize_t bytes;
 
   for(int timeouts = 0; timeouts < 3; )
   {
     eth_packet_t packet;
 
-    if((bytes = read(sock, (char*)&packet, sizeof(packet))) == -1)
+    if((bytes = ::read(sock, (char*)&packet, sizeof(packet))) == -1)
     {
       timeouts++;
       debug("read failed (%s)\n",strerror(errno));
       continue;
     }
 
-  debug("read packet\n");
-  for(int i = 0; i < bytes; i++)
-    debug("%x ",((unsigned char*)&packet)[i]);
-  debug("\n");
+    debug("read packet\n");
+    for(ssize_t i = 0; i < bytes; i++)
+      debug("%x ",((unsigned char*)&packet)[i]);
+    debug("\n");
 
     if(packet.ethertype != htons(HTIF_ETHERTYPE))
     {
@@ -138,43 +135,19 @@ void htif_eth_t::read_packet(packet_t* p, int expected_seqno)
       continue;
     }
 
-    *p = packet.htif_packet;
-    bytes -= offsetof(eth_packet_t, htif_packet);
-
-    break;
+    bytes -= 16; //offsetof(eth_header_t, htif_header)
+    memcpy(buf, &packet.htif_header, bytes);
+    return bytes;
   }
 
-  debug("read packet\n");
-  for(int i = 0; i < bytes; i++)
-    debug("%x ",((unsigned char*)p)[i]);
-  debug("\n");
-
-  if (bytes < (int)offsetof(packet_t, data))
-    throw io_error("read failed");
-  if (p->seqno != expected_seqno)
-    throw bad_seqno_error(); 
-  switch (p->cmd)
-  {
-    case HTIF_CMD_ACK:
-      //if (p->data_size != bytes - offsetof(packet_t, data))
-      //  throw packet_error("bad payload size!");
-      break;
-    case HTIF_CMD_NACK:
-      throw packet_error("nack!");
-    default:
-      throw packet_error("illegal command");
-  }
+  return -1;
 }
 
-void htif_eth_t::write_packet(const packet_t* p)
+ssize_t htif_eth_t::write(const void* buf, size_t size)
 {
-  int size = offsetof(packet_t, data);
-  if(p->cmd == HTIF_CMD_WRITE_MEM || p->cmd == HTIF_CMD_WRITE_CONTROL_REG)
-    size += p->data_size;
-    
   debug("write packet\n");
-  for(int i = 0; i < size; i++)
-    debug("%x ",((const unsigned char*)p)[i]);
+  for(size_t i = 0; i < size; i++)
+    debug("%x ",((const unsigned char*)buf)[i]);
   debug("\n");
 
   eth_packet_t eth_packet;
@@ -182,124 +155,12 @@ void htif_eth_t::write_packet(const packet_t* p)
   memcpy(eth_packet.src_mac, src_mac, sizeof(src_mac));
   eth_packet.ethertype = htons(HTIF_ETHERTYPE);
   eth_packet.pad = 0;
-  eth_packet.htif_packet = *p;
+  memcpy(&eth_packet.htif_header, buf, size);
+  size += 16; //offsetof(eth_packet_t, htif_header)
 
-  size += offsetof(eth_packet_t, htif_packet);
-
-  int bytes;
   if(rtlsim)
-    bytes = write(sock, (char*)&eth_packet, size);
+    return ::write(sock, (char*)&eth_packet, size);
   else
-    bytes = sendto(sock, (char*)&eth_packet, size, 0,
-                   (sockaddr*)&src_addr, sizeof(src_addr));
-
-  if (bytes != size)
-    throw io_error("write failed");
-}
-
-void htif_eth_t::start(int coreid)
-{
-  // write memory size (in MB) and # cores in words 0, 1
-  uint32_t buf[16] = {512,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-  write_chunk(0, 64, (uint8_t *)buf, IF_MEM);
-
-  packet_t p = {HTIF_CMD_START, seqno, 0, coreid << 16};
-  write_packet(&p);
-  read_packet(&p, seqno);
-  seqno++;
-}
-
-void htif_eth_t::stop(int coreid)
-{
-  packet_t p = {HTIF_CMD_STOP, seqno, 0, coreid << 16};
-  write_packet(&p);
-  read_packet(&p, seqno);
-  seqno++;
-}
-
-void htif_eth_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd)
-{
-  assert(cmd == IF_CREG || taddr % chunk_align() == 0);
-  assert((cmd == IF_CREG && (len % ETH_REG_ALIGN == 0)) || (len % chunk_align() == 0));
-
-  packet_t req;
-  packet_t resp;
-
-  if (cmd == IF_MEM)
-    req.cmd = HTIF_CMD_READ_MEM;
-  else if (cmd == IF_CREG)
-    req.cmd = HTIF_CMD_READ_CONTROL_REG;
-  else
-    assert(0);
-
-  while (len)
-  {
-    size_t sz = std::min(len, ETH_MAX_DATA_SIZE);
-
-    req.seqno = seqno;
-    req.data_size = sz;
-    req.addr = taddr;
-
-    write_packet(&req);
-    read_packet(&resp, seqno);
-    seqno++;
-
-    memcpy(dst, resp.data, sz);
-
-    len -= sz;
-    taddr += sz;
-    dst += sz;
-  }
-}
-
-void htif_eth_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd)
-{
-  assert(cmd == IF_CREG || taddr % chunk_align() == 0);
-  assert((cmd == IF_CREG && len % ETH_REG_ALIGN == 0) || (len % chunk_align() == 0));
-
-  packet_t req;
-  packet_t resp;
-
-  if (cmd == IF_MEM)
-    req.cmd = HTIF_CMD_WRITE_MEM;
-  else if (cmd == IF_CREG)
-    req.cmd = HTIF_CMD_WRITE_CONTROL_REG;
-  else
-    assert(0);
-
-  while (len)
-  {
-    size_t sz = std::min(len, ETH_MAX_DATA_SIZE);
-
-    req.seqno = seqno;
-    req.data_size = sz;
-    req.addr = taddr;
-
-    memcpy(req.data, src, sz);
-
-    write_packet(&req);
-    read_packet(&resp, seqno);
-    seqno++;
-
-    len -= sz;
-    taddr += sz;
-    src += sz;
-  }
-}
-
-reg_t htif_eth_t::read_cr(int coreid, int regnum)
-{
-  reg_t val;
-  read_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
-  return val;
-}
-
-void htif_eth_t::write_cr(int coreid, int regnum, reg_t val)
-{
-  write_chunk((addr_t)coreid<<32|regnum, sizeof(reg_t), (uint8_t*)&val, IF_CREG);
-}
-
-size_t htif_eth_t::chunk_align()
-{
-  return ETH_DATA_ALIGN;
+    return ::sendto(sock, (char*)&eth_packet, size, 0,
+                    (sockaddr*)&src_addr, sizeof(src_addr));
 }

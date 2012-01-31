@@ -1,29 +1,32 @@
 #ifndef __HTIF_ISASIM_H
 #define __HTIF_ISASIM_H
 
-#include "interface.h"
 #include "htif.h"
-
-const size_t ISASIM_DATA_ALIGN = 8;
-const size_t ISASIM_MAX_DATA_SIZE = 1024;
+#include <unistd.h>
 
 class htif_isasim_t : public htif_t
 {
-public:
-  htif_isasim_t(int _fdin, int _fdout);
-  virtual ~htif_isasim_t();
-  void read_packet(packet_t* p, int expected_seqno);
-  void write_packet(const packet_t* p);
+ public:
+  htif_isasim_t(int _fdin, int _fdout)
+    : fdin(_fdin), fdout(_fdout)
+  {
+  }
 
-  void start(int coreid);
-  void stop(int coreid);
-  void read_chunk(addr_t taddr, size_t len, uint8_t* dst, int cmd=IF_MEM);
-  void write_chunk(addr_t taddr, size_t len, const uint8_t* src, int cmd=IF_MEM);
-  reg_t read_cr(int coreid, int regnum);
-  void write_cr(int coreid, int regnum, reg_t val);
-  size_t chunk_align();
+ protected:
+  ssize_t read(void* buf, size_t max_size)
+  {
+    return ::read(fdin, buf, max_size);
+  }
 
-protected:
+  ssize_t write(const void* buf, size_t size)
+  {
+    return ::write(fdout, buf, size);
+  }
+
+  size_t chunk_max_size() { return 1024; }
+  size_t chunk_align() { return 16; }
+
+ private:
   int fdin;
   int fdout;
   uint16_t seqno;
