@@ -82,9 +82,9 @@ int main(int argc, char** argv)
   char** target_argv = argv + i;
   int target_argc = argc - i;
   mainvars[0] = target_argc;
-  mainvars[argc+1] = 0; // argv[argc] = NULL
-  mainvars[argc+2] = 0; // envp[0] = NULL
-  mainvars_sz = (argc+3) * sizeof(mainvars[0]);
+  mainvars[target_argc+1] = 0; // argv[argc] = NULL
+  mainvars[target_argc+2] = 0; // envp[0] = NULL
+  mainvars_sz = (target_argc+3) * sizeof(mainvars[0]);
   for (i = 0; i < target_argc; i++)
   {
     size_t len = strlen(target_argv[i]) + 1;
