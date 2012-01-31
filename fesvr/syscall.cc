@@ -145,12 +145,8 @@ sysret_t appsys_unlink(htif_t* htif, memif_t* memif,
 sysret_t appsys_getmainvars(htif_t* htif, memif_t* memif,
   addr_t pbuf, size_t limit)
 {
-  extern char mainvars[0x1000];
-  extern long* mainvars_longp;
-  extern size_t mainvars_sz;
-
-  for (int i=1; i<=mainvars_longp[0]; i++)
-    mainvars_longp[i] += pbuf;
+  for (size_t i=1; i<=mainvars[0]; i++)
+    mainvars[i] += pbuf;
 
   sysret_t ret;
   if (mainvars_sz < limit)

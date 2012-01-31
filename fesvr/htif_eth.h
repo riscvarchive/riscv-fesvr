@@ -1,11 +1,10 @@
 #ifndef __HTIF_ETH_H
 #define __HTIF_ETH_H
 
-#include <sys/socket.h>
 #include "htif.h"
-const size_t ETH_DATA_ALIGN = 64;
-const size_t ETH_MAX_DATA_SIZE = 64;
+#include <vector>
 
+#include <sys/socket.h>
 #ifdef __linux__
 #include <netpacket/packet.h>
 typedef struct sockaddr_ll sockaddr_ll_t;
@@ -18,12 +17,14 @@ typedef struct sockaddr_ll sockaddr_ll_t;
 typedef struct sockaddr sockaddr_ll_t;
 #endif
 
+const size_t ETH_DATA_ALIGN = 64;
+const size_t ETH_MAX_DATA_SIZE = 64;
 const unsigned short HTIF_ETHERTYPE = 0x8888;
 
 class htif_eth_t : public htif_t
 {
 public:
-  htif_eth_t(const char* interface, bool rtlsim);
+  htif_eth_t(std::vector<char*> args);
   virtual ~htif_eth_t();
 
   void start(int coreid)

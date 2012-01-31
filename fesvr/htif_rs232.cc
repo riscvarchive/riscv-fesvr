@@ -10,8 +10,14 @@
 #define debug(...)
 //#define debug(...) fprintf(stderr,__VA_ARGS__)
 
-htif_rs232_t::htif_rs232_t(const char* tty)
+htif_rs232_t::htif_rs232_t(std::vector<char*> args)
 {
+  char* tty = NULL;
+  for (size_t i = 0; i < args.size(); i++)
+    if (strncmp(args[i], "+if=", 4) == 0)
+      tty = args[i] + 4;
+  assert(tty);
+
   debug("opening %s\n",tty);
   fd = open(tty,O_RDWR|O_NOCTTY);
   assert(fd != -1);

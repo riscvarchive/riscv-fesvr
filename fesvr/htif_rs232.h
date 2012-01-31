@@ -2,11 +2,12 @@
 #define __HTIF_RS232_H
 
 #include "htif.h"
+#include <vector>
 
 class htif_rs232_t : public htif_t
 {
  public:
-  htif_rs232_t(const char* tty);
+  htif_rs232_t(std::vector<char*> args);
   ~htif_rs232_t();
 
   void start(int coreid)

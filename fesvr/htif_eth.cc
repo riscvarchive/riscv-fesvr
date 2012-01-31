@@ -27,11 +27,20 @@ struct eth_packet_t
   char htif_payload[ETH_MAX_DATA_SIZE];
 };
 
-htif_eth_t::htif_eth_t(const char* interface, bool _rtlsim)
-: rtlsim(_rtlsim)
+htif_eth_t::htif_eth_t(std::vector<char*> args)
+  : rtlsim(false)
 {
+  const char* interface = NULL;
+  for (size_t i = 0; i < args.size(); i++)
+  {
+    if (strncmp(args[i], "+if=", 4) == 0)
+      interface = args[i] + 4;
+    if (strcmp(args[i], "+sim") == 0)
+      rtlsim = true;
+  }
+
 #ifndef __linux__
-  assert(0);
+  assert(0); // TODO: add OSX support
 #else
   if(rtlsim)
   {

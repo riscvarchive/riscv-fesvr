@@ -1,15 +1,15 @@
-#ifndef __HTIF_CSIM_H
-#define __HTIF_CSIM_H
+#ifndef __HTIF_RTLSIM_H
+#define __HTIF_RTLSIM_H
 
 #include "htif.h"
 #include <unistd.h>
 #include <vector>
 
-class htif_csim_t : public htif_t
+class htif_rtlsim_t : public htif_t
 {
  public:
-  htif_csim_t(std::vector<char*> args);
-  ~htif_csim_t();
+  htif_rtlsim_t(std::vector<char*> args);
+  ~htif_rtlsim_t();
 
   void start(int coreid)
   {
@@ -40,4 +40,4 @@ class htif_csim_t : public htif_t
   int fdout;
 };
 
-#endif // __HTIF_CSIM_H
+#endif // __HTIF_RTLSIM_H

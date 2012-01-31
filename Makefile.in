@@ -15,12 +15,6 @@
 #  - distclean : remove everything
 #
 
-install_exes = \
-	$(src_dir)/bin/fesvr \
-	$(src_dir)/bin/fesvr_htif.py \
-	$(src_dir)/bin/fesvr_pylink.py \
-	$(src_dir)/bin/fesvr_tmif.py \
-
 #-------------------------------------------------------------------------
 # Basic setup
 #-------------------------------------------------------------------------
