@@ -139,10 +139,21 @@ int main(int argc, char** argv)
     {
       if (sig_len != -1)
       {
-        uint8_t* signature = new uint8_t[sig_len];
+        int chunk_size = 16;
+        assert(sig_addr % chunk_size == 0);
+        int sig_len_aligned = (sig_len + chunk_size - 1)/chunk_size*chunk_size;
+
+        uint8_t* signature = new uint8_t[sig_len_aligned];
         memif.read(sig_addr, sig_len, signature);
-        for (int i = 0; i < sig_len; i++)
-          printf("%02x%s", signature[i], (i+1) % 8 ? "" : "\n");
+        for (int i = sig_len; i < sig_len_aligned; i++)
+          signature[i] = 0;
+
+        for (int i = 0; i < sig_len_aligned; i += chunk_size)
+        {
+          for (int j = chunk_size - 1; j >= 0; j--)
+            printf("%02x", signature[i+j]);
+          printf("\n");
+        }
         delete [] signature;
       }
       else
