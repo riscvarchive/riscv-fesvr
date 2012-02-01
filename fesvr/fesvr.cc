@@ -157,11 +157,11 @@ int main(int argc, char** argv)
         delete [] signature;
       }
       else
-        printf("*** PASSED ***\n");
+        fprintf(stderr, "*** PASSED ***\n");
     }
     else
     {
-      printf("*** FAILED *** (tohost = %ld)\n", (long)tohost);
+      fprintf(stderr, "*** FAILED *** (tohost = %ld)\n", (long)tohost);
       exit_code = -1;
     }
   }
