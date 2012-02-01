@@ -9,7 +9,6 @@ class htif_isasim_t : public htif_t
 {
  public:
   htif_isasim_t(std::vector<char*> args);
-  ~htif_isasim_t();
 
  protected:
   ssize_t read(void* buf, size_t max_size)
@@ -26,7 +25,6 @@ class htif_isasim_t : public htif_t
   size_t chunk_align() { return 16; }
 
  private:
-  int pid;
   int fdin;
   int fdout;
   uint16_t seqno;

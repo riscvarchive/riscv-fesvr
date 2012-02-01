@@ -9,7 +9,6 @@ class htif_rtlsim_t : public htif_t
 {
  public:
   htif_rtlsim_t(std::vector<char*> args);
-  ~htif_rtlsim_t();
 
   void start(int coreid)
   {
@@ -35,7 +34,6 @@ class htif_rtlsim_t : public htif_t
   size_t chunk_align() { return 16; }
 
  private:
-  int pid;
   int fdin;
   int fdout;
 };

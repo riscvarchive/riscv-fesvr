@@ -19,10 +19,13 @@ size_t mainvars_sz;
 
 int main(int argc, char** argv)
 {
+  int exit_code = 0;
   bool pkrun = true;
   bool testrun = false;
   htif_t* htif = NULL;
   int coreid = 0, i;
+  addr_t sig_addr = 0;
+  int sig_len = -1;
 
   enum {
     SIMTYPE_ISA,
@@ -58,6 +61,16 @@ int main(int argc, char** argv)
       simtype = SIMTYPE_ETH;
     else if (s == "-c")
       simtype = SIMTYPE_CSIM;
+    else if (s == "-testsig")
+    {
+      testrun = true;
+      pkrun = false;
+      assert(i + 2 < argc);
+
+      sig_addr = (addr_t)atoll(argv[i+1]);
+      sig_len = atoi(argv[i+2]);
+      i += 2;
+    }
     else
       htif_args.push_back(argv[i]);
   }
@@ -123,9 +136,23 @@ int main(int argc, char** argv)
     reg_t tohost;
     while ((tohost = htif->read_cr(coreid, 16)) == 0);
     if (tohost == 1)
-      printf("*** PASSED ***\n");
+    {
+      if (sig_len != -1)
+      {
+        uint8_t* signature = new uint8_t[sig_len];
+        memif.read(sig_addr, sig_len, signature);
+        for (int i = 0; i < sig_len; i++)
+          printf("%02x%s", signature[i], (i+1) % 8 ? "" : "\n");
+        delete [] signature;
+      }
+      else
+        printf("*** PASSED ***\n");
+    }
     else
+    {
       printf("*** FAILED *** (tohost = %ld)\n", (long)tohost);
+      exit_code = -1;
+    }
   }
   else
   {
@@ -155,5 +182,8 @@ int main(int argc, char** argv)
       tcsetattr(0, TCSANOW, &old_tios);
   }
 
+  htif->stop(coreid);
   delete htif;
+
+  return exit_code;
 }
