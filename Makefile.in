@@ -315,7 +315,6 @@ install-libs-$(1) : $$($(2)_install_hdrs_wdir) $$($(2)_libname) $(1).pc
     $(INSTALL_HDR) $$$$file $(install_hdrs_dir)/$(1); \
   done
 	$(INSTALL_LIB) $$($(2)_libname) $(install_libs_dir)
-	$(INSTALL_LIB) $$($(2)_dylibname) $(install_libs_dir)
 	$(INSTALL_LIB) $(1).pc $(install_pkcs_dir)/$(1).pc
 
 install-libs : install-libs-$(1)
@@ -340,7 +339,7 @@ install-exes : install-exes-$(1)
 
 # Other subproject specific targets
 
-all-$(1) : $$($(2)_dylibname) $$($(2)_libname) $$($(2)_prog_exes) $$($(2)_install_prog_exes)
+all-$(1) : $$($(2)_libname) $$($(2)_prog_exes) $$($(2)_install_prog_exes)
 
 check-$(1) : $$($(2)_test_outs)
 	echo; grep -h -e'Unit Tests' -e'FAILED' \
@@ -356,7 +355,6 @@ clean-$(1) :
 # Update running variables
 
 libs += $$($(2)_libname)
-libs += $$($(2)_dylibname)
 objs += $$($(2)_objs)
 exes += $$($(2)_exes)
 outs += $$($(2)_test_outs)
