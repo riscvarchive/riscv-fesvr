@@ -106,12 +106,20 @@ int main(int argc, char** argv)
     mainvars_sz += len;
   }
 
+  if (access(target_argv[0], F_OK) != 0)
+  {
+    fprintf(stderr, "could not open %s\n", target_argv[0]);
+    exit(-1);
+  }
+  load_elf(target_argv[0], &memif);
+
   if (pkrun) // locate and load the proxy kernel, riscv-pk
   {
     const char* path = getenv("PATH");
     assert(path);
     char* s = strdup(path);
     char* p = s, *next_p;
+    bool found = false;
 
     do
     {
@@ -121,13 +129,18 @@ int main(int argc, char** argv)
       if (access(test_path.c_str(), F_OK) == 0)
       {
         load_elf(test_path.c_str(), &memif);
-        break;
+        found = true;
       }
+      p = next_p + 1;
     }
-    while((p = next_p) != NULL);
+    while (next_p != NULL && !found);
+
+    if (!found)
+    {
+      fprintf(stderr, "could not locate riscv-pk in PATH\n");
+      exit(-1);
+    }
   }
-  else // merely load the specified target program
-    load_elf(target_argv[0], &memif);
 
   htif->start(coreid);
 
