@@ -5,7 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-htif_csim_t::htif_csim_t(std::vector<char*> args)
+htif_csim_t::htif_csim_t(const char* progname, std::vector<char*> args)
 {
   int fromhost[2], tohost[2], flags;
   assert(pipe(fromhost) == 0);
@@ -26,7 +26,7 @@ htif_csim_t::htif_csim_t(std::vector<char*> args)
     sprintf(fromhost_arg, "-f%d", fromhost[0]);
     sprintf(tohost_arg, "-t%d", tohost[1]);
 
-    args.insert(args.begin(), const_cast<char*>("./emulator"));
+    args.insert(args.begin(), const_cast<char*>(progname));
     args.push_back(fromhost_arg);
     args.push_back(tohost_arg);
 

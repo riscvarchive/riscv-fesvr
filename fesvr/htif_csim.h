@@ -8,7 +8,7 @@
 class htif_csim_t : public htif_t
 {
  public:
-  htif_csim_t(std::vector<char*> args);
+  htif_csim_t(const char* progname, std::vector<char*> args);
 
   void start(int coreid)
   {

@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <vector>
+#include <string>
 
 uint64_t mainvars[512];
 size_t mainvars_sz;
@@ -26,6 +27,7 @@ int main(int argc, char** argv)
   int coreid = 0, i;
   addr_t sig_addr = 0;
   int sig_len = -1;
+  const char* csim_name = "./emulator";
 
   enum {
     SIMTYPE_ISA,
@@ -59,8 +61,12 @@ int main(int argc, char** argv)
       simtype = SIMTYPE_RS232;
     else if (s == "-eth")
       simtype = SIMTYPE_ETH;
-    else if (s == "-c")
+    else if (s.substr(0,2) == "-c")
+    {
       simtype = SIMTYPE_CSIM;
+      if (s.length() > 2)
+        csim_name = argv[i]+2;
+    }
     else if (s == "-testsig")
     {
       testrun = true;
@@ -81,7 +87,7 @@ int main(int argc, char** argv)
     case SIMTYPE_RTL: htif = new htif_rtlsim_t(htif_args); break;
     case SIMTYPE_RS232: htif = new htif_rs232_t(htif_args); break;
     case SIMTYPE_ETH: htif = new htif_eth_t(htif_args); break;
-    case SIMTYPE_CSIM: htif = new htif_csim_t(htif_args); break;
+    case SIMTYPE_CSIM: htif = new htif_csim_t(csim_name, htif_args); break;
     default: abort();
   }
   memif_t memif(htif);
