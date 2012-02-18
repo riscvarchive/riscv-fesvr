@@ -39,86 +39,76 @@
 
 void memif_t::read(addr_t addr, size_t len, uint8_t* bytes)
 {
-  if((addr & (align-1)) || ((len+(addr&(align-1)))&(align-1)))
+  if (len && (addr & (align-1)))
   {
-    addr_t offset = addr & (align-1);
-    addr_t new_addr = addr-offset;
-    size_t new_len = len+offset;
-    if(new_len & (align-1))
-      new_len += align - (new_len & (align-1));
-    uint8_t* new_bytes = (uint8_t*)malloc(new_len);
+    size_t this_len = std::min(len, align - (addr & (align-1)));
+    uint8_t chunk[align];
 
-    try
-    {
-      read(new_addr,new_len,new_bytes);
-    }
-    catch(...)
-    {
-      free(new_bytes);
-      throw;
-    }
+    htif->read_chunk(addr & ~(align-1), align, chunk);
+    memcpy(bytes, chunk + (addr & (align-1)), this_len);
 
-    memcpy(bytes,new_bytes+offset,len);
-    free(new_bytes);
-    return;
+    bytes += this_len;
+    addr += this_len;
+    len -= this_len;
+  }
+
+  if (len & (align-1))
+  {
+    size_t this_len = len & (align-1);
+    size_t start = len - this_len;
+    uint8_t chunk[align];
+
+    htif->read_chunk(addr + start, align, chunk);
+    memcpy(bytes + start, chunk, this_len);
+
+    len -= this_len;
   }
 
   // now we're aligned
-  htif->read_chunk(addr,len,bytes);
+  if (len)
+    htif->read_chunk(addr, len, bytes);
 }
 
+#include <stdio.h>
 void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
 {
-  if(bytes == NULL) // write zeros, the ugly, slow way
+  if (len && (addr & (align-1)))
   {
-    uint8_t* zeros = (uint8_t*)calloc(len,1);
-    try
-    {
-      write(addr,len,zeros);
-    }
-    catch(...)
-    {
-      free(zeros);
-      throw;
-    }
-    free(zeros);
-    return;
+    size_t this_len = std::min(len, align - (addr & (align-1)));
+    uint8_t chunk[align];
+
+    htif->read_chunk(addr & ~(align-1), align, chunk);
+    if (bytes != NULL)
+      memcpy(chunk + (addr & (align-1)), bytes, this_len);
+    else
+      memset(chunk + (addr & (align-1)), 0, this_len);
+    htif->write_chunk(addr & ~(align-1), align, chunk);
+
+    if (bytes != NULL)
+      bytes += this_len;
+    addr += this_len;
+    len -= this_len;
   }
 
-  if((addr&(align-1)) || ((len+(addr&(align-1)))&(align-1)))
+  if (len & (align-1))
   {
-    addr_t offset = addr & (align-1);
-    size_t end_pad = 0;
-    if((len+offset) & (align-1))
-      end_pad = align - ((len+offset) & (align-1));
-    addr_t new_addr = addr-offset;
-    size_t new_len = len + offset + end_pad;
-    uint8_t* new_bytes = (uint8_t*)malloc(new_len);
+    size_t this_len = len & (align-1);
+    size_t start = len - this_len;
+    uint8_t chunk[align];
 
-    if(offset)
-      htif->read_chunk(new_addr, align, new_bytes);
+    htif->read_chunk(addr + start, align, chunk);
+    if (bytes != NULL)
+      memcpy(chunk, bytes + start, this_len);
+    else
+      memset(chunk, 0, this_len);
+    htif->write_chunk(addr + start, align, chunk);
 
-    if(end_pad)
-      htif->read_chunk(new_addr+new_len-align, align, new_bytes+new_len-align);
-
-    memcpy(new_bytes+offset,bytes,len);
-
-    try
-    {
-      write(new_addr,new_len,new_bytes);
-    }
-    catch(...)
-    {
-      free(new_bytes);
-      throw;
-    }
-
-    free(new_bytes);
-    return;
+    len -= this_len;
   }
 
-  // now we're basetype-aligned
-  htif->write_chunk(addr,len,bytes);
+  // now we're aligned
+  if (len)
+    htif->write_chunk(addr, len, bytes);
 }
 
 #define MEMIF_READ_FUNC \

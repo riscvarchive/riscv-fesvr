@@ -28,7 +28,7 @@ packet_t htif_t::read_packet(seqno_t expected_seqno)
   switch (hdr.cmd)
   {
     case HTIF_CMD_ACK:
-      if (hdr.data_size != bytes - sizeof(packet_header_t))
+      if (hdr.data_size*HTIF_DATA_ALIGN != bytes - sizeof(packet_header_t))
         throw packet_error("bad payload size!");
       break;
     case HTIF_CMD_NACK:
@@ -77,7 +77,8 @@ void htif_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
   while (len)
   {
     size_t sz = std::min(len, chunk_max_size());
-    packet_t req(packet_header_t(HTIF_CMD_READ_MEM, seqno, sz, taddr));
+    packet_t req(packet_header_t(HTIF_CMD_READ_MEM, seqno,
+                 sz/HTIF_DATA_ALIGN, taddr/HTIF_DATA_ALIGN));
 
     write_packet(req);
     packet_t resp = read_packet(seqno);
@@ -96,11 +97,19 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
   assert(taddr % chunk_align() == 0);
   assert(len % chunk_align() == 0);
 
+  uint8_t zeros[chunk_max_size()];
+  if (src == NULL)
+  {
+    memset(zeros, 0, chunk_max_size());
+    src = zeros;
+  }
+
   while (len)
   {
     size_t sz = std::min(len, chunk_max_size());
 
-    packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno, sz, taddr));
+    packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno,
+                 sz/HTIF_DATA_ALIGN, taddr/HTIF_DATA_ALIGN));
     req.set_payload(src, sz);
 
     write_packet(req);
@@ -109,13 +118,14 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
 
     len -= sz;
     taddr += sz;
-    src += sz;
+    if (src != zeros)
+      src += sz;
   }
 }
 
 reg_t htif_t::read_cr(int coreid, int regnum)
 {
-  packet_t req(packet_header_t(HTIF_CMD_READ_CONTROL_REG, seqno, sizeof(reg_t),
+  packet_t req(packet_header_t(HTIF_CMD_READ_CONTROL_REG, seqno, 1,
                                coreid << 16 | regnum));
 
   write_packet(req);
@@ -129,7 +139,7 @@ reg_t htif_t::read_cr(int coreid, int regnum)
 
 void htif_t::write_cr(int coreid, int regnum, reg_t val)
 {
-  packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, seqno, sizeof(reg_t),
+  packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, seqno, 1,
                                coreid << 16 | regnum));
   req.set_payload(&val, sizeof(reg_t));
 

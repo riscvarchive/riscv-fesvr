@@ -117,7 +117,6 @@ int main(int argc, char** argv)
     fprintf(stderr, "could not open %s\n", target_argv[0]);
     exit(-1);
   }
-  load_elf(target_argv[0], &memif);
 
   if (pkrun) // locate and load the proxy kernel, riscv-pk
   {
@@ -147,6 +146,8 @@ int main(int argc, char** argv)
       exit(-1);
     }
   }
+  else
+    load_elf(target_argv[0], &memif);
 
   htif->start(coreid);
 
