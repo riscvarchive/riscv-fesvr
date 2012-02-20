@@ -42,6 +42,7 @@ packet_t htif_t::read_packet(seqno_t expected_seqno)
   return p;
 }
 
+#include <stdio.h>
 void htif_t::write_packet(const packet_t& p)
 {
   uint64_t buf[(p.get_size()+7)/8];
@@ -55,18 +56,13 @@ void htif_t::write_packet(const packet_t& p)
 
 void htif_t::start(int coreid)
 {
-  packet_t p(packet_header_t(HTIF_CMD_START, seqno, 0, coreid << 16));
-  write_packet(p);
-  read_packet(seqno);
-  seqno++;
+  write_cr(coreid, 15, 1);
+  write_cr(coreid, 15, 0);
 }
 
 void htif_t::stop(int coreid)
 {
-  packet_t p(packet_header_t(HTIF_CMD_STOP, seqno, 0, coreid << 16));
-  write_packet(p);
-  read_packet(seqno);
-  seqno++;
+  write_cr(coreid, 15, 1);
 }
 
 void htif_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
@@ -126,7 +122,7 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
 reg_t htif_t::read_cr(int coreid, int regnum)
 {
   packet_t req(packet_header_t(HTIF_CMD_READ_CONTROL_REG, seqno, 1,
-                               coreid << 16 | regnum));
+                               coreid << 20 | regnum));
 
   write_packet(req);
   packet_t resp = read_packet(seqno);
@@ -140,7 +136,7 @@ reg_t htif_t::read_cr(int coreid, int regnum)
 void htif_t::write_cr(int coreid, int regnum, reg_t val)
 {
   packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, seqno, 1,
-                               coreid << 16 | regnum));
+                               coreid << 20 | regnum));
   req.set_payload(&val, sizeof(reg_t));
 
   write_packet(req);

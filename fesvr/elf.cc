@@ -10,7 +10,7 @@
 void load_elf(const char* fn, memif_t* memif)
 {
 // memory test
-#if 1
+#if 0
   #define N 4097
   memif->write(0, 4*N, NULL);
   uint32_t* x = new uint32_t[N];

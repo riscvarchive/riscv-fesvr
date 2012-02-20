@@ -23,8 +23,8 @@ htif_csim_t::htif_csim_t(const char* progname, std::vector<char*> args)
   if (pid == 0)
   {
     char fromhost_arg[32], tohost_arg[32];
-    sprintf(fromhost_arg, "-f%d", fromhost[0]);
-    sprintf(tohost_arg, "-t%d", tohost[1]);
+    sprintf(fromhost_arg, "+fromhost=%d", fromhost[0]);
+    sprintf(tohost_arg, "+tohost=%d", tohost[1]);
 
     args.insert(args.begin(), const_cast<char*>(progname));
     args.push_back(fromhost_arg);

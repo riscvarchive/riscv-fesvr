@@ -1,6 +1,5 @@
 #include "htif_isasim.h"
 #include "htif_csim.h"
-#include "htif_rtlsim.h"
 #include "htif_rs232.h"
 #include "htif_eth.h"
 #include "memif.h"
@@ -31,7 +30,6 @@ int main(int argc, char** argv)
 
   enum {
     SIMTYPE_ISA,
-    SIMTYPE_RTL,
     SIMTYPE_RS232,
     SIMTYPE_ETH,
     SIMTYPE_CSIM
@@ -48,15 +46,6 @@ int main(int argc, char** argv)
     }
     else if (s == "-nopk")
       pkrun = false;
-    else if (s == "-rtl")
-      simtype = SIMTYPE_RTL;
-    else if (s == "-gl")
-    {
-      simtype = SIMTYPE_RTL;
-      htif_args.push_back(const_cast<char*>("-ucli"));
-      htif_args.push_back(const_cast<char*>("-do"));
-      htif_args.push_back(const_cast<char*>("run.tcl"));
-    }
     else if (s == "-rs232")
       simtype = SIMTYPE_RS232;
     else if (s == "-eth")
@@ -84,7 +73,6 @@ int main(int argc, char** argv)
   switch (simtype) // instantiate appropriate HTIF
   {
     case SIMTYPE_ISA: htif = new htif_isasim_t(htif_args); break;
-    case SIMTYPE_RTL: htif = new htif_rtlsim_t(htif_args); break;
     case SIMTYPE_RS232: htif = new htif_rs232_t(htif_args); break;
     case SIMTYPE_ETH: htif = new htif_eth_t(htif_args); break;
     case SIMTYPE_CSIM: htif = new htif_csim_t(csim_name, htif_args); break;
