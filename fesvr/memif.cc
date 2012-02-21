@@ -41,7 +41,7 @@ void memif_t::read(addr_t addr, size_t len, uint8_t* bytes)
 {
   if (len && (addr & (align-1)))
   {
-    size_t this_len = std::min(len, align - (addr & (align-1)));
+    size_t this_len = std::min(len, align - size_t(addr & (align-1)));
     uint8_t chunk[align];
 
     htif->read_chunk(addr & ~(align-1), align, chunk);
@@ -74,7 +74,7 @@ void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
 {
   if (len && (addr & (align-1)))
   {
-    size_t this_len = std::min(len, align - (addr & (align-1)));
+    size_t this_len = std::min(len, align - size_t(addr & (align-1)));
     uint8_t chunk[align];
 
     htif->read_chunk(addr & ~(align-1), align, chunk);
