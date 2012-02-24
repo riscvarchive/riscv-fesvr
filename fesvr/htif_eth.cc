@@ -133,11 +133,6 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
       continue;
     }
 
-    debug("read packet\n");
-    for(ssize_t i = 0; i < bytes; i++)
-      debug("%x ",((unsigned char*)&packet)[i]);
-    debug("\n");
-
     if(packet.ethertype != htons(HTIF_ETHERTYPE))
     {
       debug("wrong ethertype\n");
@@ -145,9 +140,15 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
     }
 
     bytes -= 16; //offsetof(eth_header_t, htif_header)
-    bytes = std::min(bytes, (ssize_t)sizeof(packet_header_t) + packet.htif_header.data_size);
+    bytes = std::min(bytes, (ssize_t)sizeof(packet_header_t) + HTIF_DATA_ALIGN*packet.htif_header.data_size);
     bytes = std::min(bytes, (ssize_t)max_size);
     memcpy(buf, &packet.htif_header, bytes);
+
+    debug("read packet\n");
+    for(ssize_t i = 0; i < bytes; i++)
+      debug("%02x ",((unsigned char*)buf)[i]);
+    debug("\n");
+
     return bytes;
   }
 
@@ -158,7 +159,7 @@ ssize_t htif_eth_t::write(const void* buf, size_t size)
 {
   debug("write packet\n");
   for(size_t i = 0; i < size; i++)
-    debug("%x ",((const unsigned char*)buf)[i]);
+    debug("%02x ",((const unsigned char*)buf)[i]);
   debug("\n");
 
   eth_packet_t eth_packet;
