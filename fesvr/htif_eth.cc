@@ -14,6 +14,10 @@
 #include <net/ethernet.h>
 #include <net/if.h>
 
+#ifdef __APPLE__
+#include <net/bpf.h>
+#endif
+
 #define debug(...)
 //#define debug(...) fprintf(stderr,__VA_ARGS__)
 
@@ -39,9 +43,7 @@ htif_eth_t::htif_eth_t(std::vector<char*> args)
       rtlsim = true;
   }
 
-#ifndef __linux__
-  assert(0); // TODO: add OSX support
-#else
+#ifdef __linux__
   if(rtlsim)
   {
     const char* socket_path = interface;
@@ -110,6 +112,32 @@ htif_eth_t::htif_eth_t(std::vector<char*> args)
     if(setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO,&tv,sizeof(struct timeval)) == -1)
       throw std::runtime_error("setsockopt() failed!");
   }
+#elif __APPLE__
+  if (rtlsim) {
+    assert(0); // Unimplemented
+  } else {
+    char buf[11];
+    for (int i = 0; i < 4; i++) {
+        sprintf(buf, "/dev/bpf%i", i);
+        if ((sock = open(buf, O_RDWR)) != -1)
+            break;
+    }
+    if (sock < 0)
+        throw std::runtime_error("open() failed!");
+
+    struct ifreq bound_if;
+    strcpy(bound_if.ifr_name, interface);
+    if (ioctl(sock, BIOCSETIF, &bound_if) == -1)
+        throw std::runtime_error("Failed to bind to interface!");
+
+    int enable = 1;
+    if (ioctl(sock, BIOCIMMEDIATE, &enable) == -1)
+        throw std::runtime_error("setting immediate mode failed!");
+    if (ioctl(sock, BIOCGBLEN, &buffer_len) == -1)
+        throw std::runtime_error("cannot get buffer length!");
+  }
+#else
+  assert(0);
 #endif
 }
 
@@ -124,6 +152,7 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
 
   for(int timeouts = 0; timeouts < 3; )
   {
+  #ifdef __linux__
     eth_packet_t packet;
 
     if((bytes = ::read(sock, (char*)&packet, sizeof(packet))) == -1)
@@ -150,6 +179,48 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
     debug("\n");
 
     return bytes;
+  #elif __APPLE__
+    static unsigned char *buffer = (unsigned char *) malloc(buffer_len);
+    if ((bytes = ::read(sock, buffer, buffer_len)) == -1) {
+      timeouts++;
+      debug("read failed (%s)\n",strerror(errno));
+      continue;
+    }
+    ssize_t checking_bytes = bytes;
+
+    while (checking_bytes > 0) {
+      bool filter = false;
+      struct bpf_hdr *hdr = (struct bpf_hdr *) buffer;
+      int packet_bytes = BPF_WORDALIGN(hdr->bh_hdrlen + hdr->bh_caplen);
+      int index = hdr->bh_hdrlen + ETHER_ADDR_LEN; // Set to src first byte
+
+      assert(hdr->bh_caplen == hdr->bh_datalen); // Unimplemented
+      
+      int src_mac = -1;
+      if (memcmp(buffer + index, &src_mac, ETHER_ADDR_LEN))
+          filter = true;
+      index += ETHER_ADDR_LEN;
+      short int type = htons(HTIF_ETHERTYPE);
+      if (memcmp(buffer + index, &type, ETHER_TYPE_LEN))
+          filter = true;
+      index += ETHER_TYPE_LEN;
+
+      if (!filter) {
+        bytes = std::min((size_t)hdr->bh_caplen, max_size);
+        memcpy(buf, buffer + index, bytes);
+
+        debug("read packet\n");
+        for(ssize_t i = 0; i < bytes; i++)
+          debug("%02x ",((unsigned char*)buf)[i]);
+        debug("\n");
+
+        return bytes;
+      }
+
+      buffer += packet_bytes;
+      checking_bytes -= packet_bytes;
+    }
+  #endif
   }
 
   return -1;
@@ -170,9 +241,16 @@ ssize_t htif_eth_t::write(const void* buf, size_t size)
   memcpy(&eth_packet.htif_header, buf, size);
   size += 16; //offsetof(eth_packet_t, htif_header)
 
+  #ifdef __linux__
   if(rtlsim)
     return ::write(sock, (char*)&eth_packet, size);
   else
     return ::sendto(sock, (char*)&eth_packet, size, 0,
                     (sockaddr*)&src_addr, sizeof(src_addr));
+  #elif __APPLE__
+  if (rtlsim)
+    return -1;
+  else
+    return ::write(sock, (char*)&eth_packet, size);
+  #endif
 }

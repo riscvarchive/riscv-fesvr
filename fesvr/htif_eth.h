@@ -49,6 +49,8 @@ protected:
   char dst_mac[6];
 
   bool rtlsim;
+
+  int buffer_len;
 };
 
 #endif // __HTIF_ETH_H
