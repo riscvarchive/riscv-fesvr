@@ -34,11 +34,11 @@ void htif_hexwriter_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
       mem[taddr/width].resize(width,0);
 
     for(size_t j = 0; j < width; j++)
-      mem[taddr/width][j] = src[j];
+      mem[taddr/width][j] = src ? src[j] : 0;
 
     len -= width;
     taddr += width;
-    src += width;
+    if (src) src += width;
   }
 }
 
