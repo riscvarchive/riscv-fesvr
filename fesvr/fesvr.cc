@@ -100,12 +100,6 @@ int main(int argc, char** argv)
     mainvars_sz += len;
   }
 
-  if (access(target_argv[0], F_OK) != 0)
-  {
-    fprintf(stderr, "could not open %s\n", target_argv[0]);
-    exit(-1);
-  }
-
   if (pkrun) // locate and load the proxy kernel, riscv-pk
   {
     const char* path = getenv("PATH");
@@ -134,8 +128,15 @@ int main(int argc, char** argv)
       exit(-1);
     }
   }
-  else
+  else if (strcmp(target_argv[0], "none") != 0)
+  {
+    if (access(target_argv[0], F_OK) != 0)
+    {
+      fprintf(stderr, "could not open %s\n", target_argv[0]);
+      exit(-1);
+    }
     load_elf(target_argv[0], &memif);
+  }
 
   htif->start(coreid);
 
