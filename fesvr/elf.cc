@@ -11,23 +11,16 @@ void load_elf(const char* fn, memif_t* memif)
 {
 // memory test
 #if 0
-  #define N 4097
-  memif->write(0, 4*N, NULL);
-  uint32_t* x = new uint32_t[N];
-  
+  const int N = 4096;
+  uint32_t x[N], y[N];
   for(int i = 0; i < N; i++)
-  {
     x[i] = rand();
-    memif->write(4*i, 4, (uint8_t*)&x[i]);
-  }
-  
-  for(int i = 0; i < N; i++)
-  {
-    uint32_t tmp;
-    memif->read(4*i, 4, (uint8_t*)&tmp);
-    assert(x[i] == tmp);
-  }
-  delete [] x;
+
+  memif->write(0, sizeof(x), NULL);
+  memif->write(0, sizeof(x), (uint8_t*)x);
+  memif->read(0, sizeof(x), (uint8_t*)y);
+
+  assert(memcmp(x, y, sizeof(x)) == 0);
 #endif
 
   int fd = open(fn, O_RDONLY);
