@@ -143,7 +143,7 @@ int main(int argc, char** argv)
   if (testrun)
   {
     reg_t tohost;
-    while ((tohost = htif->read_cr(coreid, 16)) == 0);
+    while ((tohost = htif->read_cr(coreid, 30)) == 0);
     if (tohost == 1)
     {
       if (sig_len != -1)
@@ -192,10 +192,10 @@ int main(int argc, char** argv)
     while (true)
     {
       reg_t tohost;
-      while ((tohost = htif->read_cr(coreid, 16)) == 0);
+      while ((tohost = htif->read_cr(coreid, 30)) == 0);
       if (dispatch_syscall(htif, &memif, tohost))
         break;
-      htif->write_cr(coreid, 17, 1);
+      htif->write_cr(coreid, 31, 1);
     }
 
     if (reset_termios)

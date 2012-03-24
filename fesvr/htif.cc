@@ -56,13 +56,13 @@ void htif_t::write_packet(const packet_t& p)
 
 void htif_t::start(int coreid)
 {
-  write_cr(coreid, 15, 1);
-  write_cr(coreid, 15, 0);
+  write_cr(coreid, 29, 1);
+  write_cr(coreid, 29, 0);
 }
 
 void htif_t::stop(int coreid)
 {
-  write_cr(coreid, 15, 1);
+  write_cr(coreid, 29, 1);
 }
 
 void htif_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
