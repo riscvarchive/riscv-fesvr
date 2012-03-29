@@ -3,7 +3,7 @@
 #include <assert.h>
 
 htif_t::htif_t()
-  : seqno(1)
+  : writezeros(true), seqno(1)
 {
 }
 
@@ -94,11 +94,9 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
   assert(len % chunk_align() == 0);
 
   uint8_t zeros[chunk_max_size()];
+  memset(zeros, 0, chunk_max_size());
   if (src == NULL)
-  {
-    memset(zeros, 0, chunk_max_size());
     src = zeros;
-  }
 
   while (len)
   {
@@ -108,9 +106,12 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
                  sz/HTIF_DATA_ALIGN, taddr/HTIF_DATA_ALIGN));
     req.set_payload(src, sz);
 
-    write_packet(req);
-    read_packet(seqno);
-    seqno++;
+    if (writezeros || memcmp(zeros, src, sz) != 0)
+    {
+      write_packet(req);
+      read_packet(seqno);
+      seqno++;
+    }
 
     len -= sz;
     taddr += sz;
@@ -142,4 +143,9 @@ void htif_t::write_cr(int coreid, int regnum, reg_t val)
   write_packet(req);
   read_packet(seqno);
   seqno++;
+}
+
+void htif_t::assume0init(bool val)
+{
+  writezeros = !val;
 }

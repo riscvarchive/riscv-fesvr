@@ -16,6 +16,8 @@ class htif_t
   virtual reg_t read_cr(int coreid, int regnum);
   virtual void write_cr(int coreid, int regnum, reg_t val);
 
+  virtual void assume0init(bool val = true);
+
  protected:
   virtual void read_chunk(addr_t taddr, size_t len, uint8_t* dst);
   virtual void write_chunk(addr_t taddr, size_t len, const uint8_t* src);
@@ -27,6 +29,7 @@ class htif_t
   virtual ssize_t write(const void* buf, size_t size) = 0;
 
  private:
+  bool writezeros;
   seqno_t seqno;
 
   virtual packet_t read_packet(seqno_t expected_seqno);

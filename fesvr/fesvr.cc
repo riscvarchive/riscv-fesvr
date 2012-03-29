@@ -26,6 +26,7 @@ int main(int argc, char** argv)
   int coreid = 0, i;
   addr_t sig_addr = 0;
   int sig_len = -1;
+  bool assume0init = false;
   const char* csim_name = "./emulator";
 
   enum {
@@ -66,6 +67,8 @@ int main(int argc, char** argv)
       sig_len = atoi(argv[i+2]);
       i += 2;
     }
+    else if (s == "-assume0init")
+      assume0init = true;
     else
       htif_args.push_back(argv[i]);
   }
@@ -78,6 +81,7 @@ int main(int argc, char** argv)
     case SIMTYPE_CSIM: htif = new htif_csim_t(csim_name, htif_args); break;
     default: abort();
   }
+  htif->assume0init(assume0init);
   memif_t memif(htif);
 
   if (i == argc) // make sure the user specified a target program
