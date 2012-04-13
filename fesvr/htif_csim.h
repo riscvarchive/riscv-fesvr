@@ -2,13 +2,13 @@
 #define __HTIF_CSIM_H
 
 #include "htif.h"
-#include <unistd.h>
 #include <vector>
 
 class htif_csim_t : public htif_t
 {
  public:
   htif_csim_t(const char* progname, std::vector<char*> args);
+  ~htif_csim_t();
 
   void start(int coreid)
   {
@@ -34,6 +34,7 @@ class htif_csim_t : public htif_t
   size_t chunk_align() { return 64; }
 
  private:
+  int pid;
   int fdin;
   int fdout;
 };

@@ -17,7 +17,7 @@ htif_csim_t::htif_csim_t(const char* progname, std::vector<char*> args)
   assert((flags = fcntl(tohost[0], F_GETFL)) >= 0);
   assert(fcntl(tohost[0], F_SETFL, flags & ~O_NONBLOCK) == 0);
 
-  int pid = fork();
+  pid = fork();
   assert(pid >= 0);
 
   if (pid == 0)
@@ -42,4 +42,9 @@ htif_csim_t::htif_csim_t(const char* progname, std::vector<char*> args)
   
   fdin = tohost[0];
   fdout = fromhost[1];
+}
+
+htif_csim_t::~htif_csim_t()
+{
+  kill(pid, SIGTERM);
 }
