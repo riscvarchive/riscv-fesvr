@@ -13,6 +13,7 @@
 #include <sys/un.h>
 #include <net/ethernet.h>
 #include <net/if.h>
+#include <ifaddrs.h>
 
 #ifdef __APPLE__
 #include <net/bpf.h>
@@ -34,14 +35,22 @@ struct eth_packet_t
 htif_eth_t::htif_eth_t(std::vector<char*> args)
   : rtlsim(false)
 {
+  const char* mac_str = "feedfacebeef";
   const char* interface = NULL;
   for (size_t i = 0; i < args.size(); i++)
   {
     if (strncmp(args[i], "+if=", 4) == 0)
       interface = args[i] + 4;
+    if (strncmp(args[i], "+mac=", 5) == 0)
+      mac_str = args[i] + 5, assert(strlen(mac_str) == 2*sizeof(dst_mac));
     if (strcmp(args[i], "+sim") == 0)
       rtlsim = true;
   }
+
+  #define hexval(c) ((c) >= 'a' ? (c)-'a'+10 : (c) >= 'A' ? (c)-'A'+10 : (c)-'0')
+  for (size_t i = 0; i < sizeof(dst_mac); i++)
+    dst_mac[i] = hexval(mac_str[2*i]) << 4 | hexval(mac_str[2*i+1]);
+  #undef hexval
 
 #ifdef __linux__
   if(rtlsim)
@@ -113,31 +122,42 @@ htif_eth_t::htif_eth_t(std::vector<char*> args)
       throw std::runtime_error("setsockopt() failed!");
   }
 #elif __APPLE__
-  if (rtlsim) {
-    assert(0); // Unimplemented
-  } else {
-    char buf[11];
-    for (int i = 0; i < 4; i++) {
-        sprintf(buf, "/dev/bpf%i", i);
-        if ((sock = open(buf, O_RDWR)) != -1)
-            break;
-    }
-    if (sock < 0)
-        throw std::runtime_error("open() failed!");
+  assert(!rtlsim);
 
-    struct ifreq bound_if;
-    strcpy(bound_if.ifr_name, interface);
-    if (ioctl(sock, BIOCSETIF, &bound_if) == -1)
-        throw std::runtime_error("Failed to bind to interface!");
-
-    int enable = 1;
-    if (ioctl(sock, BIOCIMMEDIATE, &enable) == -1)
-        throw std::runtime_error("setting immediate mode failed!");
-    if (ioctl(sock, BIOCGBLEN, &buffer_len) == -1)
-        throw std::runtime_error("cannot get buffer length!");
+  char buf[11];
+  for (int i = 0; i < 4; i++) {
+      sprintf(buf, "/dev/bpf%i", i);
+      if ((sock = open(buf, O_RDWR)) != -1)
+          break;
   }
-#else
-  assert(0);
+  if (sock < 0)
+      throw std::runtime_error("open() failed!");
+
+  ifaddrs *ifaddr, *ifa;
+  if (getifaddrs(&ifaddr) == -1)
+    throw std::runtime_error("getifaddrs() failed");
+  for (ifa = ifaddr; ifa; ifa = ifa->ifa_next)
+  {
+    if (strcmp(ifa->ifa_name, interface) == 0 && ifa->ifa_addr->sa_family == AF_LINK)
+    {
+      memcpy(src_mac, LLADDR((sockaddr_dl*)ifa->ifa_addr), sizeof(src_mac));
+      break;
+    }
+  }
+  if (ifa == NULL)
+    throw std::runtime_error("could not locate interface");
+  freeifaddrs(ifaddr);
+
+  struct ifreq bound_if;
+  strcpy(bound_if.ifr_name, interface);
+  if (ioctl(sock, BIOCSETIF, &bound_if) == -1)
+      throw std::runtime_error("Failed to bind to interface!");
+
+  int enable = 1;
+  if (ioctl(sock, BIOCIMMEDIATE, &enable) == -1)
+      throw std::runtime_error("setting immediate mode failed!");
+  if (ioctl(sock, BIOCGBLEN, &buffer_len) == -1)
+      throw std::runtime_error("cannot get buffer length!");
 #endif
 }
 
@@ -162,11 +182,10 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
       continue;
     }
 
-    if(packet.ethertype != htons(HTIF_ETHERTYPE))
-    {
-      debug("wrong ethertype\n");
+    if (packet.ethertype != htons(HTIF_ETHERTYPE))
       continue;
-    }
+    if (memcmp(packet.dst_mac, src_mac, ETHER_ADDR_LEN))
+      continue;
 
     bytes -= 16; //offsetof(eth_header_t, htif_header)
     bytes = std::min(bytes, (ssize_t)sizeof(packet_header_t) + HTIF_DATA_ALIGN*packet.htif_header.data_size);
@@ -180,45 +199,39 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
 
     return bytes;
   #elif __APPLE__
-    static unsigned char *buffer = (unsigned char *) malloc(buffer_len);
+    uint8_t buffer[buffer_len];
     if ((bytes = ::read(sock, buffer, buffer_len)) == -1) {
       timeouts++;
       debug("read failed (%s)\n",strerror(errno));
       continue;
     }
-    ssize_t checking_bytes = bytes;
+    uint8_t* bufp = buffer;
 
-    while (checking_bytes > 0) {
+    while (bufp < buffer + bytes) {
       bool filter = false;
-      struct bpf_hdr *hdr = (struct bpf_hdr *) buffer;
-      int packet_bytes = BPF_WORDALIGN(hdr->bh_hdrlen + hdr->bh_caplen);
-      int index = hdr->bh_hdrlen + ETHER_ADDR_LEN; // Set to src first byte
+      struct bpf_hdr *hdr = (struct bpf_hdr *) bufp;
+      eth_packet_t* packet = (eth_packet_t*)(bufp + hdr->bh_hdrlen);
+      bufp += BPF_WORDALIGN(hdr->bh_hdrlen + hdr->bh_caplen);
+      int index = hdr->bh_hdrlen;
+      assert(hdr->bh_caplen == hdr->bh_datalen);
 
-      assert(hdr->bh_caplen == hdr->bh_datalen); // Unimplemented
-      
-      int src_mac = -1;
-      if (memcmp(buffer + index, &src_mac, ETHER_ADDR_LEN))
-          filter = true;
-      index += ETHER_ADDR_LEN;
-      short int type = htons(HTIF_ETHERTYPE);
-      if (memcmp(buffer + index, &type, ETHER_TYPE_LEN))
-          filter = true;
-      index += ETHER_TYPE_LEN;
+      if (packet->ethertype != htons(HTIF_ETHERTYPE))
+        continue;
+      if (memcmp(packet->dst_mac, src_mac, ETHER_ADDR_LEN))
+        continue;
 
-      if (!filter) {
-        bytes = std::min((size_t)hdr->bh_caplen, max_size);
-        memcpy(buf, buffer + index, bytes);
+      bytes = hdr->bh_caplen;
+      bytes -= 16; //offsetof(eth_header_t, htif_header)
+      bytes = std::min(bytes, (ssize_t)sizeof(packet_header_t) + HTIF_DATA_ALIGN*packet->htif_header.data_size);
+      bytes = std::min(bytes, (ssize_t)max_size);
+      memcpy(buf, &packet->htif_header, bytes);
 
-        debug("read packet\n");
-        for(ssize_t i = 0; i < bytes; i++)
-          debug("%02x ",((unsigned char*)buf)[i]);
-        debug("\n");
+      debug("read packet\n");
+      for(ssize_t i = 0; i < bytes; i++)
+        debug("%02x ",((unsigned char*)buf)[i]);
+      debug("\n");
 
-        return bytes;
-      }
-
-      buffer += packet_bytes;
-      checking_bytes -= packet_bytes;
+      return bytes;
     }
   #endif
   }
@@ -234,7 +247,7 @@ ssize_t htif_eth_t::write(const void* buf, size_t size)
   debug("\n");
 
   eth_packet_t eth_packet;
-  memset(eth_packet.dst_mac, -1, sizeof(src_mac));
+  memcpy(eth_packet.dst_mac, dst_mac, sizeof(dst_mac));
   memcpy(eth_packet.src_mac, src_mac, sizeof(src_mac));
   eth_packet.ethertype = htons(HTIF_ETHERTYPE);
   eth_packet.pad = 0;

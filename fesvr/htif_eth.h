@@ -8,13 +8,15 @@
 #ifdef __linux__
 #include <netpacket/packet.h>
 typedef struct sockaddr_ll sockaddr_ll_t;
-#else
+#elif __APPLE__
 #include <sys/types.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
 #include <net/ndrv.h>
 typedef struct sockaddr sockaddr_ll_t;
+#else
+# error unsupported OS
 #endif
 
 const size_t ETH_DATA_ALIGN = 64;
