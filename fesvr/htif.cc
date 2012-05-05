@@ -56,6 +56,7 @@ void htif_t::write_packet(const packet_t& p)
 
 void htif_t::start(int coreid)
 {
+  writezeros = true;
   write_cr(coreid, 29, 1);
   write_cr(coreid, 29, 0);
 }

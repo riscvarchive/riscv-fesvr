@@ -36,7 +36,11 @@ htif_eth_t::htif_eth_t(std::vector<char*> args)
   : rtlsim(false)
 {
   const char* mac_str = "feedfacebeef";
-  const char* interface = NULL;
+#ifdef __linux__
+  const char* interface = "eth0";
+#elif __APPLE__
+  const char* interface = "en0";
+#endif
   for (size_t i = 0; i < args.size(); i++)
   {
     if (strncmp(args[i], "+if=", 4) == 0)
@@ -153,6 +157,12 @@ htif_eth_t::htif_eth_t(std::vector<char*> args)
   if (ioctl(sock, BIOCSETIF, &bound_if) == -1)
       throw std::runtime_error("Failed to bind to interface!");
 
+  struct timeval tv;
+  tv.tv_sec = 0;
+  tv.tv_usec = 50000;
+  if (ioctl(sock, BIOCSRTIMEOUT, &tv) == -1)
+    throw std::runtime_error("couldn't set socket timeout!");
+
   int enable = 1;
   if (ioctl(sock, BIOCIMMEDIATE, &enable) == -1)
       throw std::runtime_error("setting immediate mode failed!");
@@ -208,11 +218,9 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
     uint8_t* bufp = buffer;
 
     while (bufp < buffer + bytes) {
-      bool filter = false;
       struct bpf_hdr *hdr = (struct bpf_hdr *) bufp;
       eth_packet_t* packet = (eth_packet_t*)(bufp + hdr->bh_hdrlen);
       bufp += BPF_WORDALIGN(hdr->bh_hdrlen + hdr->bh_caplen);
-      int index = hdr->bh_hdrlen;
       assert(hdr->bh_caplen == hdr->bh_datalen);
 
       if (packet->ethertype != htons(HTIF_ETHERTYPE))
