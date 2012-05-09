@@ -32,8 +32,8 @@ struct eth_packet_t
   char htif_payload[ETH_MAX_DATA_SIZE];
 };
 
-htif_eth_t::htif_eth_t(std::vector<char*> args)
-  : rtlsim(false)
+htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
+  : htif_t(ncores), rtlsim(false)
 {
   const char* mac_str = "feedfacebeef";
 #ifdef __linux__

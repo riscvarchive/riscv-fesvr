@@ -7,8 +7,10 @@
 class htif_isasim_t : public htif_t
 {
  public:
-  htif_isasim_t(std::vector<char*> args);
+  htif_isasim_t(int ncores, std::vector<char*> args);
   ~htif_isasim_t();
+
+  uint32_t mem_mb() { return memsize_mb; }
 
  protected:
   ssize_t read(void* buf, size_t max_size)
@@ -25,6 +27,7 @@ class htif_isasim_t : public htif_t
   size_t chunk_align() { return 16; }
 
  private:
+  uint32_t memsize_mb;
   int pid;
   int fdin;
   int fdout;

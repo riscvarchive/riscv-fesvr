@@ -5,7 +5,8 @@
 #include <assert.h>
 #include <stdio.h>
 
-htif_isasim_t::htif_isasim_t(std::vector<char*> args)
+htif_isasim_t::htif_isasim_t(int ncores, std::vector<char*> args)
+  : htif_t(ncores)
 {
   int fromhost[2], tohost[2], flags;
   assert(pipe(fromhost) == 0);
@@ -22,13 +23,15 @@ htif_isasim_t::htif_isasim_t(std::vector<char*> args)
 
   if (pid == 0)
   {
-    char fromhost_arg[32], tohost_arg[32];
+    char fromhost_arg[32], tohost_arg[32], ncores_arg[32];
     sprintf(fromhost_arg, "-f%d", fromhost[0]);
     sprintf(tohost_arg, "-t%d", tohost[1]);
+    sprintf(ncores_arg, "-p%d", ncores);
 
     args.insert(args.begin(), const_cast<char*>("riscv-isa-run"));
     args.push_back(fromhost_arg);
     args.push_back(tohost_arg);
+    args.push_back(ncores_arg);
 
     char* args_array[args.size()+1];
     memcpy(args_array, &args[0], args.size() * sizeof(char*));
@@ -42,6 +45,8 @@ htif_isasim_t::htif_isasim_t(std::vector<char*> args)
   
   fdin = tohost[0];
   fdout = fromhost[1];
+
+  memsize_mb = memif().read_uint32(0);
 }
 
 htif_isasim_t::~htif_isasim_t()

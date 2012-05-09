@@ -9,7 +9,7 @@
 class htif_hexwriter_t : public htif_t
 {
 public:
-  htif_hexwriter_t(size_t w, size_t d) : width(w),depth(d) {}
+  htif_hexwriter_t(size_t w, size_t d) : htif_t(1), width(w), depth(d) {}
 
 protected:
   size_t width;
@@ -24,6 +24,7 @@ protected:
 
   ssize_t read(void* buf, size_t max_size) { abort(); }
   ssize_t write(const void* buf, size_t max_size) { abort(); }
+  uint32_t mem_mb() { abort(); }
 
   friend std::ostream& operator<< (std::ostream&, const htif_hexwriter_t&);
 };

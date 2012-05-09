@@ -10,7 +10,8 @@
 #define debug(...)
 //#define debug(...) fprintf(stderr,__VA_ARGS__)
 
-htif_rs232_t::htif_rs232_t(std::vector<char*> args)
+htif_rs232_t::htif_rs232_t(int ncores, std::vector<char*> args)
+  : htif_t(ncores)
 {
   char* tty = NULL;
   for (size_t i = 0; i < args.size(); i++)

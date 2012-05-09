@@ -7,17 +7,10 @@
 class htif_rs232_t : public htif_t
 {
  public:
-  htif_rs232_t(std::vector<char*> args);
+  htif_rs232_t(int ncores, std::vector<char*> args);
   ~htif_rs232_t();
 
-  void start(int coreid)
-  {
-    // write memory size (in MB) and # cores in words 0, 1
-    uint32_t buf[16] = {512,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    write_chunk(0, sizeof(buf), (uint8_t *)buf);
-  
-    htif_t::start(coreid);
-  }
+  uint32_t mem_mb() { return 512; }
 
  protected:
   ssize_t read(void* buf, size_t max_size);

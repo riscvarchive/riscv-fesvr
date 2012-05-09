@@ -2,20 +2,22 @@
 #define __HTIF_H
 
 #include <string.h>
-#include "htif-packet.h"
+#include "memif.h"
 
 class htif_t
 {
  public:
-  htif_t();
+  htif_t(int ncores);
   virtual ~htif_t();
 
   virtual void start(int coreid);
   virtual void stop(int coreid);
 
+  virtual uint32_t mem_mb() = 0;
   virtual reg_t read_cr(int coreid, int regnum);
   virtual void write_cr(int coreid, int regnum, reg_t val);
 
+  virtual memif_t& memif() { return mem; }
   virtual void assume0init(bool val = true);
 
  protected:
@@ -28,7 +30,10 @@ class htif_t
   virtual ssize_t read(void* buf, size_t max_size) = 0;
   virtual ssize_t write(const void* buf, size_t size) = 0;
 
+  int ncores;
+
  private:
+  memif_t mem;
   bool writezeros;
   seqno_t seqno;
 

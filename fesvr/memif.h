@@ -32,10 +32,11 @@
 #ifndef __MEMIF_H
 #define __MEMIF_H
 
+#include "htif-packet.h"
 #include <stdint.h>
 #include <string.h>
-#include "htif.h"
 
+class htif_t;
 class memif_t
 {
 public:

@@ -4,8 +4,10 @@
 #include <signal.h>
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-htif_csim_t::htif_csim_t(const char* progname, std::vector<char*> args)
+htif_csim_t::htif_csim_t(int ncores, const char* progname, std::vector<char*> args)
+  : htif_t(ncores)
 {
   int fromhost[2], tohost[2], flags;
   assert(pipe(fromhost) == 0);

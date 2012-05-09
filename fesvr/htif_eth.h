@@ -26,17 +26,10 @@ const unsigned short HTIF_ETHERTYPE = 0x8888;
 class htif_eth_t : public htif_t
 {
 public:
-  htif_eth_t(std::vector<char*> args);
+  htif_eth_t(int ncores, std::vector<char*> args);
   virtual ~htif_eth_t();
 
-  void start(int coreid)
-  {
-    // write memory size (in MB) and # cores in words 0, 1
-    uint32_t buf[16] = {512,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-    write_chunk(0, sizeof(buf), (uint8_t *)buf);
-  
-    htif_t::start(coreid);
-  }
+  uint32_t mem_mb() { return 512; }
 
   size_t chunk_align() { return ETH_DATA_ALIGN; }
   size_t chunk_max_size() { return ETH_MAX_DATA_SIZE; }

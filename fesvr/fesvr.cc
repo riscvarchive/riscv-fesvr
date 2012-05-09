@@ -23,7 +23,7 @@ int main(int argc, char** argv)
   bool pkrun = true;
   bool testrun = false;
   htif_t* htif = NULL;
-  int coreid = 0, i;
+  int ncores = 1, i;
   addr_t sig_addr = 0;
   int sig_len = -1;
   bool assume0init = false;
@@ -57,6 +57,11 @@ int main(int argc, char** argv)
       if (s.length() > 2)
         csim_name = argv[i]+2;
     }
+    else if (s.substr(0,2) == "-p")
+    {
+      if (s.length() > 2)
+        ncores = atoi(argv[i]+2);
+    }
     else if (s == "-testsig")
     {
       testrun = true;
@@ -75,14 +80,13 @@ int main(int argc, char** argv)
 
   switch (simtype) // instantiate appropriate HTIF
   {
-    case SIMTYPE_ISA: htif = new htif_isasim_t(htif_args); break;
-    case SIMTYPE_RS232: htif = new htif_rs232_t(htif_args); break;
-    case SIMTYPE_ETH: htif = new htif_eth_t(htif_args); break;
-    case SIMTYPE_CSIM: htif = new htif_csim_t(csim_name, htif_args); break;
+    case SIMTYPE_ISA: htif = new htif_isasim_t(ncores, htif_args); break;
+    case SIMTYPE_RS232: htif = new htif_rs232_t(ncores, htif_args); break;
+    case SIMTYPE_ETH: htif = new htif_eth_t(ncores, htif_args); break;
+    case SIMTYPE_CSIM: htif = new htif_csim_t(ncores, csim_name, htif_args); break;
     default: abort();
   }
   htif->assume0init(assume0init);
-  memif_t memif(htif);
 
   if (i == argc) // make sure the user specified a target program
   {
@@ -119,7 +123,7 @@ int main(int argc, char** argv)
       std::string test_path = std::string(p) + "/riscv-pk";
       if (access(test_path.c_str(), F_OK) == 0)
       {
-        load_elf(test_path.c_str(), &memif);
+        load_elf(test_path.c_str(), &htif->memif());
         found = true;
       }
       p = next_p + 1;
@@ -139,15 +143,15 @@ int main(int argc, char** argv)
       fprintf(stderr, "could not open %s\n", target_argv[0]);
       exit(-1);
     }
-    load_elf(target_argv[0], &memif);
+    load_elf(target_argv[0], &htif->memif());
   }
 
-  htif->start(coreid);
+  htif->start(0);
 
   if (testrun)
   {
     reg_t tohost;
-    while ((tohost = htif->read_cr(coreid, 30)) == 0);
+    while ((tohost = htif->read_cr(0, 30)) == 0);
     if (tohost == 1)
     {
       if (sig_len != -1)
@@ -157,7 +161,7 @@ int main(int argc, char** argv)
         int sig_len_aligned = (sig_len + chunk_size - 1)/chunk_size*chunk_size;
 
         uint8_t* signature = new uint8_t[sig_len_aligned];
-        memif.read(sig_addr, sig_len, signature);
+        htif->memif().read(sig_addr, sig_len, signature);
         for (int i = sig_len; i < sig_len_aligned; i++)
           signature[i] = 0;
 
@@ -193,20 +197,25 @@ int main(int argc, char** argv)
       assert(tcsetattr(0, TCSANOW, &new_tios) == 0);
     }
 
-    while (true)
+    bool done = false;
+    while (!done)
     {
-      reg_t tohost;
-      while ((tohost = htif->read_cr(coreid, 30)) == 0);
-      if (dispatch_syscall(htif, &memif, tohost))
-        break;
-      htif->write_cr(coreid, 31, 1);
+      for (int coreid = 0; coreid < ncores && !done; coreid++)
+      {
+        reg_t tohost;
+        if ((tohost = htif->read_cr(coreid, 30)) != 0)
+        {
+          done = dispatch_syscall(htif, &htif->memif(), tohost);
+          htif->write_cr(coreid, 31, 1);
+        }
+      }
     }
 
     if (reset_termios)
       tcsetattr(0, TCSANOW, &old_tios);
   }
 
-  htif->stop(coreid);
+  htif->stop(0);
   delete htif;
 
   return exit_code;
