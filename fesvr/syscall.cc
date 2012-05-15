@@ -163,7 +163,7 @@ typedef sysret_t (*syscall_t)(htif_t*,memif_t*,reg_t,reg_t,reg_t,reg_t);
 
 int dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
 {
-  reg_t magicmem[5];
+  reg_t magicmem[8];
   memif->read(mm,sizeof(magicmem),(uint8_t*)magicmem);
 
   void* syscall_table[256];
@@ -188,8 +188,9 @@ int dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
   syscall_t p = (syscall_t)syscall_table[n];
 
   sysret_t ret = p(htif,memif,magicmem[1],magicmem[2],magicmem[3],magicmem[4]);
+  memcpy(magicmem, &ret, sizeof(ret));
 
-  memif->write(mm,sizeof(ret),(uint8_t*)&ret);
+  memif->write(mm, sizeof(magicmem), (uint8_t*)magicmem);
 
   return done;
 }
