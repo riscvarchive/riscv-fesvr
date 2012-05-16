@@ -198,7 +198,7 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
       continue;
 
     bytes -= 16; //offsetof(eth_header_t, htif_header)
-    bytes = std::min(bytes, (ssize_t)sizeof(packet_header_t) + HTIF_DATA_ALIGN*packet.htif_header.data_size);
+    bytes = std::min(bytes, (ssize_t)(sizeof(packet_header_t) + HTIF_DATA_ALIGN*packet.htif_header.data_size));
     bytes = std::min(bytes, (ssize_t)max_size);
     memcpy(buf, &packet.htif_header, bytes);
 
