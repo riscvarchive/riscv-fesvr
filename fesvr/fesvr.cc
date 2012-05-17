@@ -5,7 +5,6 @@
 #include "memif.h"
 #include "elf.h"
 #include "syscall.h"
-#include <termios.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -184,21 +183,7 @@ int main(int argc, char** argv)
   }
   else
   {
-    bool reset_termios = false;
-    struct termios old_tios, new_tios;
-    if (!pkrun && isatty(0))
-    {
-      // use non-canonical-mode input if not using the proxy kernel
-      reset_termios = true;
-      assert(tcgetattr(0, &old_tios) == 0);
-      new_tios = old_tios;
-      new_tios.c_lflag &= ~(ICANON | ECHO);
-      new_tios.c_cc[VMIN] = 0;
-      assert(tcsetattr(0, TCSANOW, &new_tios) == 0);
-    }
-
-    bool done = false;
-    while (!done)
+    for (bool done = false; !done; )
     {
       for (int coreid = 0; coreid < ncores && !done; coreid++)
       {
@@ -210,9 +195,6 @@ int main(int argc, char** argv)
         }
       }
     }
-
-    if (reset_termios)
-      tcsetattr(0, TCSANOW, &old_tios);
   }
 
   htif->stop(0);

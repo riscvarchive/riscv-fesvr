@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <termios.h>
 #include <algorithm>
 
 struct sysret_t
@@ -40,6 +41,23 @@ sysret_t appsys_read(htif_t* htif, memif_t* memif,
   if(ret.result != (reg_t)-1)
     memif->write(pbuf,ret.result,(uint8_t*)buf);
   free(buf);
+  return ret;
+}
+
+sysret_t appsys_read_noncanonical(htif_t* htif, memif_t* memif,
+                                  reg_t fd, addr_t pbuf, reg_t len)
+{
+  struct termios old_tios, new_tios;
+  tcgetattr(0, &old_tios);
+  new_tios = old_tios;
+  new_tios.c_lflag &= ~(ICANON | ECHO);
+  new_tios.c_cc[VMIN] = 0;
+  tcsetattr(0, TCSANOW, &new_tios);
+
+  sysret_t ret = appsys_read(htif, memif, fd, pbuf, len);
+
+  tcsetattr(0, TCSANOW, &old_tios);
+
   return ret;
 }
 
@@ -182,6 +200,7 @@ int dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
   syscall_table[180] = (void*)appsys_pread;
   syscall_table[181] = (void*)appsys_pwrite;
   syscall_table[201] = (void*)appsys_getmainvars;
+  syscall_table[202] = (void*)appsys_read_noncanonical;
 
   reg_t n = magicmem[0];
   assert(n < sizeof(syscall_table)/sizeof(void*) && syscall_table[n]);
