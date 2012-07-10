@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/wait.h>
 
 htif_csim_t::htif_csim_t(int ncores, const char* progname, std::vector<char*> args)
   : htif_t(ncores)
@@ -49,4 +50,13 @@ htif_csim_t::htif_csim_t(int ncores, const char* progname, std::vector<char*> ar
 htif_csim_t::~htif_csim_t()
 {
   kill(pid, SIGTERM);
+  for (int cnt=0; cnt<100; cnt++)
+  {
+    int ret;
+    waitpid(pid, &ret, WNOHANG);
+    if (WIFSIGNALED(ret))
+      return;
+    usleep(10*1000);
+  }
+  kill(pid, SIGKILL);
 }
