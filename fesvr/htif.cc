@@ -3,7 +3,7 @@
 #include <assert.h>
 
 htif_t::htif_t(int nc)
-  : mem(this), ncores(nc), writezeros(true), seqno(1)
+  : ncores(nc), mem(this), writezeros(true), seqno(1), started(false)
 {
 }
 
@@ -56,16 +56,21 @@ void htif_t::write_packet(const packet_t& p)
 
 void htif_t::start(int coreid)
 {
-  writezeros = true;
-
-  uint32_t buf[16] = {mem_mb(), ncores};
-  write_chunk(0, sizeof(buf), (uint8_t *)buf);
-
-  for (int i = 0; i < ncores; i++)
+  if (!started)
   {
-    write_cr(i, 29, 1);
-    write_cr(i, 10, i);
+    started = true;
+    writezeros = true;
+
+    uint32_t buf[16] = {mem_mb(), ncores};
+    write_chunk(0, sizeof(buf), (uint8_t *)buf);
+
+    for (int i = 0; i < ncores; i++)
+    {
+      write_cr(i, 29, 1);
+      write_cr(i, 10, i);
+    }
   }
+
   write_cr(coreid, 29, 0);
 }
 

@@ -145,7 +145,8 @@ int main(int argc, char** argv)
     load_elf(target_argv[0], &htif->memif());
   }
 
-  htif->start(0);
+  for (int i = 0; i < ncores; i++)
+    htif->start(i);
 
   if (testrun)
   {

@@ -36,6 +36,7 @@ class htif_t
   memif_t mem;
   bool writezeros;
   seqno_t seqno;
+  bool started;
 
   virtual packet_t read_packet(seqno_t expected_seqno);
   virtual void write_packet(const packet_t& packet);
