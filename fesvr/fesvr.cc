@@ -87,6 +87,15 @@ int main(int argc, char** argv)
   }
   htif->assume0init(assume0init);
 
+  // sram reset (INITN)
+  htif->write_cr(4, 1, 1);
+  htif->write_cr(4, 1, 0);
+  htif->write_cr(4, 1, 1);
+
+  // uncore reset
+  htif->write_cr(4, 0, 1);
+  htif->write_cr(4, 0, 0);
+
   if (i == argc) // make sure the user specified a target program
   {
     fprintf(stderr, "usage: %s <binary> [args]\n", argv[0]);
