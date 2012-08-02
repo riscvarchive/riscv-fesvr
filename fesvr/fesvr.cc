@@ -6,15 +6,22 @@
 #include "elf.h"
 #include "syscall.h"
 #include <unistd.h>
+#include <termios.h>
+#include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <vector>
+#include <queue>
 #include <string>
 
 uint64_t mainvars[512];
 size_t mainvars_sz;
 
+void load_pk(memif_t* memif);
+void load_program(const char* name, memif_t* memif);
+int poll_tohost(htif_t* htif, addr_t sig_addr, int sig_len);
+void poll_devices(htif_t* htif);
 
 int main(int argc, char** argv)
 {
@@ -107,99 +114,188 @@ int main(int argc, char** argv)
     mainvars_sz += len;
   }
 
-  if (pkrun) // locate and load the proxy kernel, riscv-pk
-  {
-    const char* path = getenv("PATH");
-    assert(path);
-    char* s = strdup(path);
-    char* p = s, *next_p;
-    bool found = false;
-
-    do
-    {
-      if ((next_p = strchr(p, ':')) != NULL)
-        *next_p = '\0';
-      std::string test_path = std::string(p) + "/riscv-pk";
-      if (access(test_path.c_str(), F_OK) == 0)
-      {
-        load_elf(test_path.c_str(), &htif->memif());
-        found = true;
-      }
-      p = next_p + 1;
-    }
-    while (next_p != NULL && !found);
-
-    if (!found)
-    {
-      fprintf(stderr, "could not locate riscv-pk in PATH\n");
-      exit(-1);
-    }
-  }
+  if (pkrun)
+    load_pk(&htif->memif());
   else if (strcmp(target_argv[0], "none") != 0)
-  {
-    if (access(target_argv[0], F_OK) != 0)
-    {
-      fprintf(stderr, "could not open %s\n", target_argv[0]);
-      exit(-1);
-    }
-    load_elf(target_argv[0], &htif->memif());
-  }
+    load_program(target_argv[0], &htif->memif());
 
   for (int i = 0; i < ncores; i++)
     htif->start(i);
 
   if (testrun)
-  {
-    reg_t tohost;
-    while ((tohost = htif->read_cr(0, 30)) == 0);
-    if (tohost == 1)
-    {
-      if (sig_len != -1)
-      {
-        int chunk_size = 16;
-        assert(sig_addr % chunk_size == 0);
-        int sig_len_aligned = (sig_len + chunk_size - 1)/chunk_size*chunk_size;
-
-        uint8_t* signature = new uint8_t[sig_len_aligned];
-        htif->memif().read(sig_addr, sig_len, signature);
-        for (int i = sig_len; i < sig_len_aligned; i++)
-          signature[i] = 0;
-
-        for (int i = 0; i < sig_len_aligned; i += chunk_size)
-        {
-          for (int j = chunk_size - 1; j >= 0; j--)
-            printf("%02x", signature[i+j]);
-          printf("\n");
-        }
-        delete [] signature;
-      }
-      else
-        fprintf(stderr, "*** PASSED ***\n");
-    }
-    else
-    {
-      fprintf(stderr, "*** FAILED *** (tohost = %ld)\n", (long)tohost);
-      exit_code = -1;
-    }
-  }
+    exit_code = poll_tohost(htif, sig_addr, sig_len);
   else
-  {
-    for (bool done = false; !done; )
-    {
-      for (int coreid = 0; coreid < ncores && !done; coreid++)
-      {
-        reg_t tohost;
-        if ((tohost = htif->read_cr(coreid, 30)) != 0)
-        {
-          done = dispatch_syscall(htif, &htif->memif(), tohost);
-          htif->write_cr(coreid, 31, 1);
-        }
-      }
-    }
-  }
+    poll_devices(htif);
 
   htif->stop(0);
   delete htif;
 
   return exit_code;
+}
+
+void load_pk(memif_t* memif)
+{
+  const char* path = getenv("PATH");
+  assert(path);
+  char* s = strdup(path);
+  char* p = s, *next_p;
+
+  do
+  {
+    if ((next_p = strchr(p, ':')) != NULL)
+      *next_p = '\0';
+    std::string test_path = std::string(p) + "/riscv-pk";
+    if (access(test_path.c_str(), F_OK) == 0)
+    {
+      load_elf(test_path.c_str(), memif);
+      return;
+    }
+    p = next_p + 1;
+  }
+  while (next_p != NULL);
+
+  fprintf(stderr, "could not locate riscv-pk in PATH\n");
+  exit(-1);
+}
+
+void load_program(const char* name, memif_t* memif)
+{
+  if (access(name, F_OK) != 0)
+  {
+    fprintf(stderr, "could not open %s\n", name);
+    exit(-1);
+  }
+  load_elf(name, memif);
+}
+
+int poll_tohost(htif_t* htif, addr_t sig_addr, int sig_len)
+{
+  reg_t tohost;
+  while ((tohost = htif->read_cr(0, 30)) == 0);
+  if (tohost == 1)
+  {
+    if (sig_len != -1)
+    {
+      int chunk_size = 16;
+      assert(sig_addr % chunk_size == 0);
+      int sig_len_aligned = (sig_len + chunk_size - 1)/chunk_size*chunk_size;
+
+      uint8_t* signature = new uint8_t[sig_len_aligned];
+      htif->memif().read(sig_addr, sig_len, signature);
+      for (int i = sig_len; i < sig_len_aligned; i++)
+        signature[i] = 0;
+
+      for (int i = 0; i < sig_len_aligned; i += chunk_size)
+      {
+        for (int j = chunk_size - 1; j >= 0; j--)
+          printf("%02x", signature[i+j]);
+        printf("\n");
+      }
+      delete [] signature;
+    }
+    else
+      fprintf(stderr, "*** PASSED ***\n");
+
+    return 0;
+  }
+
+  fprintf(stderr, "*** FAILED *** (tohost = %ld)\n", (long)tohost);
+  return -1;
+}
+
+struct core_status
+{
+  core_status() : poll_keyboard(0) {}
+  std::queue<reg_t> fromhost;
+  reg_t poll_keyboard;
+};
+
+void poll_devices(htif_t* htif)
+{
+  std::vector<core_status> status(htif->num_cores());
+
+  while (true)
+  {
+    for (int coreid = 0; coreid < htif->num_cores(); coreid++)
+    {
+      core_status& s = status[coreid];
+      reg_t tohost = htif->read_cr(coreid, 30);
+      if (tohost == 0)
+        continue;
+
+      #define DEVICE(reg) (((reg) >> 56) & 0xFF)
+      #define INTERRUPT(reg) (((reg) >> 48) & 0x80)
+      #define COMMAND(reg) (((reg) >> 48) & 0x7F)
+      #define PAYLOAD(reg) ((reg) & 0xFFFFFFFFFFFF)
+
+      switch (DEVICE(tohost))
+      {
+        case 0: // proxy syscall
+        {
+          bool done = dispatch_syscall(htif, &htif->memif(), PAYLOAD(tohost));
+          s.fromhost.push(1);
+          if (done)
+            return;
+          break;
+        }
+        case 1: // console
+        {
+          switch (COMMAND(tohost))
+          {
+            case 0: // read
+              if (s.poll_keyboard)
+                continue;
+              s.poll_keyboard = tohost;
+              break;
+            case 1: // write
+            {
+              unsigned char ch = PAYLOAD(tohost);
+              if (ch == 0)
+                return;
+              assert(write(1, &ch, 1) == 1);
+              break;
+            }
+          };
+          break;
+        }
+      };
+
+      htif->write_cr(coreid, 30, 0);
+    }
+
+    for (int coreid = 0; coreid < htif->num_cores(); coreid++)
+    {
+      core_status& s = status[coreid];
+      if (s.poll_keyboard)
+      {
+        struct termios old_tios, new_tios;
+        tcgetattr(0, &old_tios);
+        new_tios = old_tios;
+        new_tios.c_lflag &= ~(ICANON | ECHO);
+        new_tios.c_cc[VMIN] = 0;
+        tcsetattr(0, TCSANOW, &new_tios);
+        unsigned char ch;
+        if (read(0, &ch, 1) == 1)
+        {
+          s.fromhost.push(s.poll_keyboard | ch);
+          s.poll_keyboard = 0;
+        }
+        else if (!INTERRUPT(s.poll_keyboard))
+        {
+          s.fromhost.push(s.poll_keyboard | 0x100);
+          s.poll_keyboard = 0;
+        }
+        tcsetattr(0, TCSANOW, &old_tios);
+      }
+
+      if (!s.fromhost.empty() && htif->read_cr(coreid, 31) == 0)
+      {
+        reg_t value = s.fromhost.front();
+        htif->write_cr(coreid, 31, value);
+        if (INTERRUPT(value))
+          htif->write_cr(coreid, 9, 1);
+        s.fromhost.pop();
+      }
+    }
+  }
 }
