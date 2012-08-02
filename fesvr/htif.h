@@ -20,6 +20,8 @@ class htif_t
   virtual memif_t& memif() { return mem; }
   virtual void assume0init(bool val = true);
 
+  int num_cores() { return ncores; }
+
  protected:
   virtual void read_chunk(addr_t taddr, size_t len, uint8_t* dst);
   virtual void write_chunk(addr_t taddr, size_t len, const uint8_t* src);
