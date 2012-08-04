@@ -15,7 +15,7 @@ class htif_t
 
   virtual uint32_t mem_mb() = 0;
   virtual reg_t read_cr(int coreid, int regnum);
-  virtual void write_cr(int coreid, int regnum, reg_t val);
+  virtual reg_t write_cr(int coreid, int regnum, reg_t val);
 
   virtual memif_t& memif() { return mem; }
   virtual void assume0init(bool val = true);

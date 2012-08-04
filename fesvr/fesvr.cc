@@ -259,8 +259,6 @@ void poll_devices(htif_t* htif)
           break;
         }
       };
-
-      htif->write_cr(coreid, 30, 0);
     }
 
     for (int coreid = 0; coreid < htif->num_cores(); coreid++)
@@ -288,13 +286,15 @@ void poll_devices(htif_t* htif)
         tcsetattr(0, TCSANOW, &old_tios);
       }
 
-      if (!s.fromhost.empty() && htif->read_cr(coreid, 31) == 0)
+      if (!s.fromhost.empty())
       {
         reg_t value = s.fromhost.front();
-        htif->write_cr(coreid, 31, value);
-        if (INTERRUPT(value))
-          htif->write_cr(coreid, 9, 1);
-        s.fromhost.pop();
+        if (htif->write_cr(coreid, 31, value) == 0)
+        {
+          if (INTERRUPT(value))
+            htif->write_cr(coreid, 9, 1);
+          s.fromhost.pop();
+        }
       }
     }
   }
