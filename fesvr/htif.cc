@@ -144,19 +144,24 @@ reg_t htif_t::read_cr(int coreid, int regnum)
   seqno++;
 
   reg_t val;
+  assert(resp.get_payload_size() == sizeof(reg_t));
   memcpy(&val, resp.get_payload(), sizeof(reg_t));
   return val;
 }
 
-void htif_t::write_cr(int coreid, int regnum, reg_t val)
+reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
 {
   packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, seqno, 1,
                                coreid << 20 | regnum));
   req.set_payload(&val, sizeof(reg_t));
 
   write_packet(req);
-  read_packet(seqno);
+  packet_t resp = read_packet(seqno);
   seqno++;
+
+  assert(resp.get_payload_size() == sizeof(reg_t));
+  memcpy(&val, resp.get_payload(), sizeof(reg_t));
+  return val;
 }
 
 void htif_t::assume0init(bool val)
