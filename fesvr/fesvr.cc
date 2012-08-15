@@ -20,7 +20,7 @@ size_t mainvars_sz;
 
 void load_pk(memif_t* memif);
 void load_program(const char* name, memif_t* memif);
-int poll_tohost(htif_t* htif, addr_t sig_addr, int sig_len);
+int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len);
 void poll_devices(htif_t* htif);
 
 int main(int argc, char** argv)
@@ -30,6 +30,7 @@ int main(int argc, char** argv)
   bool testrun = false;
   htif_t* htif = NULL;
   int ncores = 1, i;
+  int coreid = -1;
   addr_t sig_addr = 0;
   int sig_len = -1;
   bool assume0init = false;
@@ -67,6 +68,11 @@ int main(int argc, char** argv)
     {
       if (s.length() > 2)
         ncores = atoi(argv[i]+2);
+    }
+    else if (s.substr(0,2) == "-w")
+    {
+      if (s.length() > 2)
+        coreid = atoi(argv[i]+2);
     }
     else if (s == "-testsig")
     {
@@ -119,15 +125,23 @@ int main(int argc, char** argv)
   else if (strcmp(target_argv[0], "none") != 0)
     load_program(target_argv[0], &htif->memif());
 
-  for (int i = 0; i < ncores; i++)
-    htif->start(i);
+  if (coreid == -1)
+  {
+    for (int i = 0; i < ncores; i++)
+      htif->start(i);
+    coreid = 0;
+  }
+  else
+  {
+    htif->start(coreid);
+  }
 
   if (testrun)
-    exit_code = poll_tohost(htif, sig_addr, sig_len);
+    exit_code = poll_tohost(htif, coreid, sig_addr, sig_len);
   else
     poll_devices(htif);
 
-  htif->stop(0);
+  htif->stop(coreid);
   delete htif;
 
   return exit_code;
@@ -168,10 +182,10 @@ void load_program(const char* name, memif_t* memif)
   load_elf(name, memif);
 }
 
-int poll_tohost(htif_t* htif, addr_t sig_addr, int sig_len)
+int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len)
 {
   reg_t tohost;
-  while ((tohost = htif->read_cr(0, 30)) == 0);
+  while ((tohost = htif->read_cr(coreid, 30)) == 0);
   if (tohost == 1)
   {
     if (sig_len != -1)
