@@ -7,4 +7,11 @@
 
 build/
 autom4te.cache/
-
+Makefile
+fesvr.mk
+fesvr.pc
+fesvr-config.h
+*.o
+config.log
+config.status
+*.d

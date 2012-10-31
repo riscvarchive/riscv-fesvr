@@ -22,23 +22,23 @@ packet_t htif_t::read_packet(seqno_t expected_seqno)
 
   packet_header_t hdr = *(packet_header_t*)buf;
   
-  if (hdr.seqno != expected_seqno)
-    throw bad_seqno_error();
+  //if (hdr.seqno != expected_seqno)
+  //  throw bad_seqno_error();
 
-  switch (hdr.cmd)
-  {
-    case HTIF_CMD_ACK:
-      if (hdr.data_size*HTIF_DATA_ALIGN != bytes - sizeof(packet_header_t))
-        throw packet_error("bad payload size!");
-      break;
-    case HTIF_CMD_NACK:
-      throw packet_error("nack!");
-    default:
-      throw packet_error("illegal command");
-  }
+  //switch (hdr.cmd)
+  //{
+  //  case HTIF_CMD_ACK:
+  //    if (hdr.data_size*HTIF_DATA_ALIGN != bytes - sizeof(packet_header_t))
+  //      throw packet_error("bad payload size!");
+  //    break;
+  //  case HTIF_CMD_NACK:
+  //    throw packet_error("nack!");
+  //  default:
+  //    throw packet_error("illegal command");
+  //}
 
-  packet_t p(hdr);
-  p.set_payload((uint8_t*)buf + sizeof(packet_header_t), bytes - sizeof(packet_header_t));
+  packet_t p(hdr,0);
+  p.set_payload((uint8_t*)buf + 8, bytes - 8);
   return p;
 }
 
@@ -87,8 +87,7 @@ void htif_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
   while (len)
   {
     size_t sz = std::min(len, chunk_max_size());
-    packet_t req(packet_header_t(HTIF_CMD_READ_MEM, seqno,
-                 sz/HTIF_DATA_ALIGN, taddr/HTIF_DATA_ALIGN));
+    packet_t req(packet_header_t(HTIF_CMD_READ_MEM, seqno), taddr/HTIF_DATA_ALIGN);
 
     write_packet(req);
     packet_t resp = read_packet(seqno);
@@ -116,14 +115,13 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
   {
     size_t sz = std::min(len, chunk_max_size());
 
-    packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno,
-                 sz/HTIF_DATA_ALIGN, taddr/HTIF_DATA_ALIGN));
+    packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno), taddr/HTIF_DATA_ALIGN);
     req.set_payload(src, sz);
 
     if (writezeros || memcmp(zeros, src, sz) != 0)
     {
       write_packet(req);
-      read_packet(seqno);
+      //read_packet(seqno);
       seqno++;
     }
 
@@ -136,8 +134,7 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
 
 reg_t htif_t::read_cr(int coreid, int regnum)
 {
-  packet_t req(packet_header_t(HTIF_CMD_READ_CONTROL_REG, seqno, 1,
-                               coreid << 20 | regnum));
+  packet_t req(packet_header_t(HTIF_CMD_READ_CONTROL_REG, coreid), regnum);
 
   write_packet(req);
   packet_t resp = read_packet(seqno);
@@ -151,17 +148,20 @@ reg_t htif_t::read_cr(int coreid, int regnum)
 
 reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
 {
-  packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, seqno, 1,
-                               coreid << 20 | regnum));
+  packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, coreid), regnum);
   req.set_payload(&val, sizeof(reg_t));
 
   write_packet(req);
-  packet_t resp = read_packet(seqno);
-  seqno++;
+  if (regnum == 31) {
+      packet_t resp = read_packet(seqno);
+      seqno++;
 
-  assert(resp.get_payload_size() == sizeof(reg_t));
-  memcpy(&val, resp.get_payload(), sizeof(reg_t));
-  return val;
+      assert(resp.get_payload_size() == sizeof(reg_t));
+      memcpy(&val, resp.get_payload(), sizeof(reg_t));
+      return val;
+  } else {
+      return 0;
+  }
 }
 
 void htif_t::assume0init(bool val)

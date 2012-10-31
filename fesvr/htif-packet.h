@@ -7,12 +7,10 @@
 
 enum
 {
-  HTIF_CMD_READ_MEM,
-  HTIF_CMD_WRITE_MEM,
-  HTIF_CMD_READ_CONTROL_REG,
   HTIF_CMD_WRITE_CONTROL_REG,
-  HTIF_CMD_ACK,
-  HTIF_CMD_NACK,
+  HTIF_CMD_READ_CONTROL_REG,
+  HTIF_CMD_WRITE_MEM,
+  HTIF_CMD_READ_MEM,
 };
 
 #define HTIF_DATA_ALIGN 8
@@ -23,24 +21,22 @@ typedef reg_t addr_t;
 
 struct packet_header_t
 {
-  reg_t cmd       :  4;
-  reg_t data_size : 12;
-  reg_t seqno     :  8;
-  reg_t addr      : 40;
+  reg_t node      :  8;
+  reg_t cmd       :  8;
 
   packet_header_t()
-    : cmd(0), data_size(0), seqno(0), addr(0) {}
-  packet_header_t(reg_t c, seqno_t s, reg_t ds, addr_t a)
-    : cmd(c), data_size(ds), seqno(s), addr(a)
+    : node(0), cmd(0) {}
+  packet_header_t(reg_t c, reg_t a)
+    : node(a), cmd(c)
   {
-    assert(cmd == c && data_size == ds && seqno == s && addr == a);
+    assert(cmd == c && node == a);
   }
 };
 
 class packet_t
 {
  public:
-  packet_t(const packet_header_t& hdr);
+  packet_t(const packet_header_t& hdr, uint64_t addr);
   packet_t(const packet_t& p);
   ~packet_t();
 
@@ -54,6 +50,7 @@ class packet_t
  private:
   packet_header_t header;
   uint8_t* payload;
+  uint64_t addr;
   size_t payload_size;
 };
 

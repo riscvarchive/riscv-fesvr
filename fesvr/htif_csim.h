@@ -15,12 +15,20 @@ class htif_csim_t : public htif_t
  protected:
   ssize_t read(void* buf, size_t max_size)
   {
-    return ::read(fdin, buf, max_size);
+    return ::read(fdin, (uint8_t *)buf+14, max_size-14);
   }
 
   ssize_t write(const void* buf, size_t size)
   {
-    return ::write(fdout, buf, size);
+    uint8_t *nBuf = (uint8_t *) malloc(size+14);
+    nBuf[0] = 0x0;
+    nBuf[1] = 0x50;
+    nBuf[2] = 0xc2;
+    nBuf[3] = 0x95;
+    nBuf[4] = 0xe8;
+    nBuf[5] = 0x6c;
+    memcpy(nBuf+14, buf, size);
+    return ::write(fdout, nBuf, size+14);
   }
 
   size_t chunk_max_size() { return 2048; }

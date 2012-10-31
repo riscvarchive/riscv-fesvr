@@ -46,13 +46,13 @@ ssize_t htif_rs232_t::read(void* buf, size_t max_size)
 {
   // XXX this is untested!
   ssize_t bytes = sizeof(packet_header_t);
-  for (ssize_t i = 0; i < bytes; i++)
-  {
-    if (::read(fd, (char*)buf + i, 1) != 1)
-      return -1;
-    if (i == sizeof(packet_header_t)-1)
-      bytes += ((packet_header_t*)buf)->data_size;
-  }
+  //for (ssize_t i = 0; i < bytes; i++)
+  //{
+  //  if (::read(fd, (char*)buf + i, 1) != 1)
+  //    return -1;
+  //  if (i == sizeof(packet_header_t)-1)
+  //    bytes += ((packet_header_t*)buf)->data_size;
+  //}
   return bytes;
 }
 
