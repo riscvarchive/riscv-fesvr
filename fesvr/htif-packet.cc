@@ -23,10 +23,14 @@ void packet_t::set_payload(const void* pay, size_t size)
 
   payload_size = size + addr_width;
   payload = new uint8_t[payload_size];
-  memcpy(payload, &addr, addr_width);
-
+  for (int i = 0; i < addr_width; i++)
+      payload[i] = (addr >> ((addr_width-i-1)*8)) & ((1 << 8) - 1);
+  //memcpy(payload, &addr, addr_width);
+    
   if (size) {
-    memcpy(payload+addr_width, pay, payload_size-size);
+    for (int i = 0; i < size; i++)
+        payload[addr_width+i] = ((uint8_t *) pay)[size-i-1];
+    //memcpy(payload+addr_width, pay, payload_size-addr_width);
   }
 }
 

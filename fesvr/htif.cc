@@ -152,7 +152,7 @@ reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
   req.set_payload(&val, sizeof(reg_t));
 
   write_packet(req);
-  if (regnum == 31) {
+  if (regnum == 29) {
       packet_t resp = read_packet(seqno);
       seqno++;
 

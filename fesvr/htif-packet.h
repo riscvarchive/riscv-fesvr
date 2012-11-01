@@ -21,8 +21,10 @@ typedef reg_t addr_t;
 
 struct packet_header_t
 {
-  reg_t node      :  8;
-  reg_t cmd       :  8;
+//  reg_t node      :  8;
+//  reg_t cmd       :  8;
+  uint8_t node;
+  uint8_t cmd;
 
   packet_header_t()
     : node(0), cmd(0) {}

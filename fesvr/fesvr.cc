@@ -23,6 +23,8 @@ void load_program(const char* name, memif_t* memif);
 int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len);
 void poll_devices(htif_t* htif);
 
+void configure_cores(htif_t* htif, int ncores);
+
 int main(int argc, char** argv)
 {
   int exit_code = 0;
@@ -124,6 +126,8 @@ int main(int argc, char** argv)
     load_pk(&htif->memif());
   else if (strcmp(target_argv[0], "none") != 0)
     load_program(target_argv[0], &htif->memif());
+
+  configure_cores(htif, ncores);
 
   if (coreid == -1)
   {
@@ -312,4 +316,25 @@ void poll_devices(htif_t* htif)
       }
     }
   }
+}
+
+void configure_cores(htif_t* htif, int ncores) {
+    const int A_ROUTE_TABLE = 32;
+    const int A_CHIPLET_ID  = 33;
+    // For now default to everyone going to one location.
+
+    // North Tap - 64
+    htif->write_cr(64, A_CHIPLET_ID, 64);
+    for (int i = 0; i < 68; i++)
+        htif->write_cr(64, A_ROUTE_TABLE, ((uint64_t)i << 56) | 1);
+
+    // Not Used
+    // South Tap
+    // East Tap
+    // West Tap
+
+    // Core - 0
+    htif->write_cr(0, A_CHIPLET_ID, 0);
+    for (int i = 0; i < 68; i++)
+        htif->write_cr(0, A_ROUTE_TABLE, ((uint64_t)i << 56) | 1);
 }
