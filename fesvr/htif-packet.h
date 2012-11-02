@@ -42,7 +42,7 @@ class packet_t
   packet_t(const packet_t& p);
   ~packet_t();
 
-  void set_payload(const void* payload, size_t size);
+  void set_payload(const void* payload, size_t size, bool isResp);
 
   packet_header_t get_header() const { return header; }
   const uint8_t* get_payload() const { return payload; }

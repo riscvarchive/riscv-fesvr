@@ -38,7 +38,7 @@ packet_t htif_t::read_packet(seqno_t expected_seqno)
   //}
 
   packet_t p(hdr,0);
-  p.set_payload((uint8_t*)buf + 8, bytes - 8);
+  p.set_payload((uint8_t*)buf + 1, bytes - 1, true);
   return p;
 }
 
@@ -116,7 +116,7 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
     size_t sz = std::min(len, chunk_max_size());
 
     packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno), taddr/HTIF_DATA_ALIGN);
-    req.set_payload(src, sz);
+    req.set_payload(src, sz, false);
 
     if (writezeros || memcmp(zeros, src, sz) != 0)
     {
@@ -149,7 +149,7 @@ reg_t htif_t::read_cr(int coreid, int regnum)
 reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
 {
   packet_t req(packet_header_t(HTIF_CMD_WRITE_CONTROL_REG, coreid), regnum);
-  req.set_payload(&val, sizeof(reg_t));
+  req.set_payload(&val, sizeof(reg_t), false);
 
   write_packet(req);
   if (regnum == 29) {

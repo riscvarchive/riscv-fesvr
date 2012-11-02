@@ -15,7 +15,9 @@ class htif_csim_t : public htif_t
  protected:
   ssize_t read(void* buf, size_t max_size)
   {
-    return ::read(fdin, (uint8_t *)buf+14, max_size-14);
+    int ret = ::read(fdin, buf, max_size+14);
+    memcpy(buf,(uint8_t *)buf+14,max_size-14);
+    return ret - 14;
   }
 
   ssize_t write(const void* buf, size_t size)

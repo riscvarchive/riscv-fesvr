@@ -9,23 +9,29 @@ packet_t::packet_t(const packet_header_t& hdr, uint64_t a)
 packet_t::packet_t(const packet_t& p)
   : header(p.header), payload(NULL), addr(p.addr), payload_size(0)
 {
-  set_payload(p.payload, p.payload_size);
+  set_payload(p.payload, p.payload_size, false);
 }
 
-void packet_t::set_payload(const void* pay, size_t size)
+void packet_t::set_payload(const void* pay, size_t size, bool isResp)
 {
   delete [] payload;
 
-  int addr_width = 1;
-  if (header.cmd == HTIF_CMD_READ_MEM || header.cmd == HTIF_CMD_WRITE_MEM) {
-      addr_width = 5;
+  int addr_width = 0;
+  if (!isResp) {
+      addr_width = 1;
+      if (header.cmd == HTIF_CMD_READ_MEM || header.cmd == HTIF_CMD_WRITE_MEM) {
+          addr_width = 5;
+      }
   }
 
   payload_size = size + addr_width;
   payload = new uint8_t[payload_size];
-  for (int i = 0; i < addr_width; i++)
-      payload[i] = (addr >> ((addr_width-i-1)*8)) & ((1 << 8) - 1);
-  //memcpy(payload, &addr, addr_width);
+
+  if (!isResp) {
+      for (int i = 0; i < addr_width; i++)
+          payload[i] = (addr >> ((addr_width-i-1)*8)) & ((1 << 8) - 1);
+      //memcpy(payload, &addr, addr_width);
+  }
     
   if (size) {
     for (int i = 0; i < size; i++)

@@ -15,7 +15,7 @@ htif_csim_t::htif_csim_t(int ncores, const char* progname, std::vector<char*> ar
   assert(pipe(tohost) == 0);
 
   assert((flags = fcntl(fromhost[0], F_GETFL)) >= 0);
-  assert(fcntl(fromhost[0], F_SETFL, flags & ~O_NONBLOCK) == 0);
+  assert(fcntl(fromhost[0], F_SETFL, flags | O_NONBLOCK) == 0);
 
   assert((flags = fcntl(tohost[0], F_GETFL)) >= 0);
   assert(fcntl(tohost[0], F_SETFL, flags & ~O_NONBLOCK) == 0);
