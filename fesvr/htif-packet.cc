@@ -4,6 +4,7 @@
 packet_t::packet_t(const packet_header_t& hdr, uint64_t a)
   : header(hdr), payload(NULL), addr(a), payload_size(0) 
 {
+    set_payload(NULL, 0, false);
 }
 
 packet_t::packet_t(const packet_t& p)

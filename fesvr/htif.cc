@@ -152,16 +152,12 @@ reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
   req.set_payload(&val, sizeof(reg_t), false);
 
   write_packet(req);
-  if (regnum == 29) {
-      packet_t resp = read_packet(seqno);
-      seqno++;
+  packet_t resp = read_packet(seqno);
+  seqno++;
 
-      assert(resp.get_payload_size() == sizeof(reg_t));
-      memcpy(&val, resp.get_payload(), sizeof(reg_t));
-      return val;
-  } else {
-      return 0;
-  }
+  assert(resp.get_payload_size() == sizeof(reg_t));
+  memcpy(&val, resp.get_payload(), sizeof(reg_t));
+  return val;
 }
 
 void htif_t::assume0init(bool val)

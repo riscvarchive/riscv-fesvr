@@ -189,6 +189,7 @@ void load_program(const char* name, memif_t* memif)
 int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len)
 {
   reg_t tohost;
+  htif->write_cr(coreid, 30, 0);
   while ((tohost = htif->read_cr(coreid, 30)) == 0);
   if (tohost == 1)
   {
