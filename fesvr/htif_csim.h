@@ -17,6 +17,10 @@ class htif_csim_t : public htif_t
   {
     int ret = ::read(fdin, buf, max_size+14);
     memcpy(buf,(uint8_t *)buf+14,max_size-14);
+    //fprintf(stderr, "read (%d): ", ret - 14);
+    //for (int i = 0; i < ret - 14; i++)
+    //    fprintf(stderr, "%x ", *((uint8_t *)buf+i));
+    //fprintf(stderr, "\n\n");
     return ret - 14;
   }
 
@@ -30,6 +34,10 @@ class htif_csim_t : public htif_t
     nBuf[4] = 0xe8;
     nBuf[5] = 0x6c;
     memcpy(nBuf+14, buf, size);
+    //fprintf(stderr, "write: ");
+    //for (int i = 0; i < size; i++)
+    //    fprintf(stderr, "%x ", nBuf[i+14]);
+    //fprintf(stderr, "\n");
     return ::write(fdout, nBuf, size+14);
   }
 
