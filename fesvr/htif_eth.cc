@@ -19,15 +19,15 @@
 #include <net/bpf.h>
 #endif
 
-#define debug(...)
-//#define debug(...) fprintf(stderr,__VA_ARGS__)
+//#define debug(...)
+#define debug(...) fprintf(stderr,__VA_ARGS__)
 
 struct eth_packet_t
 {
   char dst_mac[6];
   char src_mac[6];
   unsigned short ethertype;
-  short pad;
+//  short pad;
   packet_header_t htif_header;
   char htif_payload[ETH_MAX_DATA_SIZE];
 };
@@ -223,8 +223,8 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
       bufp += BPF_WORDALIGN(hdr->bh_hdrlen + hdr->bh_caplen);
       assert(hdr->bh_caplen == hdr->bh_datalen);
 
-      if (packet->ethertype != htons(HTIF_ETHERTYPE))
-        continue;
+      //if (packet->ethertype != htons(HTIF_ETHERTYPE))
+      //  continue;
       if (memcmp(packet->dst_mac, src_mac, ETHER_ADDR_LEN))
         continue;
 
@@ -232,6 +232,7 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
       bytes -= 16; //offsetof(eth_header_t, htif_header)
       bytes = std::min(bytes, (ssize_t)(8+512)/8);
       bytes = std::min(bytes, (ssize_t)max_size);
+      bytes = packet->ethertype >> 8;
       memcpy(buf, &packet->htif_header, bytes);
 
       debug("read packet\n");
@@ -258,7 +259,7 @@ ssize_t htif_eth_t::write(const void* buf, size_t size)
   memcpy(eth_packet.dst_mac, dst_mac, sizeof(dst_mac));
   memcpy(eth_packet.src_mac, src_mac, sizeof(src_mac));
   eth_packet.ethertype = htons(HTIF_ETHERTYPE);
-  eth_packet.pad = 0;
+//  eth_packet.pad = 0;
   memcpy(&eth_packet.htif_header, buf, size);
   size += 16; //offsetof(eth_packet_t, htif_header)
 

@@ -122,12 +122,12 @@ int main(int argc, char** argv)
     mainvars_sz += len;
   }
 
+  configure_cores(htif, ncores);
+
   if (pkrun)
     load_pk(&htif->memif());
   else if (strcmp(target_argv[0], "none") != 0)
     load_program(target_argv[0], &htif->memif());
-
-  configure_cores(htif, ncores);
 
   if (coreid == -1)
   {

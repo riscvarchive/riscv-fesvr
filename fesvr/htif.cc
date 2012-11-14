@@ -1,6 +1,7 @@
 #include "htif.h"
 #include <algorithm>
 #include <assert.h>
+#include "errno.h"
 
 htif_t::htif_t(int nc)
   : ncores(nc), mem(this), writezeros(true), seqno(1), started(false)
@@ -50,8 +51,10 @@ void htif_t::write_packet(const packet_t& p)
   memcpy((uint8_t*)buf + sizeof(packet_header_t), p.get_payload(), p.get_payload_size());
 
   ssize_t bytes = this->write(buf, p.get_size());
-  if (bytes < (ssize_t)p.get_size())
+  if (bytes < (ssize_t)p.get_size()) {
+    fprintf(stderr, "errno: %d\n", errno);
     throw io_error("write failed");
+  }
 }
 
 void htif_t::start(int coreid)
@@ -62,7 +65,7 @@ void htif_t::start(int coreid)
     writezeros = true;
 
     uint32_t buf[16] = {mem_mb(), ncores};
-    write_chunk(0, sizeof(buf), (uint8_t *)buf);
+    //write_chunk(0, sizeof(buf), (uint8_t *)buf);
 
     for (int i = 0; i < ncores; i++)
     {
@@ -155,6 +158,9 @@ reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
   packet_t resp = read_packet(seqno);
   seqno++;
 
+  fprintf(stderr, "size: %d\n", resp.get_payload_size());
+  for (int i = 0; i < resp.get_payload_size(); i++)
+      fprintf(stderr, "0x%x\n", resp.get_payload()[i]);
   assert(resp.get_payload_size() == sizeof(reg_t));
   memcpy(&val, resp.get_payload(), sizeof(reg_t));
   return val;
