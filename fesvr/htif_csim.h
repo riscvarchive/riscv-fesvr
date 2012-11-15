@@ -46,7 +46,7 @@ class htif_csim_t : public htif_t
     return ::write(fdout, nBuf, size+14);
   }
 
-  size_t chunk_max_size() { return 2048; }
+  size_t chunk_max_size() { return 64; }
   size_t chunk_align() { return 64; }
 
  private:
