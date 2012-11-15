@@ -67,7 +67,7 @@ void htif_t::start(int coreid)
     uint32_t buf[16] = {mem_mb(), ncores};
     write_chunk(0, sizeof(buf), (uint8_t *)buf);
 
-    for (int i = 64; i < 69; i++)
+    for (int i = 64; i < 68; i++)
         write_cr(i, 29, 1);
 
     for (int i = 0; i < ncores; i++)
@@ -121,8 +121,8 @@ void htif_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
   while (len)
   {
     size_t sz = std::min(len, chunk_max_size());
-
-    packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno), taddr/HTIF_DATA_ALIGN);
+	// Addresses I send are assumed to be cache aligned unlike the reference implementation.
+    packet_t req(packet_header_t(HTIF_CMD_WRITE_MEM, seqno), taddr/HTIF_DATA_ALIGN/8);
     req.set_payload(src, sz, false);
 
     if (writezeros || memcmp(zeros, src, sz) != 0)
@@ -162,9 +162,9 @@ reg_t htif_t::write_cr(int coreid, int regnum, reg_t val)
   packet_t resp = read_packet(seqno);
   seqno++;
 
-  fprintf(stderr, "size: %d\n", resp.get_payload_size());
-  for (int i = 0; i < resp.get_payload_size(); i++)
-      fprintf(stderr, "0x%x\n", resp.get_payload()[i]);
+  //fprintf(stderr, "size: %d\n", resp.get_payload_size());
+  //for (int i = 0; i < resp.get_payload_size(); i++)
+  //    fprintf(stderr, "0x%x\n", resp.get_payload()[i]);
   assert(resp.get_payload_size() == sizeof(reg_t));
   memcpy(&val, resp.get_payload(), sizeof(reg_t));
   return val;

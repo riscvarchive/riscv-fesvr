@@ -19,8 +19,8 @@
 #include <net/bpf.h>
 #endif
 
-//#define debug(...)
-#define debug(...) fprintf(stderr,__VA_ARGS__)
+#define debug(...)
+//#define debug(...) fprintf(stderr,__VA_ARGS__)
 
 struct eth_packet_t
 {
