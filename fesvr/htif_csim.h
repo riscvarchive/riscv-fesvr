@@ -33,6 +33,11 @@ class htif_csim_t : public htif_t
     nBuf[3] = 0x95;
     nBuf[4] = 0xe8;
     nBuf[5] = 0x6c;
+    nBuf[6] = 0xde;
+    nBuf[7] = 0xad;
+    nBuf[8] = 0xbe;
+    nBuf[9] = 0xef;
+    nBuf[13] = size;
     memcpy(nBuf+14, buf, size);
     //fprintf(stderr, "write: ");
     //for (int i = 0; i < size; i++)

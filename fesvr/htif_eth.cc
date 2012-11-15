@@ -258,7 +258,7 @@ ssize_t htif_eth_t::write(const void* buf, size_t size)
   eth_packet_t eth_packet;
   memcpy(eth_packet.dst_mac, dst_mac, sizeof(dst_mac));
   memcpy(eth_packet.src_mac, src_mac, sizeof(src_mac));
-  eth_packet.ethertype = htons(HTIF_ETHERTYPE);
+  eth_packet.ethertype = htons(size);
 //  eth_packet.pad = 0;
   memcpy(&eth_packet.htif_header, buf, size);
   size += 16; //offsetof(eth_packet_t, htif_header)

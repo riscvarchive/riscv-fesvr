@@ -65,7 +65,7 @@ void htif_t::start(int coreid)
     writezeros = true;
 
     uint32_t buf[16] = {mem_mb(), ncores};
-    //write_chunk(0, sizeof(buf), (uint8_t *)buf);
+    write_chunk(0, sizeof(buf), (uint8_t *)buf);
 
     for (int i = 0; i < ncores; i++)
     {
