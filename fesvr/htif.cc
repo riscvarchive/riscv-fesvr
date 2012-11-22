@@ -94,7 +94,7 @@ void htif_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
   while (len)
   {
     size_t sz = std::min(len, chunk_max_size());
-    packet_t req(packet_header_t(HTIF_CMD_READ_MEM, seqno), taddr/HTIF_DATA_ALIGN);
+    packet_t req(packet_header_t(HTIF_CMD_READ_MEM, seqno), taddr/HTIF_DATA_ALIGN/8);
 
     write_packet(req);
     packet_t resp = read_packet(seqno);
