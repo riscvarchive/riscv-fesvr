@@ -335,6 +335,7 @@ void configure_cores(htif_t* htif, int ncores) {
     // West Tap
 
     // Core - 0
+    htif->write_cr(0, A_ROUTE_TABLE, ((uint64_t)64 << 56) | 1);
     htif->write_cr(0, A_CHIPLET_ID, 0);
     for (int i = 0; i < 68; i++)
         htif->write_cr(0, A_ROUTE_TABLE, ((uint64_t)i << 56) | 1);
