@@ -16,7 +16,7 @@ class htif_csim_t : public htif_t
   ssize_t read(void* buf, size_t max_size)
   {
     int ret = ::read(fdin, buf, max_size+14);
-    memcpy(buf,(uint8_t *)buf+14,max_size-14);
+    memcpy(buf,(uint8_t *)buf+14,ret-14);
     //fprintf(stderr, "read (%d): ", ret - 14);
     //for (int i = 0; i < ret - 14; i++)
     //    fprintf(stderr, "%x ", *((uint8_t *)buf+i));
