@@ -16,12 +16,21 @@
 uint64_t mainvars[512];
 size_t mainvars_sz;
 
+unsigned int count_1bits(unsigned int x)
+{
+  x = x - ((x >> 1) & 0x55555555);
+  x = (x & 0x33333333) + ((x >> 2) & 0x33333333);
+  x = x + (x >> 8);
+  x = x + (x >> 16);
+  return x & 0x0000003F;
+}
 
 int main(int argc, char** argv)
 {
   int exit_code = 0;
   bool pkrun = true;
   bool testrun = false;
+  bool testmem = false;
   htif_t* htif = NULL;
   int coreid = 0, i;
   addr_t sig_addr = 0;
@@ -69,6 +78,8 @@ int main(int argc, char** argv)
     }
     else if (s == "-assume0init")
       assume0init = true;
+    else if (s == "-testmem")
+      testmem = true;
     else
       htif_args.push_back(argv[i]);
   }
@@ -83,6 +94,72 @@ int main(int argc, char** argv)
   }
   htif->assume0init(assume0init);
   memif_t memif(htif);
+
+  //while (true) {
+  //  for (i=0; i<32; i++)
+  //    htif->write_cr(0, i, 1);
+  //  for (i=0; i<32; i++)
+  //    printf("cr %d = %d\n", i, htif->read_cr(0, i));
+  //}
+
+  if (testmem)
+  {
+    fprintf(stderr, "running memory test...\n");
+
+    int nwords = 1024*1024/8;
+    uint64_t* target_memory = new uint64_t[nwords]; // 1MB
+    srand(time(NULL));
+    for (int a=0; a<nwords; a++)
+      target_memory[a] = random() << 32 | random();
+    for (int a=0; a<nwords/8; a++) {
+      memif.write(a*64, 64, (uint8_t*)&target_memory[a*8]);
+      fprintf(stderr, "\rwrote %016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx at 0x%08x",
+        target_memory[a*8],
+        target_memory[a*8+1],
+        target_memory[a*8+2],
+        target_memory[a*8+3],
+        target_memory[a*8+4],
+        target_memory[a*8+5],
+        target_memory[a*8+6],
+        target_memory[a*8+7],
+        a*64);
+    }
+    fprintf(stderr, "\n");
+
+    int failcnt = 0;
+    uint64_t chunk[8];
+    for (int a=0; a<nwords/8; a++) {
+      memif.read(a*64, 64, (uint8_t*)chunk);
+      fprintf(stderr, "\rread  %016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx at 0x%08x",
+        chunk[0],
+        chunk[1],
+        chunk[2],
+        chunk[3],
+        chunk[4],
+        chunk[5],
+        chunk[6],
+        chunk[7],
+        a*64);
+      bool fail = false; 
+      for (int l=0; l<8; l++) {
+        uint64_t diff = chunk[l] ^ target_memory[a*8+l];
+        if (diff) {
+          if (!fail) {
+            fprintf(stderr, "\n");
+            fail = true;
+          }
+          fprintf(stderr, "mem diff at memory location 0x%08x, desired=%016lx, read=%016lx\n", a*8+l, target_memory[a*8+l], chunk[l]);
+        }
+        failcnt += count_1bits(diff);
+        failcnt += count_1bits(diff>>32);
+      }
+    }
+    fprintf(stderr, "\n");
+
+    fprintf(stderr, "done memory test BER=%d/%d=%.9f...\n", failcnt, nwords*8*8, (double)failcnt/(double(nwords*8*8)));
+     
+    delete [] target_memory;
+  }
 
   if (i == argc) // make sure the user specified a target program
   {
