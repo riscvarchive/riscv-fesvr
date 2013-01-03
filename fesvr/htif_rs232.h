@@ -21,7 +21,7 @@ class htif_rs232_t : public htif_t
 
  protected:
   ssize_t read(void* buf, size_t max_size);
-  ssize_t write(const void* buf, size_t size);
+  ssize_t write(const void* buf, size_t size, bool hack_reset);
 
   size_t chunk_max_size() { return 64; }
   size_t chunk_align() { return 64; }

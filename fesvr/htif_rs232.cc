@@ -55,7 +55,7 @@ ssize_t htif_rs232_t::read(void* buf, size_t max_size)
   return bytes;
 }
 
-ssize_t htif_rs232_t::write(const void* buf, size_t size)
+ssize_t htif_rs232_t::write(const void* buf, size_t size, bool hack_reset)
 {
   return ::write(fd, buf, size);
 }
