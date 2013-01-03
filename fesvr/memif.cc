@@ -119,8 +119,8 @@ void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
   else \
   { \
     uint8_t chunk[align]; \
-    htif->read_chunk(addr & ~align, align, chunk); \
-    memcpy(&val, chunk + (addr & align), sizeof(val)); \
+    htif->read_chunk(addr & ~(align-1), align, chunk); \
+    memcpy(&val, chunk + (addr & (align-1)), sizeof(val)); \
   } \
   return val
 
@@ -132,9 +132,9 @@ void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
   else \
   { \
     uint8_t chunk[align]; \
-    htif->read_chunk(addr & ~align, align, chunk); \
-    memcpy(chunk + (addr & align), &val, sizeof(val)); \
-    htif->write_chunk(addr & ~align, align, chunk); \
+    htif->read_chunk(addr & ~(align-1), align, chunk); \
+    memcpy(chunk + (addr & (align-1)), &val, sizeof(val)); \
+    htif->write_chunk(addr & ~(align-1), align, chunk); \
   } \
   return
 
