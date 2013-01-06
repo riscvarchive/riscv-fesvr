@@ -73,12 +73,6 @@ MCPPBS_ALWAYS_USE_CXX
 
 MCPPBS_PROG_INSTALL
 
-# Check for an isa simulator with the name host-isa-run or host-run.
-# This simulator will be used for running unit test programs in
-# non-native builds.
-
-MCPPBS_PROG_RUN
-
 #-------------------------------------------------------------------------
 # MCPPBS subproject includes
 #-------------------------------------------------------------------------

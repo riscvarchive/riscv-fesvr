@@ -2,6 +2,7 @@
 #include "htif_csim.h"
 #include "htif_rs232.h"
 #include "htif_eth.h"
+#include "htif_zedboard.h"
 #include "memif.h"
 #include "elf.h"
 #include "syscall.h"
@@ -40,7 +41,8 @@ int main(int argc, char** argv)
     SIMTYPE_ISA,
     SIMTYPE_RS232,
     SIMTYPE_ETH,
-    SIMTYPE_CSIM
+    SIMTYPE_CSIM,
+    SIMTYPE_ZEDBOARD,
   } simtype = SIMTYPE_ISA;
 
   std::vector<char*> htif_args;
@@ -58,6 +60,8 @@ int main(int argc, char** argv)
       simtype = SIMTYPE_RS232;
     else if (s == "-eth")
       simtype = SIMTYPE_ETH;
+    else if (s == "-z")
+      simtype = SIMTYPE_ZEDBOARD;
     else if (s.substr(0,2) == "-c")
     {
       simtype = SIMTYPE_CSIM;
@@ -96,6 +100,7 @@ int main(int argc, char** argv)
     case SIMTYPE_RS232: htif = new htif_rs232_t(ncores, htif_args); break;
     case SIMTYPE_ETH: htif = new htif_eth_t(ncores, htif_args); break;
     case SIMTYPE_CSIM: htif = new htif_csim_t(ncores, csim_name, htif_args); break;
+    case SIMTYPE_ZEDBOARD: htif = new htif_zedboard_t(ncores, htif_args); break;
     default: abort();
   }
   htif->assume0init(assume0init);
