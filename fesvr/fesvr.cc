@@ -91,6 +91,7 @@ int main(int argc, char** argv)
       testmem = true;
       testmem_mb = atoi(argv[i+1]);
       i += 1;
+    }
     else if (s == "-write")
     {
       write = true;
@@ -118,7 +119,6 @@ int main(int argc, char** argv)
       write_count++;
       read_count++;
       i += 2;
->>>>>>> Stashed changes
     }
     else
       htif_args.push_back(argv[i]);
