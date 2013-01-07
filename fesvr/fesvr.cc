@@ -31,6 +31,7 @@ int main(int argc, char** argv)
   bool pkrun = true;
   bool testrun = false;
   bool testmem = false;
+  int testmem_mb = 0;
   htif_t* htif = NULL;
   int coreid = 0, i;
   addr_t sig_addr = 0;
@@ -79,7 +80,11 @@ int main(int argc, char** argv)
     else if (s == "-assume0init")
       assume0init = true;
     else if (s == "-testmem")
+    {
       testmem = true;
+      testmem_mb = atoi(argv[i+1]);
+      i += 1;
+    }
     else
       htif_args.push_back(argv[i]);
   }
@@ -104,14 +109,14 @@ int main(int argc, char** argv)
 
   if (testmem)
   {
-    fprintf(stderr, "running memory test...\n");
+    fprintf(stderr, "running memory test for %d MB...\n", testmem_mb);
 
-    int nwords = 1024*1024/8;
+    uint64_t nwords = testmem_mb*1024*1024/8;
     uint64_t* target_memory = new uint64_t[nwords]; // 1MB
     srand(time(NULL));
-    for (int a=0; a<nwords; a++)
+    for (uint64_t a=0; a<nwords; a++)
       target_memory[a] = random() << 32 | random();
-    for (int a=0; a<nwords/8; a++) {
+    for (uint64_t a=0; a<nwords/8; a++) {
       memif.write(a*64, 64, (uint8_t*)&target_memory[a*8]);
       fprintf(stderr, "\rwrote %016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx at 0x%08x",
         target_memory[a*8],
@@ -128,7 +133,7 @@ int main(int argc, char** argv)
 
     int failcnt = 0;
     uint64_t chunk[8];
-    for (int a=0; a<nwords/8; a++) {
+    for (uint64_t a=0; a<nwords/8; a++) {
       memif.read(a*64, 64, (uint8_t*)chunk);
       fprintf(stderr, "\rread  %016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx at 0x%08x",
         chunk[0],
