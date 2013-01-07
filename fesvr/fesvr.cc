@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <math.h>
 #include <vector>
 #include <string>
 
@@ -32,12 +33,18 @@ int main(int argc, char** argv)
   bool testrun = false;
   bool testmem = false;
   int testmem_mb = 0;
+  bool write = false;
+  bool read = false;
   htif_t* htif = NULL;
   int coreid = 0, i;
   addr_t sig_addr = 0;
   int sig_len = -1;
   bool assume0init = false;
   const char* csim_name = "./emulator";
+  std::vector<char*>filenames;
+  std::vector<size_t> start_addrs;
+  int read_count = 0;
+  int write_count = 0;
 
   enum {
     SIMTYPE_ISA,
@@ -84,6 +91,34 @@ int main(int argc, char** argv)
       testmem = true;
       testmem_mb = atoi(argv[i+1]);
       i += 1;
+    else if (s == "-write")
+    {
+      write = true;
+      assert(i + 1 < argc);
+      filenames.push_back(argv[i+1]);
+      start_addrs.push_back(atoi(argv[i+2]));
+      write_count++;
+      i += 2;
+    }
+    else if (s == "-read")
+    {
+      read = true;
+      assert(i + 1 < argc);
+      filenames.push_back(argv[i+1]);
+      start_addrs.push_back(atoi(argv[i+2]));
+      read_count++;
+      i += 2;
+    }
+    else if (s == "-rw")
+    {
+      read = true; write = true;
+      assert(i + 1 < argc);
+      filenames.push_back(argv[i+1]);
+      start_addrs.push_back(atoi(argv[i+2]));
+      write_count++;
+      read_count++;
+      i += 2;
+>>>>>>> Stashed changes
     }
     else
       htif_args.push_back(argv[i]);
@@ -106,6 +141,60 @@ int main(int argc, char** argv)
   //  for (i=0; i<32; i++)
   //    printf("cr %d = %d\n", i, htif->read_cr(0, i));
   //}
+  
+  for (int j = 0; j < std::max(write_count, read_count); j++) {
+    size_t fsz;
+    char* buf;
+    size_t start_addr = start_addrs[j];
+
+    if (write || read)
+    {
+      // filesize in bytes
+      FILE* file = fopen(filenames[j], "rb+");
+      fseek(file, 0, SEEK_END);
+      fsz = ftell(file);
+      rewind(file);
+
+      // read in the file
+      buf = new char[fsz];
+      fread(buf, fsz, 1, file);
+      fclose(file);
+    }
+
+    if (write)
+    {
+      fprintf(stderr, "writing in data...\n");
+
+      // write it out to the target mem
+      for(size_t pos = 0; pos < fsz; pos+=64*1024) {
+        memif.write(start_addr+pos, std::min(64*1024,(int)(fsz-pos)), (uint8_t*)&buf[pos]);
+        fprintf(stderr, "\rwrote %d%%", pos*100/fsz);
+      }
+      fprintf(stderr, "\n");
+    }
+
+    if (read)
+    {
+      fprintf(stderr, "reading in data..\n");
+
+      char* read_buf = new char[fsz];
+      for (size_t pos = 0; pos < fsz; pos+=64*1024) {
+        size_t len = std::min((size_t)(64*1024),fsz-pos);
+        memif.read(start_addr+pos, len, (uint8_t*)(read_buf+pos));
+        fprintf(stderr, "\rread %d%%", pos*100/fsz);
+
+        for (size_t check = pos; check < pos + len; check++) {
+          char diff = buf[check] ^ read_buf[check];
+          if (diff) printf("Memory diff at 0x%08X. Expected: %02X. Got: %02X\n", start_addr+check, (unsigned char)buf[check], (unsigned char)read_buf[check]);
+        }
+      }
+
+      fprintf(stderr, "\n");
+      delete [] read_buf;
+    }
+
+    if (read || write) delete [] buf;
+  }
 
   if (testmem)
   {
