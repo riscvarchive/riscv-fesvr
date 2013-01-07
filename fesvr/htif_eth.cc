@@ -226,43 +226,31 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
   return -1;
 }
 
-ssize_t htif_eth_t::write(const void* buf, size_t size, bool hack_reset)
+ssize_t htif_eth_t::write(const void* buf, size_t size)
 {
   debug("write packet\n");
   for(size_t i = 0; i < size; i++)
     debug("%02x ",((const unsigned char*)buf)[i]);
   debug("\n");
 
-  int loop = 1;
-  if (hack_reset) loop = 2;
+  eth_packet_t eth_packet;
+  memset(eth_packet.dst_mac, -1, sizeof(src_mac));
+  memcpy(eth_packet.src_mac, src_mac, sizeof(src_mac));
+  eth_packet.ethertype = htons(HTIF_ETHERTYPE);
+  eth_packet.pad = 0;
+  memcpy(&eth_packet.htif_header, buf, size);
+  size += 16; //offsetof(eth_packet_t, htif_header)
 
-  ssize_t len;
-  for (int i=0; i<loop; i++)
-  {
-    eth_packet_t eth_packet;
-    memset(eth_packet.dst_mac, -1, sizeof(src_mac));
-    memcpy(eth_packet.src_mac, src_mac, sizeof(src_mac));
-    // 0x8889 is chip_reset = 1'b1
-    // 0x888A is chip_reset = 1'b0
-    // which in turn resets the core's reset
-    // this is a workaround for the reset problem
-    eth_packet.ethertype = htons(HTIF_ETHERTYPE+i+1);
-    eth_packet.pad = 0;
-    memcpy(&eth_packet.htif_header, buf, size);
-    size += 16; //offsetof(eth_packet_t, htif_header)
-
-    #ifdef __linux__
-    if(rtlsim)
-      len = ::write(sock, (char*)&eth_packet, size);
-    else
-      len = ::sendto(sock, (char*)&eth_packet, size, 0,
-                      (sockaddr*)&src_addr, sizeof(src_addr));
-    #elif __APPLE__
-    if (rtlsim)
-      len = -1;
-    else
-      len = ::write(sock, (char*)&eth_packet, size);
-    #endif
-  }
-  return len;
+  #ifdef __linux__
+  if(rtlsim)
+    return ::write(sock, (char*)&eth_packet, size);
+  else
+    return ::sendto(sock, (char*)&eth_packet, size, 0,
+                    (sockaddr*)&src_addr, sizeof(src_addr));
+  #elif __APPLE__
+  if (rtlsim)
+    return -1;
+  else
+    return ::write(sock, (char*)&eth_packet, size);
+  #endif
 }

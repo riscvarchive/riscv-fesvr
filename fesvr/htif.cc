@@ -42,7 +42,8 @@ packet_t htif_t::read_packet(seqno_t expected_seqno)
   return p;
 }
 
-void htif_t::write_packet(const packet_t& p, bool hack_reset)
+#include <stdio.h>
+void htif_t::write_packet(const packet_t& p)
 {
   uint64_t buf[(p.get_size()+7)/8];
   *(packet_header_t*)buf = p.get_header();
@@ -139,8 +140,7 @@ void htif_t::write_cr(int coreid, int regnum, reg_t val)
                                coreid << 20 | regnum));
   req.set_payload(&val, sizeof(reg_t));
 
-  bool hack_reset = (regnum == 29 && val == 1);
-  write_packet(req, hack_reset);
+  write_packet(req);
   read_packet(seqno);
   seqno++;
 }

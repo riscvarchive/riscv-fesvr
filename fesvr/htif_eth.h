@@ -41,7 +41,7 @@ public:
 
 protected:
   ssize_t read(void* buf, size_t max_size);
-  ssize_t write(const void* buf, size_t size, bool hack_reset);
+  ssize_t write(const void* buf, size_t size);
 
   int sock;
   sockaddr_ll_t src_addr;

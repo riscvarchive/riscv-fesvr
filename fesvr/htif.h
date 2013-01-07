@@ -26,14 +26,14 @@ class htif_t
   virtual size_t chunk_max_size() = 0;
 
   virtual ssize_t read(void* buf, size_t max_size) = 0;
-  virtual ssize_t write(const void* buf, size_t size, bool hack_reset = false) = 0;
+  virtual ssize_t write(const void* buf, size_t size) = 0;
 
  private:
   bool writezeros;
   seqno_t seqno;
 
   virtual packet_t read_packet(seqno_t expected_seqno);
-  virtual void write_packet(const packet_t& packet, bool hack_reset = false);
+  virtual void write_packet(const packet_t& packet);
 
   friend class memif_t;
 };

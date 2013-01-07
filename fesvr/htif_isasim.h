@@ -16,7 +16,7 @@ class htif_isasim_t : public htif_t
     return ::read(fdin, buf, max_size);
   }
 
-  ssize_t write(const void* buf, size_t size, bool hack_reset)
+  ssize_t write(const void* buf, size_t size)
   {
     return ::write(fdout, buf, size);
   }
