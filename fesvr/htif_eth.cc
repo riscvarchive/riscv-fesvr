@@ -261,7 +261,7 @@ ssize_t htif_eth_t::write(const void* buf, size_t size)
   eth_packet.ethertype = htons(size);
 //  eth_packet.pad = 0;
   memcpy(&eth_packet.htif_header, buf, size);
-  size += 16; //offsetof(eth_packet_t, htif_header)
+  size += 14; //offsetof(eth_packet_t, htif_header)
 
   #ifdef __linux__
   if(rtlsim)
