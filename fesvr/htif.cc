@@ -83,6 +83,7 @@ void htif_t::start(int coreid)
 
 void htif_t::stop(int coreid)
 {
+  write_cr(64, 29, 1);
   write_cr(coreid, 29, 1);
 }
 

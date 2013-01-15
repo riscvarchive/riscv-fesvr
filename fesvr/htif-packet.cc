@@ -38,6 +38,14 @@ void packet_t::set_payload(const void* pay, size_t size, bool isResp)
     for (int i = 0; i < size; i++)
         payload[addr_width+i] = ((uint8_t *) pay)[size-i-1];
     //memcpy(payload+addr_width, pay, payload_size-addr_width);
+     if (size == 64) {
+        uint8_t *temp = new uint8_t[64];
+        // 0,1,2,3 -> 3,2,1,0
+        for (int i = 0; i < 4; i++)
+            memcpy(temp+16*i, payload+addr_width+i*16, 16);
+        for (int i = 0; i < 4; i++)
+            memcpy(payload+addr_width+i*16, temp + 16*(3-i), 16);
+    }
   }
 }
 
