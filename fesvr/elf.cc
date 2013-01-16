@@ -6,6 +6,7 @@
 #include "elf.h"
 #include "memif.h"
 #include <stdlib.h>
+#include <vector>
 
 void load_elf(const char* fn, memif_t* memif)
 {
@@ -40,6 +41,8 @@ void load_elf(const char* fn, memif_t* memif)
   const Elf64_Ehdr* eh64 = (const Elf64_Ehdr*)buf;
   assert(strncmp((const char*)eh64->e_ident,ELFMAG,strlen(ELFMAG)) == 0);
 
+  std::vector<uint8_t> zeros;
+
   #define LOAD_ELF do { \
     eh = (typeof(eh))buf; \
     assert(size >= eh->e_phoff + eh->e_phnum*sizeof(*ph)); \
@@ -48,7 +51,8 @@ void load_elf(const char* fn, memif_t* memif)
       if(ph->p_type == SHT_PROGBITS && ph->p_memsz) { \
         assert(size >= ph->p_offset + ph->p_filesz); \
         memif->write(ph->p_paddr, ph->p_filesz, (uint8_t*)buf + ph->p_offset); \
-        memif->write(ph->p_paddr + ph->p_filesz, ph->p_memsz - ph->p_filesz, NULL); \
+        zeros.resize(ph->p_memsz - ph->p_filesz); \
+        memif->write(ph->p_paddr + ph->p_filesz, ph->p_memsz - ph->p_filesz, &zeros[0]); \
       } \
     } \
   } while(0)

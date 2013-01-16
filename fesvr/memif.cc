@@ -35,10 +35,9 @@
 #include "memif.h"
 #include "htif.h"
 
-#define align (htif->chunk_align())
-
-void memif_t::read(addr_t addr, size_t len, uint8_t* bytes)
+void memif_t::read(addr_t addr, size_t len, void* bytes)
 {
+  size_t align = htif->chunk_align();
   if (len && (addr & (align-1)))
   {
     size_t this_len = std::min(len, align - size_t(addr & (align-1)));
@@ -47,7 +46,7 @@ void memif_t::read(addr_t addr, size_t len, uint8_t* bytes)
     htif->read_chunk(addr & ~(align-1), align, chunk);
     memcpy(bytes, chunk + (addr & (align-1)), this_len);
 
-    bytes += this_len;
+    bytes = (char*)bytes + this_len;
     addr += this_len;
     len -= this_len;
   }
@@ -59,33 +58,29 @@ void memif_t::read(addr_t addr, size_t len, uint8_t* bytes)
     uint8_t chunk[align];
 
     htif->read_chunk(addr + start, align, chunk);
-    memcpy(bytes + start, chunk, this_len);
+    memcpy((char*)bytes + start, chunk, this_len);
 
     len -= this_len;
   }
 
   // now we're aligned
-  if (len)
-    htif->read_chunk(addr, len, bytes);
+  for (size_t pos = 0; pos < len; pos += htif->chunk_max_size())
+    htif->read_chunk(addr + pos, std::min(htif->chunk_max_size(), len - pos), (char*)bytes + pos);
 }
 
-#include <stdio.h>
-void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
+void memif_t::write(addr_t addr, size_t len, const void* bytes)
 {
+  size_t align = htif->chunk_align();
   if (len && (addr & (align-1)))
   {
     size_t this_len = std::min(len, align - size_t(addr & (align-1)));
     uint8_t chunk[align];
 
     htif->read_chunk(addr & ~(align-1), align, chunk);
-    if (bytes != NULL)
-      memcpy(chunk + (addr & (align-1)), bytes, this_len);
-    else
-      memset(chunk + (addr & (align-1)), 0, this_len);
+    memcpy(chunk + (addr & (align-1)), bytes, this_len);
     htif->write_chunk(addr & ~(align-1), align, chunk);
 
-    if (bytes != NULL)
-      bytes += this_len;
+    bytes = (char*)bytes + this_len;
     addr += this_len;
     len -= this_len;
   }
@@ -97,46 +92,28 @@ void memif_t::write(addr_t addr, size_t len, const uint8_t* bytes)
     uint8_t chunk[align];
 
     htif->read_chunk(addr + start, align, chunk);
-    if (bytes != NULL)
-      memcpy(chunk, bytes + start, this_len);
-    else
-      memset(chunk, 0, this_len);
+    memcpy(chunk, (char*)bytes + start, this_len);
     htif->write_chunk(addr + start, align, chunk);
 
     len -= this_len;
   }
 
   // now we're aligned
-  if (len)
-    htif->write_chunk(addr, len, bytes);
+  size_t max_chunk = htif->chunk_max_size();
+  for (size_t pos = 0; pos < len; pos += max_chunk)
+    htif->write_chunk(addr + pos, std::min(max_chunk, len - pos), (char*)bytes + pos);
 }
 
 #define MEMIF_READ_FUNC \
   if(addr & (sizeof(val)-1)) \
     throw std::runtime_error("misaligned address"); \
-  if(align <= sizeof(val)) \
-    htif->read_chunk(addr, sizeof(val), (uint8_t*)&val); \
-  else \
-  { \
-    uint8_t chunk[align]; \
-    htif->read_chunk(addr & ~(align-1), align, chunk); \
-    memcpy(&val, chunk + (addr & (align-1)), sizeof(val)); \
-  } \
+  this->read(addr, sizeof(val), &val); \
   return val
 
 #define MEMIF_WRITE_FUNC \
   if(addr & (sizeof(val)-1)) \
     throw std::runtime_error("misaligned address"); \
-  if(align <= sizeof(val)) \
-    htif->write_chunk(addr, sizeof(val), (uint8_t*)&val); \
-  else \
-  { \
-    uint8_t chunk[align]; \
-    htif->read_chunk(addr & ~(align-1), align, chunk); \
-    memcpy(chunk + (addr & (align-1)), &val, sizeof(val)); \
-    htif->write_chunk(addr & ~(align-1), align, chunk); \
-  } \
-  return
+  this->write(addr, sizeof(val), &val)
 
 uint8_t memif_t::read_uint8(addr_t addr)
 {

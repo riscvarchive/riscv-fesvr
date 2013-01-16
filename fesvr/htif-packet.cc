@@ -2,36 +2,46 @@
 #include <string.h>
 
 packet_t::packet_t(const packet_header_t& hdr)
-  : header(hdr), payload(NULL), payload_size(0)
 {
+  header = hdr;
+  init(NULL, 0);
+}
+
+packet_t::packet_t(const void* pkt, size_t size)
+{
+  memcpy(&header, pkt, sizeof(header));
+  init((char*)pkt + sizeof(header), size - sizeof(header));
 }
 
 packet_t::packet_t(const packet_t& p)
-  : header(p.header), payload(NULL), payload_size(0)
 {
-  set_payload(p.payload, p.payload_size);
+  header = p.header;
+  init(p.get_payload(), get_payload_size());
 }
 
-void packet_t::set_payload(const void* pay, size_t size)
+packet_t::packet_t(const packet_header_t& hdr, const void* payload, size_t paysize)
 {
-  delete [] payload;
+  header = hdr;
+  init(payload, paysize);
+}
 
-  payload = NULL;
-  payload_size = size;
+void packet_t::init(const void* pay, size_t paysize)
+{
+  if (paysize != get_payload_size())
+    throw packet_error("bad payload paysize");
 
-  if (payload_size)
+  if (paysize)
   {
-    payload = new uint8_t[payload_size];
-    memcpy(payload, pay, payload_size);
+    packet = new uint8_t[sizeof(header) + paysize];
+    memcpy(packet, &header, sizeof(header));
+    memcpy((char*)packet + sizeof(header), pay, paysize);
   }
+  else
+    packet = (uint8_t*)&header;
 }
 
 packet_t::~packet_t()
 {
-  delete [] payload;
-}
-
-size_t packet_t::get_size() const
-{
-  return sizeof(packet_header_t) + payload_size;
+  if (packet != (uint8_t*)&header)
+    delete [] packet;
 }

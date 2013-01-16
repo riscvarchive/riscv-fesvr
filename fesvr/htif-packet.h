@@ -15,7 +15,7 @@ enum
   HTIF_CMD_NACK,
 };
 
-#define HTIF_DATA_ALIGN 8
+#define HTIF_DATA_ALIGN 8U
 
 typedef uint8_t seqno_t;
 typedef uint64_t reg_t;
@@ -41,20 +41,27 @@ class packet_t
 {
  public:
   packet_t(const packet_header_t& hdr);
+  packet_t(const packet_header_t& hdr, const void* payload, size_t paysize);
+  packet_t(const void* packet, size_t size);
   packet_t(const packet_t& p);
   ~packet_t();
 
-  void set_payload(const void* payload, size_t size);
-
   packet_header_t get_header() const { return header; }
-  const uint8_t* get_payload() const { return payload; }
-  size_t get_payload_size() const { return payload_size; }
-  size_t get_size() const;
+  const uint8_t* get_payload() const { return packet + sizeof(header); }
+  size_t get_size() const { return sizeof(header) + get_payload_size(); }
+  const uint8_t* get_packet() const { return packet; }
+  size_t get_payload_size() const
+  {
+    if (header.cmd == HTIF_CMD_READ_MEM || header.cmd == HTIF_CMD_READ_CONTROL_REG)
+      return 0;
+    return header.data_size * HTIF_DATA_ALIGN;
+  }
 
  private:
   packet_header_t header;
-  uint8_t* payload;
-  size_t payload_size;
+  uint8_t* packet;
+
+  void init(const void* payload, size_t payload_size);
 };
 
 class packet_error : public std::runtime_error

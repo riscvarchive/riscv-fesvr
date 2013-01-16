@@ -44,8 +44,8 @@ public:
   virtual ~memif_t(){}
 
   // read and write byte arrays
-  virtual void read(addr_t addr, size_t len, uint8_t* bytes);
-  virtual void write(addr_t addr, size_t len, const uint8_t* bytes);
+  virtual void read(addr_t addr, size_t len, void* bytes);
+  virtual void write(addr_t addr, size_t len, const void* bytes);
 
   // read and write 8-bit words
   virtual uint8_t read_uint8(addr_t addr);

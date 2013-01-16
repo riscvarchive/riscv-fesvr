@@ -12,24 +12,28 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
+#include <signal.h>
 #include <vector>
 #include <queue>
 #include <string>
 
 uint64_t mainvars[512];
 size_t mainvars_sz;
+htif_t* htif = NULL;
+struct termios old_tios;
 
 void load_pk(memif_t* memif);
 void load_program(const char* name, memif_t* memif);
-int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len);
-void poll_devices(htif_t* htif);
+int poll_tohost(int coreid, addr_t sig_addr, int sig_len);
+void poll_devices();
+void cleanup();
+void handle_sigint(int);
 
 int main(int argc, char** argv)
 {
   int exit_code = 0;
   bool pkrun = true;
   bool testrun = false;
-  htif_t* htif = NULL;
   int ncores = 1, i;
   int coreid = -1;
   addr_t sig_addr = 0;
@@ -94,6 +98,9 @@ int main(int argc, char** argv)
       htif_args.push_back(argv[i]);
   }
 
+  tcgetattr(0, &old_tios);
+  signal(SIGINT, handle_sigint);
+
   switch (simtype) // instantiate appropriate HTIF
   {
     case SIMTYPE_ISA: htif = new htif_isasim_t(ncores, htif_args); break;
@@ -127,8 +134,16 @@ int main(int argc, char** argv)
 
   if (pkrun)
     load_pk(&htif->memif());
-  else if (strcmp(target_argv[0], "none") != 0)
-    load_program(target_argv[0], &htif->memif());
+  else
+  {
+    if (strcmp(target_argv[0], "none") != 0)
+      load_program(target_argv[0], &htif->memif());
+
+    struct termios new_tios = old_tios;
+    new_tios.c_lflag &= ~(ICANON | ECHO);
+    new_tios.c_cc[VMIN] = 0;
+    tcsetattr(0, TCSANOW, &new_tios);
+  }
 
   if (coreid == -1)
   {
@@ -142,13 +157,12 @@ int main(int argc, char** argv)
   }
 
   if (testrun)
-    exit_code = poll_tohost(htif, coreid, sig_addr, sig_len);
+    exit_code = poll_tohost(coreid, sig_addr, sig_len);
   else
-    poll_devices(htif);
+    poll_devices();
 
   htif->stop(coreid);
-  delete htif;
-
+  cleanup();
   return exit_code;
 }
 
@@ -187,7 +201,7 @@ void load_program(const char* name, memif_t* memif)
   load_elf(name, memif);
 }
 
-int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len)
+int poll_tohost(int coreid, addr_t sig_addr, int sig_len)
 {
   reg_t tohost;
   while ((tohost = htif->read_cr(coreid, 30)) == 0);
@@ -229,7 +243,7 @@ struct core_status
   reg_t poll_keyboard;
 };
 
-void poll_devices(htif_t* htif)
+void poll_devices()
 {
   std::vector<core_status> status(htif->num_cores());
 
@@ -285,12 +299,6 @@ void poll_devices(htif_t* htif)
       core_status& s = status[coreid];
       if (s.poll_keyboard)
       {
-        struct termios old_tios, new_tios;
-        tcgetattr(0, &old_tios);
-        new_tios = old_tios;
-        new_tios.c_lflag &= ~(ICANON | ECHO);
-        new_tios.c_cc[VMIN] = 0;
-        tcsetattr(0, TCSANOW, &new_tios);
         unsigned char ch;
         if (read(0, &ch, 1) == 1)
         {
@@ -302,7 +310,6 @@ void poll_devices(htif_t* htif)
           s.fromhost.push(s.poll_keyboard | 0x100);
           s.poll_keyboard = 0;
         }
-        tcsetattr(0, TCSANOW, &old_tios);
       }
 
       if (!s.fromhost.empty())
@@ -317,4 +324,16 @@ void poll_devices(htif_t* htif)
       }
     }
   }
+}
+
+void cleanup()
+{
+  tcsetattr(0, TCSANOW, &old_tios);
+  delete htif;
+}
+
+void handle_sigint(int signum)
+{
+  cleanup();
+  abort();
 }
