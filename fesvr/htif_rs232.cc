@@ -10,17 +10,17 @@
 #define debug(...)
 //#define debug(...) fprintf(stderr,__VA_ARGS__)
 
-htif_rs232_t::htif_rs232_t(int ncores, std::vector<char*> args)
-  : htif_t(ncores)
+htif_rs232_t::htif_rs232_t(const std::vector<std::string>& args)
+  : htif_t(args)
 {
-  char* tty = NULL;
-  for (size_t i = 0; i < args.size(); i++)
-    if (strncmp(args[i], "+if=", 4) == 0)
-      tty = args[i] + 4;
-  assert(tty);
+  std::string tty;
+  for (std::vector<std::string>::const_iterator a = host_args().begin(); a != host_args().end(); ++a)
+    if (a->substr(0, 4) == "+if=")
+      tty = a->substr(4);
+  assert(tty.length());
 
   debug("opening %s\n",tty);
-  fd = open(tty,O_RDWR|O_NOCTTY);
+  fd = open(tty.c_str(), O_RDWR|O_NOCTTY);
   assert(fd != -1);
 
   struct termios tio;

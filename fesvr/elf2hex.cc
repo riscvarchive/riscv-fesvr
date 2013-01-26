@@ -1,7 +1,7 @@
 #include <iostream>
 #include "htif_hexwriter.h"
 #include "memif.h"
-#include "elf.h"
+#include "elfloader.h"
 
 int main(int argc, char** argv)
 {
@@ -25,9 +25,9 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  htif_hexwriter_t htif(width,depth);
+  htif_hexwriter_t htif(width, depth);
   memif_t memif(&htif);
-  load_elf(argv[3],&memif);
+  load_elf(argv[3], &memif);
   std::cout << htif;
 
   return 0;

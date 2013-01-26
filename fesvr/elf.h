@@ -21,11 +21,6 @@
 #ifndef _ELF_H
 #define	_ELF_H 1
 
-/* Front-End Server ELF loader */
-
-struct memif_t;
-void load_elf(const char* fn, memif_t* memif);
-
 /* Standard ELF types.  */
 
 #include <stdint.h>

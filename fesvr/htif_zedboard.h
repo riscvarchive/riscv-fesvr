@@ -7,10 +7,8 @@
 class htif_zedboard_t : public htif_t
 {
  public:
-  htif_zedboard_t(int ncores, std::vector<char*> args);
+  htif_zedboard_t(const std::vector<std::string>& args);
   ~htif_zedboard_t();
-
-  uint32_t mem_mb() { return 256; }
 
  protected:
   ssize_t read(void* buf, size_t max_size);
@@ -21,7 +19,6 @@ class htif_zedboard_t : public htif_t
 
  private:
   void poll_mem();
-  unsigned memsize_mb;
   uintptr_t* mem;
   volatile uintptr_t* dev_vaddr;
 

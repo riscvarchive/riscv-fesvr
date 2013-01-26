@@ -2,12 +2,18 @@
 #include <assert.h>
 #include "htif_hexwriter.h"
 
-void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
+htif_hexwriter_t::htif_hexwriter_t(size_t w, size_t d)
+  : htif_t(std::vector<std::string>()), width(w), depth(d)
+{
+}
+
+void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, void* vdst)
 {
   assert(len % chunk_align() == 0);
   assert(taddr < width*depth);
   assert(taddr+len <= width*depth);
 
+  uint8_t* dst = (uint8_t*)vdst;
   while(len)
   {
     if(mem[taddr/width].size() == 0)
@@ -22,23 +28,23 @@ void htif_hexwriter_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)
   }
 }
 
-void htif_hexwriter_t::write_chunk(addr_t taddr, size_t len, const uint8_t* src)
+void htif_hexwriter_t::write_chunk(addr_t taddr, size_t len, const void* vsrc)
 {
   assert(len % chunk_align() == 0);
   assert(taddr < width*depth);
   assert(taddr+len <= width*depth);
 
+  const uint8_t* src = (const uint8_t*)vsrc;
   while(len)
   {
     if(mem[taddr/width].size() == 0)
       mem[taddr/width].resize(width,0);
 
     for(size_t j = 0; j < width; j++)
-      mem[taddr/width][j] = src ? src[j] : 0;
+      mem[taddr/width][j] = src[j];
 
     len -= width;
     taddr += width;
-    if (src) src += width;
   }
 }
 

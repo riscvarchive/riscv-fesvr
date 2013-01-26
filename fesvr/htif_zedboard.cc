@@ -8,8 +8,8 @@
 #define read_reg(r) (dev_vaddr[r])
 #define write_reg(r, v) (dev_vaddr[r] = v)
 
-htif_zedboard_t::htif_zedboard_t(int ncores, std::vector<char*> args)
-  : htif_t(ncores)
+htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
+  : htif_t(args)
 {
   mem = (uintptr_t*)mmap(0, mem_mb() << 20, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
   assert(mem != MAP_FAILED);
@@ -28,28 +28,22 @@ htif_zedboard_t::~htif_zedboard_t()
 ssize_t htif_zedboard_t::write(const void* buf, size_t size)
 {
   poll_mem();
+
   const uint16_t* x = (const uint16_t*)buf;
-  for (size_t i = 0; i < size/sizeof(x[0]); i++)
-    write_reg(0, x[i]);
-  return size;
+  assert(size >= sizeof(*x));
+  write_reg(0, *x);
+  return sizeof(*x);
 }
 
 ssize_t htif_zedboard_t::read(void* buf, size_t max_size)
 {
+  poll_mem();
+
   uint16_t* x = (uint16_t*)buf;
-  for (size_t i = 0; ; )
-  {
-    uintptr_t v = read_reg(0);
-    if (v & 1)
-    {
-      assert((i+1)*sizeof(x[0]) <= max_size);
-      x[i++] = v >> 1;
-    }
-    else if (i == 0)
-      poll_mem();
-    else
-      return i*sizeof(x[0]);
-  }
+  assert(max_size >= sizeof(*x));
+  uintptr_t v = read_reg(0);
+  *x = v >> 1;
+  return (v & 1) ? sizeof(*x) : 0;
 }
 
 void htif_zedboard_t::poll_mem()

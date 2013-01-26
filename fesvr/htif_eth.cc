@@ -32,22 +32,22 @@ struct eth_packet_t
   char htif_payload[ETH_MAX_DATA_SIZE];
 };
 
-htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
-  : htif_t(ncores), rtlsim(false)
+htif_eth_t::htif_eth_t(const std::vector<std::string>& args)
+  : htif_t(args), rtlsim(false)
 {
-  const char* mac_str = "feedfacebeef";
+  std::string mac_str = "feedfacebeef";
 #ifdef __linux__
-  const char* interface = "eth0";
+  std::string interface = "eth0";
 #elif __APPLE__
-  const char* interface = "en0";
+  std::string interface = "en0";
 #endif
-  for (size_t i = 0; i < args.size(); i++)
+  for (std::vector<std::string>::const_iterator a = host_args().begin(); a != host_args().end(); ++a)
   {
-    if (strncmp(args[i], "+if=", 4) == 0)
-      interface = args[i] + 4;
-    if (strncmp(args[i], "+mac=", 5) == 0)
-      mac_str = args[i] + 5, assert(strlen(mac_str) == 2*sizeof(dst_mac));
-    if (strcmp(args[i], "+sim") == 0)
+    if (a->substr(0, 4) == "+if=")
+      interface = a->substr(4);
+    if (a->substr(0, 5) == "+mac=")
+      mac_str = a->substr(5), assert(mac_str.length() == 2*sizeof(dst_mac));
+    if (*a == "+sim")
       rtlsim = true;
   }
 
@@ -59,16 +59,12 @@ htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
 #ifdef __linux__
   if(rtlsim)
   {
-    const char* socket_path = interface;
-    char socket_path_client[strlen(socket_path)+8];
-    strcpy(socket_path_client, socket_path);
-    strcat(socket_path_client, "client");
-
     struct sockaddr_un vs_addr, appserver_addr;
 
     // unlink should fail if nothing is wrong.
-    if (unlink(socket_path_client) == 0)
-      printf("Warning: removing existing unix domain socket %s\n", socket_path_client);
+    std::string client_path = interface + "client";
+    if (unlink(client_path.c_str()) == 0)
+      printf("Warning: removing existing unix domain socket %s\n", client_path.c_str());
 
     // Create the socket.
     sock = socket(AF_UNIX, SOCK_DGRAM, 0);
@@ -81,10 +77,10 @@ htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
     memset(&appserver_addr, 0, sizeof(appserver_addr));
 
     vs_addr.sun_family = AF_UNIX;
-    strcpy(vs_addr.sun_path, socket_path);
+    strcpy(vs_addr.sun_path, interface.c_str());
 
     appserver_addr.sun_family = AF_UNIX;
-    strcpy(appserver_addr.sun_path, socket_path_client);
+    strcpy(appserver_addr.sun_path, client_path.c_str());
 
     //bind to client address
     if (bind(sock, (struct sockaddr*)&appserver_addr, sizeof(appserver_addr))<0)
@@ -107,13 +103,13 @@ htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
 
     // get MAC address of local ethernet device
     struct ifreq ifr;
-    strcpy(ifr.ifr_name, interface);
+    strcpy(ifr.ifr_name, interface.c_str());
     if(ioctl(sock, SIOCGIFHWADDR, (char*)&ifr) == -1)
       throw std::runtime_error("ioctl() failed!");
     memcpy(&src_mac, &ifr.ifr_ifru.ifru_hwaddr.sa_data, sizeof(src_mac));
 
     memset(&src_addr, 0, sizeof(src_addr));
-    src_addr.sll_ifindex = if_nametoindex(interface);
+    src_addr.sll_ifindex = if_nametoindex(interface.c_str());
     src_addr.sll_family = AF_PACKET;
 
     if(bind(sock, (struct sockaddr *)&src_addr, sizeof(src_addr)) == -1)
@@ -142,7 +138,7 @@ htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
     throw std::runtime_error("getifaddrs() failed");
   for (ifa = ifaddr; ifa; ifa = ifa->ifa_next)
   {
-    if (strcmp(ifa->ifa_name, interface) == 0 && ifa->ifa_addr->sa_family == AF_LINK)
+    if (interface == ifa->ifa_name && ifa->ifa_addr->sa_family == AF_LINK)
     {
       memcpy(src_mac, LLADDR((sockaddr_dl*)ifa->ifa_addr), sizeof(src_mac));
       break;
@@ -153,7 +149,7 @@ htif_eth_t::htif_eth_t(int ncores, std::vector<char*> args)
   freeifaddrs(ifaddr);
 
   struct ifreq bound_if;
-  strcpy(bound_if.ifr_name, interface);
+  strcpy(bound_if.ifr_name, interface.c_str());
   if (ioctl(sock, BIOCSETIF, &bound_if) == -1)
       throw std::runtime_error("Failed to bind to interface!");
 

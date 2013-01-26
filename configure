@@ -3178,15 +3178,6 @@ fi
 
 
 
-# Use C++ compiler even for assembly and C source files
-
-
-  { $as_echo "$as_me:${as_lineno-$LINENO}: Will use ${CXX} for C and assembly source files" >&5
-$as_echo "$as_me: Will use ${CXX} for C and assembly source files" >&6;}
-  CC=${CXX}
-  CFLAGS=${CXXFLAGS}
-
-
 # Checks for install script and the stow program. Setup --enable-stow
 # command line flag for stow-based installs.
 

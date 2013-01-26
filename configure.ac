@@ -64,10 +64,6 @@ AC_CHECK_TOOL([RANLIB],[ranlib])
 
 MCPPBS_INIT
 
-# Use C++ compiler even for assembly and C source files
-
-MCPPBS_ALWAYS_USE_CXX
-
 # Checks for install script and the stow program. Setup --enable-stow
 # command line flag for stow-based installs.
 

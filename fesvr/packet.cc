@@ -1,27 +1,27 @@
-#include "htif-packet.h"
+#include "packet.h"
 #include <string.h>
 
 packet_t::packet_t(const packet_header_t& hdr)
+  : header(hdr)
 {
-  header = hdr;
   init(NULL, 0);
 }
 
-packet_t::packet_t(const void* pkt, size_t size)
+packet_t::packet_t(const void* pkt)
+  : header(pkt)
 {
-  memcpy(&header, pkt, sizeof(header));
-  init((char*)pkt + sizeof(header), size - sizeof(header));
+  init((char*)pkt + sizeof(header), get_payload_size());
 }
 
 packet_t::packet_t(const packet_t& p)
+  : header(p.header)
 {
-  header = p.header;
   init(p.get_payload(), get_payload_size());
 }
 
 packet_t::packet_t(const packet_header_t& hdr, const void* payload, size_t paysize)
+  : header(hdr)
 {
-  header = hdr;
   init(payload, paysize);
 }
 

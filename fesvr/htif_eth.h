@@ -26,10 +26,8 @@ const unsigned short HTIF_ETHERTYPE = 0x8888;
 class htif_eth_t : public htif_t
 {
 public:
-  htif_eth_t(int ncores, std::vector<char*> args);
+  htif_eth_t(const std::vector<std::string>& args);
   virtual ~htif_eth_t();
-
-  uint32_t mem_mb() { return 512; }
 
   size_t chunk_align() { return ETH_DATA_ALIGN; }
   size_t chunk_max_size() { return ETH_MAX_DATA_SIZE; }

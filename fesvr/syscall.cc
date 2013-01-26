@@ -1,5 +1,5 @@
-#include "memif.h"
 #include "syscall.h"
+#include "htif.h"
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
@@ -7,209 +7,178 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <termios.h>
-#include <algorithm>
+#include <sstream>
 
-struct sysret_t
+syscall_t::syscall_t(htif_t* htif)
+  : htif(htif), memif(&htif->memif()), table(256)
 {
-  reg_t result;
-  reg_t err;
-};
+  table[1] = &syscall_t::sys_exit;
+  table[3] = &syscall_t::sys_read;
+  table[4] = &syscall_t::sys_write;
+  table[5] = &syscall_t::sys_open;
+  table[6] = &syscall_t::sys_close;
+  table[28] = &syscall_t::sys_fstat;
+  table[19] = &syscall_t::sys_lseek;
+  table[18] = &syscall_t::sys_stat;
+  table[84] = &syscall_t::sys_lstat;
+  table[9] = &syscall_t::sys_link;
+  table[10] = &syscall_t::sys_unlink;
+  table[180] = &syscall_t::sys_pread;
+  table[181] = &syscall_t::sys_pwrite;
+  table[201] = &syscall_t::sys_getmainvars;
+}
 
-static int done = 0;
-
-sysret_t appsys_exit(htif_t* htif, memif_t* memif, reg_t code)
+sysret_t syscall_t::sys_exit(reg_t code, reg_t a1, reg_t a2, reg_t a3)
 {
-  htif->stop(0); // coreid doesn't matter, stop shuts down everything
-  done = 1;
+  htif->exitcode = code << 1 | 1;
   return (sysret_t){0, 0};
 }
 
-sysret_t appsys_open(htif_t* htif, memif_t* memif,
-                  addr_t pname, reg_t len, reg_t flags, reg_t mode)
+sysret_t syscall_t::sys_open(reg_t pname, reg_t len, reg_t flags, reg_t mode)
 {
-  char name[len];
-  memif->read(pname,len,(uint8_t*)name);
-  return (sysret_t){open(name,flags,mode),errno};
+  std::vector<char> name(len);
+  memif->read(pname, len, &name[0]);
+  return (sysret_t){open(&name[0], flags, mode), errno};
 }
 
-sysret_t appsys_read(htif_t* htif, memif_t* memif,
-                     reg_t fd, addr_t pbuf, reg_t len)
+sysret_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
-  char* buf = (char*)malloc(len);
-  assert(buf);
-  sysret_t ret = {read(fd,buf,len),errno};
+  std::vector<char> buf(len);
+  sysret_t ret = {read(fd, &buf[0], len), errno};
   if(ret.result != (reg_t)-1)
-    memif->write(pbuf,ret.result,(uint8_t*)buf);
-  free(buf);
+    memif->write(pbuf, ret.result, &buf[0]);
   return ret;
 }
 
-sysret_t appsys_read_noncanonical(htif_t* htif, memif_t* memif,
-                                  reg_t fd, addr_t pbuf, reg_t len)
+sysret_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
-  struct termios old_tios, new_tios;
-  tcgetattr(0, &old_tios);
-  new_tios = old_tios;
-  new_tios.c_lflag &= ~(ICANON | ECHO);
-  new_tios.c_cc[VMIN] = 0;
-  tcsetattr(0, TCSANOW, &new_tios);
-
-  sysret_t ret = appsys_read(htif, memif, fd, pbuf, len);
-
-  tcsetattr(0, TCSANOW, &old_tios);
-
-  return ret;
-}
-
-sysret_t appsys_pread(htif_t* htif, memif_t* memif,
-                     reg_t fd, addr_t pbuf, reg_t len, reg_t off)
-{
-  char* buf = (char*)malloc(len);
-  assert(buf);
-  sysret_t ret = {pread(fd,buf,len,off),errno};
+  std::vector<char> buf(len);
+  sysret_t ret = {pread(fd, &buf[0], len, off), errno};
   if(ret.result != (reg_t)-1)
-    memif->write(pbuf,ret.result,(uint8_t*)buf);
-  free(buf);
+    memif->write(pbuf, ret.result, &buf[0]);
   return ret;
 }
 
-sysret_t appsys_write(htif_t* htif, memif_t* memif,
-                      reg_t fd, addr_t pbuf, reg_t len)
+sysret_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
-  char* buf = (char*)malloc(len);
-  assert(buf);
-  memif->read(pbuf,len,(uint8_t*)buf);
-  sysret_t ret = {write(fd,buf,len),errno};
-  free(buf);
+  std::vector<char> buf(len);
+  memif->read(pbuf, len, &buf[0]);
+  sysret_t ret = {write(fd, &buf[0], len), errno};
   return ret;
 }
 
-sysret_t appsys_pwrite(htif_t* htif, memif_t* memif,
-                      reg_t fd, addr_t pbuf, reg_t len, reg_t off)
+sysret_t syscall_t::sys_pwrite(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
-  char* buf = (char*)malloc(len);
-  assert(buf);
-  memif->read(pbuf,len,(uint8_t*)buf);
-  sysret_t ret = {pwrite(fd,buf,len,off),errno};
-  free(buf);
+  std::vector<char> buf(len);
+  memif->read(pbuf, len, &buf[0]);
+  sysret_t ret = {pwrite(fd, &buf[0], len, off), errno};
   return ret;
 }
 
-sysret_t appsys_close(htif_t* htif, memif_t* memif,
-                      reg_t fd)
+sysret_t syscall_t::sys_close(reg_t fd, reg_t a1, reg_t a2, reg_t a3)
 {
-  return (sysret_t){close(fd),errno};
+  return (sysret_t){close(fd), errno};
 }
 
-sysret_t appsys_lseek(htif_t* htif, memif_t* memif,
-                      reg_t fd, reg_t ptr, reg_t dir)
+sysret_t syscall_t::sys_lseek(reg_t fd, reg_t ptr, reg_t dir, reg_t a3)
 {
-  return (sysret_t){lseek(fd,ptr,dir),errno};
+  return (sysret_t){lseek(fd, ptr, dir), errno};
 }
 
-sysret_t appsys_fstat(htif_t* htif, memif_t* memif,
-                     reg_t fd, addr_t pbuf)
+sysret_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3)
 {
   struct stat buf;
-  sysret_t ret = {fstat(fd,&buf),errno};
+  sysret_t ret = {fstat(fd, &buf), errno};
   if(ret.result != (reg_t)-1)
-    memif->write(pbuf,sizeof(buf),(uint8_t*)&buf);
+    memif->write(pbuf, sizeof(buf), &buf);
   return ret;
 }
 
-sysret_t appsys_stat(htif_t* htif, memif_t* memif,
-                     addr_t pname, reg_t len, addr_t pbuf)
+sysret_t syscall_t::sys_stat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
 {
-  char name[len];
-  memif->read(pname,len,(uint8_t*)name);
+  std::vector<char> name(len);
+  memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  sysret_t ret = {stat(name,&buf),errno};
+  sysret_t ret = {stat(&name[0], &buf), errno};
   if(ret.result != (reg_t)-1)
-    memif->write(pbuf,sizeof(buf),(uint8_t*)&buf);
+    memif->write(pbuf, sizeof(buf), &buf);
   return ret;
 }
 
-sysret_t appsys_lstat(htif_t* htif, memif_t* memif,
-                     addr_t pname, reg_t len, addr_t pbuf)
+sysret_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
 {
-  char name[len];
-  memif->read(pname,len,(uint8_t*)name);
+  std::vector<char> name(len);
+  memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  sysret_t ret = {lstat(name,&buf),errno};
+  sysret_t ret = {lstat(&name[0], &buf), errno};
   if(ret.result != (reg_t)-1)
-    memif->write(pbuf,sizeof(buf),(uint8_t*)&buf);
+    memif->write(pbuf, sizeof(buf), &buf);
   return ret;
 }
 
-sysret_t appsys_link(htif_t* htif, memif_t* memif,
-                  addr_t poname, reg_t olen, addr_t pnname, reg_t nlen)
+sysret_t syscall_t::sys_link(reg_t poname, reg_t olen, reg_t pnname, reg_t nlen)
 {
-  char oname[olen],nname[nlen];
-  memif->read(poname,olen,(uint8_t*)oname);
-  memif->read(pnname,nlen,(uint8_t*)nname);
-  return (sysret_t){link(oname,nname),errno};
+  std::vector<char> oname(olen), nname(nlen);
+  memif->read(poname, olen, &oname[0]);
+  memif->read(pnname, nlen, &nname[0]);
+  return (sysret_t){link(&oname[0], &nname[0]), errno};
 }
 
-sysret_t appsys_unlink(htif_t* htif, memif_t* memif,
-                  addr_t pname, reg_t len)
+sysret_t syscall_t::sys_unlink(reg_t pname, reg_t len, reg_t a2, reg_t a3)
 {
-  char name[len];
-  memif->read(pname,len,(uint8_t*)name);
-  return (sysret_t){unlink(name),errno};
+  std::vector<char> name(len);
+  memif->read(pname, len, &name[0]);
+  return (sysret_t){unlink(&name[0]), errno};
 }
 
-sysret_t appsys_getmainvars(htif_t* htif, memif_t* memif,
-  addr_t pbuf, size_t limit)
+sysret_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3)
 {
-  for (size_t i=1; i<=mainvars[0]; i++)
-    mainvars[i] += pbuf;
+  std::vector<std::string> args = htif->target_args();
+  std::vector<uint64_t> words(args.size() + 3);
+  words[0] = args.size();
+  words[args.size()+1] = 0; // argv[argc] = NULL
+  words[args.size()+2] = 0; // envp[0] = NULL
 
-  sysret_t ret;
-  if (mainvars_sz < limit)
-    ret = (sysret_t){0,0};
-  else
-    ret = (sysret_t){-1,ENOMEM};
+  size_t sz = (args.size() + 3) * sizeof(words[0]);
+  for (size_t i = 0; i < args.size(); i++)
+  {
+    words[i+1] = sz + pbuf;
+    sz += args[i].length() + 1;
+  }
 
-  memif->write(pbuf, std::min(mainvars_sz, limit), (uint8_t*)mainvars);
+  std::vector<char> bytes(sz);
+  memcpy(&bytes[0], &words[0], sizeof(words[0]) * words.size());
+  for (size_t i = 0; i < args.size(); i++)
+    strcpy(&bytes[words[i+1] - pbuf], args[i].c_str());
 
-  return ret;
+  if (bytes.size() > limit)
+    return (sysret_t){-1, ENOMEM};
+
+  memif->write(pbuf, bytes.size(), &bytes[0]);
+  return (sysret_t){0, 0};
 }
 
-typedef sysret_t (*syscall_t)(htif_t*,memif_t*,reg_t,reg_t,reg_t,reg_t);
-
-int dispatch_syscall(htif_t* htif, memif_t* memif, addr_t mm)
+void syscall_t::dispatch(reg_t mm)
 {
   reg_t magicmem[8];
-  memif->read(mm,sizeof(magicmem),(uint8_t*)magicmem);
-
-  void* syscall_table[256];
-  memset(syscall_table, 0, sizeof(syscall_table));
-  syscall_table[1] = (void*)appsys_exit;
-  syscall_table[3] = (void*)appsys_read;
-  syscall_table[4] = (void*)appsys_write;
-  syscall_table[5] = (void*)appsys_open;
-  syscall_table[6] = (void*)appsys_close;
-  syscall_table[28] = (void*)appsys_fstat;
-  syscall_table[19] = (void*)appsys_lseek;
-  syscall_table[18] = (void*)appsys_stat;
-  syscall_table[84] = (void*)appsys_lstat;
-  syscall_table[9] = (void*)appsys_link;
-  syscall_table[10] = (void*)appsys_unlink;
-  syscall_table[180] = (void*)appsys_pread;
-  syscall_table[181] = (void*)appsys_pwrite;
-  syscall_table[201] = (void*)appsys_getmainvars;
-  syscall_table[202] = (void*)appsys_read_noncanonical;
+  memif->read(mm, sizeof(magicmem), magicmem);
 
   reg_t n = magicmem[0];
-  assert(n < sizeof(syscall_table)/sizeof(void*) && syscall_table[n]);
-  syscall_t p = (syscall_t)syscall_table[n];
+  if (n >= table.size() || !table[n])
+    throw std::runtime_error("bad syscall #" + itoa(n));
 
-  sysret_t ret = p(htif,memif,magicmem[1],magicmem[2],magicmem[3],magicmem[4]);
-  memcpy(magicmem, &ret, sizeof(ret));
+  sysret_t ret = (this->*table[n])(magicmem[1], magicmem[2], magicmem[3], magicmem[4]);
 
-  memif->write(mm, sizeof(magicmem), (uint8_t*)magicmem);
+  magicmem[0] = ret.result;
+  magicmem[1] = ret.err;
+  memif->write(mm, sizeof(magicmem), magicmem);
+}
 
-  return done;
+std::string itoa(int x)
+{
+  std::stringstream s;
+  s << x;
+  return s.str();
 }
