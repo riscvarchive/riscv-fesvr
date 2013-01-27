@@ -40,6 +40,10 @@ class htif_t
   const std::vector<std::string>& host_args() { return hargs; }
   int exitcode;
 
+  virtual void load_program();
+  virtual void reset();
+  virtual uint32_t coremap(uint32_t);
+
  private:
   memif_t mem;
   syscall_t syscall;
@@ -51,6 +55,7 @@ class htif_t
   struct termios* old_tios;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
+  std::vector<uint32_t> coremap_pool;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
 

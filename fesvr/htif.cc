@@ -18,7 +18,7 @@ htif_t::htif_t(const std::vector<std::string>& args)
       break;
 
   hargs.insert(hargs.begin(), args.begin(), args.begin() + i);
-  targs.insert(hargs.begin(), args.begin() + i, args.end());
+  targs.insert(targs.begin(), args.begin() + i, args.end());
 }
 
 htif_t::~htif_t()
@@ -75,28 +75,37 @@ void htif_t::start()
   assert(!started);
   started = true;
 
-  if (targs.size() > 0 && targs[0] != "none")
+  load_program();
+  reset();
+}
+
+void htif_t::load_program()
+{
+  if (targs.size() == 0 || targs[0] == "none")
+    return;
+
+  const char* rvpath = getenv("RISCV");
+  std::string p1 = rvpath ? rvpath + ("/target/bin/" + targs[0]) : "";
+  std::string p2 = targs[0];
+  if (access(p1.c_str(), F_OK))
   {
-    const char* rvpath = getenv("RISCV");
-    std::string p1 = rvpath ? rvpath + ("/target/bin/" + targs[0]) : "";
-    std::string p2 = targs[0];
-    if (access(p1.c_str(), F_OK))
-    {
-      p1 = p2;
-      if (access(p1.c_str(), F_OK) != 0)
-        throw std::runtime_error("could not open " + targs[0]);
-    }
-
-    std::map<std::string, uint64_t> symbols = load_elf(p1.c_str(), &mem);
-
-    // detect torture tests so we can print the memory signature at the end
-    if (symbols.count("begin_signature") && symbols.count("end_signature"))
-    {
-      sig_addr = symbols["begin_signature"];
-      sig_len = symbols["end_signature"] - sig_addr;
-    }
+    p1 = p2;
+    if (access(p1.c_str(), F_OK) != 0)
+      throw std::runtime_error("could not open " + targs[0]);
   }
 
+  std::map<std::string, uint64_t> symbols = load_elf(p1.c_str(), &mem);
+
+  // detect torture tests so we can print the memory signature at the end
+  if (symbols.count("begin_signature") && symbols.count("end_signature"))
+  {
+    sig_addr = symbols["begin_signature"];
+    sig_len = symbols["end_signature"] - sig_addr;
+  }
+}
+
+void htif_t::reset()
+{
   uint32_t first_words[] = {mem_mb(), num_cores()};
   size_t al = chunk_align();
   uint8_t chunk[(sizeof(first_words)+al-1)/al*al];
@@ -106,9 +115,36 @@ void htif_t::start()
   for (uint32_t i = 0; i < num_cores(); i++)
   {
     write_cr(i, 29, 1);
-    write_cr(i, 10, i);
+    write_cr(i, 10, coremap(i));
     write_cr(i, 29, 0);
   }
+}
+
+uint32_t htif_t::coremap(uint32_t x)
+{
+  if (coremap_pool.size() == 0)
+  {
+    coremap_pool.resize(num_cores());
+    for (uint32_t i = 0; i < num_cores(); i++)
+      coremap_pool[i] = i;
+
+    if (std::find(hargs.begin(), hargs.end(), "+coremap-reverse") != hargs.end())
+      std::reverse(coremap_pool.begin(), coremap_pool.end());
+    else if (std::find(hargs.begin(), hargs.end(), "+coremap-random") != hargs.end())
+    {
+      std::srand(time(NULL) ^ getpid());
+      std::random_shuffle(coremap_pool.begin(), coremap_pool.end());
+    }
+
+    if (std::find(hargs.begin(), hargs.end(), "+print-coremap") != hargs.end())
+    {
+      std::cerr << "core map:" << std::endl;
+      for (uint32_t i = 0; i < num_cores(); i++)
+        std::cerr << i << ", " << coremap_pool[i] << std::endl;
+    }
+  }
+
+  return coremap_pool[x];
 }
 
 void htif_t::stop()

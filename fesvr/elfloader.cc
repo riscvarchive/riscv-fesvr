@@ -51,6 +51,7 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif)
       unsigned max_len = sh[eh->e_shstrndx].sh_size - sh[i].sh_name; \
       assert(sh[i].sh_name < sh[eh->e_shstrndx].sh_size); \
       assert(strnlen(shstrtab + sh[i].sh_name, max_len) < max_len); \
+      if (sh[i].sh_type & SHT_NOBITS) continue; \
       assert(size >= sh[i].sh_offset + sh[i].sh_size); \
       if (strcmp(shstrtab + sh[i].sh_name, ".strtab") == 0) \
         strtabidx = i; \
