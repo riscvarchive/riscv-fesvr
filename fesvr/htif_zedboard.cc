@@ -11,14 +11,14 @@
 htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
   : htif_t(args)
 {
-  mem = (uintptr_t*)mmap(0, mem_mb() << 20, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
-  assert(mem != MAP_FAILED);
-
   int fd = open("/dev/mem", O_RDWR|O_SYNC);
   assert(fd != -1);
   dev_vaddr = (uintptr_t*)mmap(0, sysconf(_SC_PAGESIZE), PROT_READ|PROT_WRITE, MAP_SHARED, fd, dev_paddr);
   assert(dev_vaddr != MAP_FAILED);
   write_reg(31, 0); // reset
+
+  mem = (uintptr_t*)mmap(0, mem_mb() << 20, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+  assert(mem != MAP_FAILED);
 }
 
 htif_zedboard_t::~htif_zedboard_t()
