@@ -164,7 +164,7 @@ void htif_t::stop()
     }
   }
 
-  for (uint32_t i = 0; i < num_cores(); i++)
+  for (uint32_t i = 0, nc = num_cores(); i < nc; i++)
     write_cr(i, 29, 1);
 }
 
