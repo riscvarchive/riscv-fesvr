@@ -21,6 +21,7 @@ fesvr_hdrs = \
 	htif_hexwriter.h \
 	htif_eth.h \
 	htif_zedboard.h \
+	option_parser.h \
 
 fesvr_srcs = \
 	elfloader.cc \
@@ -34,6 +35,7 @@ fesvr_srcs = \
 	htif_eth.cc \
 	htif_zedboard.cc \
   dummy.c \
+	option_parser.cc \
 
 fesvr_install_prog_srcs = \
   elf2hex.cc \
