@@ -7,6 +7,7 @@
 #include <queue>
 #include <iostream>
 #include <stdio.h>
+#include <unistd.h>
 
 htif_t::htif_t(const std::vector<std::string>& args)
   : exitcode(0), mem(this), syscall(this), seqno(1), started(false),

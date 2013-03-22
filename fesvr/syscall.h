@@ -7,8 +7,8 @@
 
 struct sysret_t
 {
-  reg_t result;
-  reg_t err;
+  sreg_t result;
+  sreg_t err;
 };
 
 class syscall_t;

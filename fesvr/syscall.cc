@@ -45,7 +45,7 @@ sysret_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
   std::vector<char> buf(len);
   sysret_t ret = {read(fd, &buf[0], len), errno};
-  if(ret.result != (reg_t)-1)
+  if(ret.result != -1)
     memif->write(pbuf, ret.result, &buf[0]);
   return ret;
 }
@@ -54,7 +54,7 @@ sysret_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
   std::vector<char> buf(len);
   sysret_t ret = {pread(fd, &buf[0], len, off), errno};
-  if(ret.result != (reg_t)-1)
+  if(ret.result != -1)
     memif->write(pbuf, ret.result, &buf[0]);
   return ret;
 }
@@ -89,7 +89,7 @@ sysret_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3)
 {
   struct stat buf;
   sysret_t ret = {fstat(fd, &buf), errno};
-  if(ret.result != (reg_t)-1)
+  if(ret.result != -1)
     memif->write(pbuf, sizeof(buf), &buf);
   return ret;
 }
@@ -101,7 +101,7 @@ sysret_t syscall_t::sys_stat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
 
   struct stat buf;
   sysret_t ret = {stat(&name[0], &buf), errno};
-  if(ret.result != (reg_t)-1)
+  if(ret.result != -1)
     memif->write(pbuf, sizeof(buf), &buf);
   return ret;
 }
@@ -113,7 +113,7 @@ sysret_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
 
   struct stat buf;
   sysret_t ret = {lstat(&name[0], &buf), errno};
-  if(ret.result != (reg_t)-1)
+  if(ret.result != -1)
     memif->write(pbuf, sizeof(buf), &buf);
   return ret;
 }
