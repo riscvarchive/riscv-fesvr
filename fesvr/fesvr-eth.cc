@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "htif_eth.h"
 
 int main(int argc, char** argv)

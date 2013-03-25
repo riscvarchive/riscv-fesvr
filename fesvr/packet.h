@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #ifndef __HTIF_PACKET_H
 #define __HTIF_PACKET_H
 

@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "htif_rs232.h"
 
 int main(int argc, char** argv)

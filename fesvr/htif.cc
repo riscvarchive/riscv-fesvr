@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "htif.h"
 #include "elfloader.h"
 #include <algorithm>

@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #ifndef _OPTION_PARSER_H
 #define _OPTION_PARSER_H
 

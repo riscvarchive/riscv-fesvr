@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "htif_zedboard.h"
 #include <unistd.h>
 #include <fcntl.h>

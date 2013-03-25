@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 /* Author: Andrew S. Waterman
  *         Parallel Computing Laboratory
  *         Electrical Engineering and Computer Sciences

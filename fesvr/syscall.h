@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 

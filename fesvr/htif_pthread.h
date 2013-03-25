@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #ifndef _HTIF_PTHREAD_H
 #define _HTIF_PTHREAD_H
 

@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "option_parser.h"
 #include <cstdio>
 #include <cstdlib>

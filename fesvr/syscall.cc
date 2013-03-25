@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "syscall.h"
 #include "htif.h"
 #include <unistd.h>

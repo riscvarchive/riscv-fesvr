@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include <iostream>
 #include "htif_hexwriter.h"
 #include "memif.h"

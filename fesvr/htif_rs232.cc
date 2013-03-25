@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "htif_rs232.h"
 #include <algorithm>
 #include <sys/types.h>

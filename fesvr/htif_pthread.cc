@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include "htif_pthread.h"
 #include <algorithm>
 #include <stdio.h>
