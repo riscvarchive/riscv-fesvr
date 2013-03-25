@@ -268,8 +268,7 @@ void htif_t::poll_tohost(int coreid, core_status* s)
     return;
 
   #define DEVICE(reg) (((reg) >> 56) & 0xFF)
-  #define INTERRUPT(reg) (((reg) >> 48) & 0x80)
-  #define COMMAND(reg) (((reg) >> 48) & 0x7F)
+  #define COMMAND(reg) (((reg) >> 48) & 0xFF)
   #define PAYLOAD(reg) ((reg) & 0xFFFFFFFFFFFF)
 
   switch (DEVICE(tohost))
@@ -321,11 +320,6 @@ void htif_t::poll_keyboard(int coreid, core_status* s)
       s->fromhost.push(s->poll_keyboard | ch);
       s->poll_keyboard = 0;
     }
-    else if (!INTERRUPT(s->poll_keyboard))
-    {
-      s->fromhost.push(s->poll_keyboard | 0x100);
-      s->poll_keyboard = 0;
-    }
   }
 }
 
@@ -335,11 +329,7 @@ void htif_t::drain_fromhost_writes(int coreid, core_status* s, bool sync)
   {
     reg_t value = s->fromhost.front();
     if (write_cr(coreid, 31, value) == 0)
-    {
-      if (INTERRUPT(value))
-        write_cr(coreid, 9, 1);
       s->fromhost.pop();
-    }
     if (!sync) break;
   }
 }
