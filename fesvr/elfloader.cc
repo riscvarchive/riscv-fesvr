@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -24,7 +26,7 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif)
 
   assert(size >= sizeof(Elf64_Ehdr));
   const Elf64_Ehdr* eh64 = (const Elf64_Ehdr*)buf;
-  assert(strncmp((const char*)eh64->e_ident,ELFMAG,strlen(ELFMAG)) == 0);
+  assert(IS_ELF32(*eh64) || IS_ELF64(*eh64));
 
   std::vector<uint8_t> zeros;
   std::map<std::string, uint64_t> symbols;
@@ -70,7 +72,7 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif)
     } \
   } while(0)
 
-  if(eh64->e_ident[EI_CLASS] == ELFCLASS32)
+  if (IS_ELF32(*eh64))
     LOAD_ELF(Elf32_Ehdr, Elf32_Phdr, Elf32_Shdr, Elf32_Sym);
   else
     LOAD_ELF(Elf64_Ehdr, Elf64_Phdr, Elf64_Shdr, Elf64_Sym);

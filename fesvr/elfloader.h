@@ -1,3 +1,5 @@
+// See LICENSE for license details.
+
 #ifndef _ELFLOADER_H
 #define _ELFLOADER_H
 
