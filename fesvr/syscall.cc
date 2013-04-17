@@ -11,6 +11,29 @@
 #include <termios.h>
 #include <sstream>
 
+struct riscv_stat
+{
+  uint64_t dev;
+  uint64_t ino;
+  uint64_t nlink;
+  uint64_t mode;
+  uint64_t uid;
+  uint64_t gid;
+  uint64_t rdev;
+  uint64_t size;
+  uint64_t blksize;
+  uint64_t blocks;
+  uint64_t atime;
+  uint64_t mtime;
+  uint64_t ctime;
+
+  riscv_stat(const struct stat& s)
+    : dev(s.st_dev), ino(s.st_ino), nlink(s.st_nlink), mode(s.st_mode),
+      uid(s.st_uid), gid(s.st_gid), rdev(s.st_rdev), size(s.st_size),
+      blksize(s.st_blksize), blocks(s.st_blocks), atime(s.st_atime),
+      mtime(s.st_mtime), ctime(s.st_ctime) {}
+};
+
 syscall_t::syscall_t(htif_t* htif)
   : htif(htif), memif(&htif->memif()), table(256)
 {
@@ -91,8 +114,11 @@ sysret_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3)
 {
   struct stat buf;
   sysret_t ret = {fstat(fd, &buf), errno};
-  if(ret.result != -1)
-    memif->write(pbuf, sizeof(buf), &buf);
+  if (ret.result != -1)
+  {
+    riscv_stat rbuf(buf);
+    memif->write(pbuf, sizeof(rbuf), &rbuf);
+  }
   return ret;
 }
 
@@ -103,8 +129,11 @@ sysret_t syscall_t::sys_stat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
 
   struct stat buf;
   sysret_t ret = {stat(&name[0], &buf), errno};
-  if(ret.result != -1)
-    memif->write(pbuf, sizeof(buf), &buf);
+  if (ret.result != -1)
+  {
+    riscv_stat rbuf(buf);
+    memif->write(pbuf, sizeof(rbuf), &rbuf);
+  }
   return ret;
 }
 
@@ -115,8 +144,12 @@ sysret_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
 
   struct stat buf;
   sysret_t ret = {lstat(&name[0], &buf), errno};
-  if(ret.result != -1)
-    memif->write(pbuf, sizeof(buf), &buf);
+  riscv_stat rbuf(buf);
+  if (ret.result != -1)
+  {
+    riscv_stat rbuf(buf);
+    memif->write(pbuf, sizeof(rbuf), &rbuf);
+  }
   return ret;
 }
 
