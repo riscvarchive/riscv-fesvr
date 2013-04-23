@@ -22,6 +22,7 @@ fesvr_hdrs = \
 	htif_eth.h \
 	htif_zedboard.h \
 	option_parser.h \
+	term.h \
 
 fesvr_srcs = \
 	elfloader.cc \

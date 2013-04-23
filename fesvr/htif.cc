@@ -1,10 +1,10 @@
 // See LICENSE for license details.
 
 #include "htif.h"
+#include "term.h"
 #include "elfloader.h"
 #include <algorithm>
 #include <assert.h>
-#include <termios.h>
 #include <vector>
 #include <queue>
 #include <iostream>
@@ -13,7 +13,7 @@
 
 htif_t::htif_t(const std::vector<std::string>& args)
   : exitcode(0), mem(this), syscall(this), seqno(1), started(false),
-    _mem_mb(0), _num_cores(0), old_tios(0), sig_addr(0), sig_len(0)
+    _mem_mb(0), _num_cores(0), sig_addr(0), sig_len(0)
 {
   size_t i;
   for (i = 0; i < args.size(); i++)
@@ -22,11 +22,12 @@ htif_t::htif_t(const std::vector<std::string>& args)
 
   hargs.insert(hargs.begin(), args.begin(), args.begin() + i);
   targs.insert(targs.begin(), args.begin() + i, args.end());
+
+  term = std::auto_ptr<canonical_terminal_t>(new canonical_terminal_t);
 }
 
 htif_t::~htif_t()
 {
-  termios_destroy();
 }
 
 packet_t htif_t::read_packet(seqno_t expected_seqno)
@@ -315,11 +316,9 @@ void htif_t::poll_keyboard(int coreid, core_status* s)
 {
   if (s->poll_keyboard)
   {
-    termios_init();
-    unsigned char ch;
-    if (::read(0, &ch, 1) == 1)
+    if (!term->empty())
     {
-      s->fromhost.push(s->poll_keyboard | ch);
+      s->fromhost.push(s->poll_keyboard | uint8_t(term->read()));
       s->poll_keyboard = 0;
     }
   }
@@ -333,29 +332,6 @@ void htif_t::drain_fromhost_writes(int coreid, core_status* s, bool sync)
     if (write_cr(coreid, 31, value) == 0)
       s->fromhost.pop();
     if (!sync) break;
-  }
-}
-
-void htif_t::termios_init()
-{
-  if (!old_tios)
-  {
-    old_tios = new struct termios;
-    tcgetattr(0, old_tios);
-
-    struct termios new_tios = *old_tios;
-    new_tios.c_lflag &= ~(ICANON | ECHO);
-    new_tios.c_cc[VMIN] = 0;
-    tcsetattr(0, TCSANOW, &new_tios);
-  }
-}
-
-void htif_t::termios_destroy()
-{
-  if (old_tios)
-  {
-    tcsetattr(0, TCSANOW, old_tios);
-    delete old_tios;
   }
 }
 

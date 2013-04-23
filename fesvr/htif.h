@@ -7,6 +7,9 @@
 #include "syscall.h"
 #include <string.h>
 #include <vector>
+#include <memory>
+
+class canonical_terminal_t;
 
 class htif_t
 {
@@ -54,19 +57,16 @@ class htif_t
   bool started;
   uint32_t _mem_mb;
   uint32_t _num_cores;
-  struct termios* old_tios;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
   std::vector<uint32_t> coremap_pool;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
+  std::auto_ptr<canonical_terminal_t> term;
 
   std::vector<char> read_buf;
   virtual packet_t read_packet(seqno_t expected_seqno);
   virtual void write_packet(const packet_t& packet);
-
-  void termios_init();
-  void termios_destroy();
 
   friend class memif_t;
   friend class syscall_t;
