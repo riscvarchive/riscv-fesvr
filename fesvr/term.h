@@ -22,7 +22,9 @@ class canonical_terminal_t
   }
   bool empty()
   {
-    struct pollfd pfd = {.fd = 0, .events = POLLIN};
+    struct pollfd pfd;
+    pfd.fd = 0;
+    pfd.events = POLLIN;
     int ret = poll(&pfd, 1, 0);
     assert(ret >= 0);
     return ret == 0 || !(pfd.revents & POLLIN);
