@@ -11,6 +11,7 @@ class htif_pthread_t : public htif_t
 {
  public:
   htif_pthread_t(const std::vector<std::string>& target_args);
+  virtual ~htif_pthread_t();
 
   // target inteface
   void send(const void* buf, size_t size);
@@ -26,6 +27,7 @@ class htif_pthread_t : public htif_t
   virtual size_t chunk_max_size() { return 1024; }
 
  private:
+  bool kill;
   pthread_t host;
   pthread_mutex_t th_lock;
   pthread_cond_t th_cond;

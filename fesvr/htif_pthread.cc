@@ -12,7 +12,7 @@ static void* thread_main(void* arg)
 }
 
 htif_pthread_t::htif_pthread_t(const std::vector<std::string>& args)
-  : htif_t(args)
+  : htif_t(args), kill(false)
 {
   assert(pthread_mutex_init(&th_lock, 0) == 0);
   assert(pthread_cond_init(&th_cond, 0) == 0);
@@ -22,15 +22,24 @@ htif_pthread_t::htif_pthread_t(const std::vector<std::string>& args)
   assert(pthread_create(&host, 0, thread_main, this) == 0);
 }
 
+htif_pthread_t::~htif_pthread_t()
+{
+  kill = true;
+  send(0, 0); // wake up host thread if blocked on read
+  pthread_join(host, 0);
+}
+
 ssize_t htif_pthread_t::read(void* buf, size_t max_size)
 {
   pthread_mutex_lock(&th_lock);
-  if (th_data.empty())
+  if (th_data.empty() && !kill)
     pthread_cond_wait(&th_cond, &th_lock);
   size_t s = std::min(max_size, th_data.size());
   std::copy(th_data.begin(), th_data.begin() + s, (char*)buf);
   th_data.erase(th_data.begin(), th_data.begin() + s);
   pthread_mutex_unlock(&th_lock);
+  if (kill)
+    pthread_exit(0);
   return s;
 }
 
