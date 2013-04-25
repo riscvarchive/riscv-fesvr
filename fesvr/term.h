@@ -10,15 +10,20 @@ class canonical_terminal_t
 {
  public:
   canonical_terminal_t()
+   : restore_tios(false)
   {
-    assert(tcgetattr(0, &old_tios) == 0);
-    struct termios new_tios = old_tios;
-    new_tios.c_lflag &= ~(ICANON | ECHO);
-    assert(tcsetattr(0, TCSANOW, &new_tios) == 0);
+    if (tcgetattr(0, &old_tios) == 0)
+    {
+      struct termios new_tios = old_tios;
+      new_tios.c_lflag &= ~(ICANON | ECHO);
+      if (tcsetattr(0, TCSANOW, &new_tios) == 0)
+        restore_tios = true;
+    }
   }
   ~canonical_terminal_t()
   {
-    tcsetattr(0, TCSANOW, &old_tios);
+    if (restore_tios)
+      tcsetattr(0, TCSANOW, &old_tios);
   }
   bool empty()
   {
@@ -38,6 +43,7 @@ class canonical_terminal_t
   }
  private:
   struct termios old_tios;
+  bool restore_tios;
 };
 
 #endif
