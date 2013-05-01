@@ -67,24 +67,34 @@ void htif_t::start(int coreid)
     uint32_t buf[16] = {mem_mb(), ncores};
     write_chunk(0, sizeof(buf), (uint8_t *)buf);
 
+    // Reset all network taps
     for (int i = 64; i < 68; i++)
-        write_cr(i, 29, 1);
+        write_cr(i, R_RESET, 1);
 
     for (int i = 0; i < ncores; i++)
     {
-      write_cr(i, 29, 1);
+      write_cr(i, R_RESET, 1);
       write_cr(i, 10, i);
     }
   }
-  
-  write_cr(64,     29, 0); // Enable North Tap
-  write_cr(coreid, 29, 0);
+    
+  int tap;
+  if (coreid == 0)
+      tap = 67;
+  else if (coreid == 1)
+      tap = 64;
+  else if (coreid == 2)
+      tap = 65;
+  else
+      tap = 66;
+  write_cr(tap,    R_RESET, 0); // Enable Tap
+  write_cr(coreid, R_RESET, 0);
 }
 
 void htif_t::stop(int coreid)
 {
-  write_cr(64, 29, 1);
-  write_cr(coreid, 29, 1);
+  write_cr(64, R_RESET, 1);
+  write_cr(coreid, R_RESET, 1);
 }
 
 void htif_t::read_chunk(addr_t taddr, size_t len, uint8_t* dst)

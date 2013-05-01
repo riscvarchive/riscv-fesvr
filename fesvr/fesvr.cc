@@ -5,6 +5,7 @@
 #include "memif.h"
 #include "elf.h"
 #include "syscall.h"
+#include "registers.h"
 #include <unistd.h>
 #include <termios.h>
 #include <fcntl.h>
@@ -318,25 +319,121 @@ void poll_devices(htif_t* htif)
     }
   }
 }
+//     N  
+//   [0,1] [1,1] E
+// W [0,0] [1,0]
+//           S
+// Below is specifically for a 2x2 chip
+
+
+uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
+    const int NORTH = 0, SOUTH = 1, EAST = 2, WEST = 3;
+    int destI = dest / 2, destJ = dest % 2;
+    switch (dest) {
+        case 64: // NORTH TAP
+            destI = 0;
+            destJ = 2;
+            break;
+        case 65: // SOUTH TAP
+            destI = 1;
+            destJ = -1;
+            break;
+        case 66: // EAST TAP
+            destI = 2;
+            destJ = 1;
+            break;
+        case 67: // WEST TAP
+            destI = -1;
+            destJ = 0;
+            break;
+        default:
+            break;
+    }
+    if (i == destI && j == destJ)
+        return (uint64_t) sourceDir;
+    uint64_t ret = 0;
+    bool found = false;
+    while (i != destI) {
+        if (i < destI) {
+            if (!found) {
+                ret = WEST;
+                found = true;
+            }
+            ret = (ret << 2) | EAST;
+            i++;
+        } else {
+            if (!found) {
+                ret = EAST;
+                found = true;
+            }
+            ret = (ret << 2) | WEST;
+            i--;
+        }
+    }
+    while (j != destJ) {
+        if (j < destJ) {
+            if (!found) {
+                ret = SOUTH;
+                found = true;
+            }
+            ret = (ret << 2) | NORTH;
+            j++;
+        } else {
+            if (!found) {
+                ret = NORTH;
+                found = true;
+            }
+            ret = (ret << 2) | SOUTH;
+            j--;
+        }
+    }
+    return ret;
+}
+
+uint64_t closestTap(int i, int j, int width) {
+    if      (i == 0 && j == (width - 1))
+        return 64;
+    else if (i == (width - 1) && j == 0)
+        return 65;
+    else if (i == (width - 1) && j == (width - 1))
+        return 66;
+    return 67;
+}
 
 void configure_cores(htif_t* htif, int ncores) {
-    const int A_ROUTE_TABLE = 32;
-    const int A_CHIPLET_ID  = 33;
-    // For now default to everyone going to one location.
-
+    const int width = 2;
     // North Tap - 64
-    htif->write_cr(64, A_CHIPLET_ID, 64);
-    for (int i = 0; i < 68; i++)
-        htif->write_cr(64, A_ROUTE_TABLE, ((uint64_t)i << 56) | 1);
+    htif->write_cr(64, R_ROUTE_TABLE, 64);
+    for (int i = 0; i < 64; i++)
+        htif->write_cr(64, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 0, 1, 0)));
 
-    // Not Used
-    // South Tap
+    // South Tap - 65
+    htif->write_cr(65, R_ROUTE_TABLE, 65);
+    for (int i = 0; i < 64; i++)
+        htif->write_cr(65, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 1, 0, 1)));
+
     // East Tap
-    // West Tap
+    htif->write_cr(66, R_ROUTE_TABLE, 66);
+    for (int i = 0; i < 64; i++)
+        htif->write_cr(66, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 1, 1, 2)));
 
-    // Core - 0
-    htif->write_cr(0, A_ROUTE_TABLE, ((uint64_t)64 << 56) | 1);
-    htif->write_cr(0, A_CHIPLET_ID, 0);
-    for (int i = 0; i < 68; i++)
-        htif->write_cr(0, A_ROUTE_TABLE, ((uint64_t)i << 56) | 1);
+    // West Tap
+    htif->write_cr(67, R_ROUTE_TABLE, 67);
+    for (int i = 0; i < 64; i++)
+        htif->write_cr(67, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 0, 0, 3)));
+
+    // Cores
+    for (int srcCore = 0; srcCore < 4; srcCore++) {
+        int i = srcCore / width, j = srcCore % width;
+        uint64_t tap = closestTap(i, j, width);
+        htif->write_cr(srcCore, R_ROUTE_TABLE, dimensionOrderRouting(tap, 0, 0, 3)); // Route back to myself
+        htif->write_cr(srcCore, R_CHIPID, srcCore);
+        for (int destCore = 0; destCore < 68; destCore++) {
+            if ((destCore < ncores) && (destCore != srcCore)) {
+                htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(destCore, i, j, -1)));
+            } else { // Route to nearest tap
+                htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(tap, dimensionOrderRouting(tap, i, j, -1)));
+            }
+        }
+    }
 }

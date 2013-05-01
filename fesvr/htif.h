@@ -4,6 +4,8 @@
 #include <string.h>
 #include "memif.h"
 
+#include "registers.h"
+
 class htif_t
 {
  public:
