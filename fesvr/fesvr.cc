@@ -403,22 +403,22 @@ uint64_t closestTap(int i, int j, int width) {
 void configure_cores(htif_t* htif, int ncores) {
     const int width = 2;
     // North Tap - 64
-    htif->write_cr(64, R_ROUTE_TABLE, 64);
+    htif->write_cr(64, R_CHIPID, 64);
     for (int i = 0; i < 64; i++)
         htif->write_cr(64, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 0, 1, 0)));
 
     // South Tap - 65
-    htif->write_cr(65, R_ROUTE_TABLE, 65);
+    htif->write_cr(65, R_CHIPID, 65);
     for (int i = 0; i < 64; i++)
         htif->write_cr(65, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 1, 0, 1)));
 
     // East Tap
-    htif->write_cr(66, R_ROUTE_TABLE, 66);
+    htif->write_cr(66, R_CHIPID, 66);
     for (int i = 0; i < 64; i++)
         htif->write_cr(66, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 1, 1, 2)));
 
     // West Tap
-    htif->write_cr(67, R_ROUTE_TABLE, 67);
+    htif->write_cr(67, R_CHIPID, 67);
     for (int i = 0; i < 64; i++)
         htif->write_cr(67, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 0, 0, 3)));
 
