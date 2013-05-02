@@ -400,6 +400,10 @@ uint64_t closestTap(int i, int j, int width) {
     return 67;
 }
 
+uint64_t getTap(int coreID) {
+    return coreID >> 4;
+}
+
 void configure_cores(htif_t* htif, int ncores) {
     const int width = 2;
     // North Tap - 64
@@ -425,7 +429,7 @@ void configure_cores(htif_t* htif, int ncores) {
     // Cores
     for (int srcCore = 0; srcCore < 4; srcCore++) {
         int i = srcCore / width, j = srcCore % width;
-        uint64_t tap = closestTap(i, j, width);
+        uint64_t tap = getTap(srcCore); //closestTap(i, j, width);
         htif->write_cr(srcCore, R_ROUTE_TABLE, dimensionOrderRouting(tap, 0, 0, 3)); // Route back to myself
         htif->write_cr(srcCore, R_CHIPID, srcCore);
         for (int destCore = 0; destCore < 68; destCore++) {
