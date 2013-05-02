@@ -430,7 +430,7 @@ void configure_cores(htif_t* htif, int ncores) {
     for (int srcCore = 0; srcCore < 4; srcCore++) {
         int i = srcCore / width, j = srcCore % width;
         uint64_t tap = getTap(srcCore); //closestTap(i, j, width);
-        htif->write_cr(srcCore, R_ROUTE_TABLE, dimensionOrderRouting(tap, 0, 0, 3)); // Route back to myself
+        htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(tap, dimensionOrderRouting(tap, i, j, 3))); // Route back to myself
         htif->write_cr(srcCore, R_CHIPID, srcCore);
         for (int destCore = 0; destCore < 68; destCore++) {
             if ((destCore < ncores) && (destCore != srcCore)) {
