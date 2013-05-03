@@ -352,42 +352,35 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
     if (i == destI && j == destJ)
         return (uint64_t) sourceDir;
     uint64_t ret = 0;
-    bool found = false;
+    int hops = 0;
     while (i != destI) {
         if (i < destI) {
-            if (!found) {
-                ret = WEST;
-                found = true;
-            }
-            ret = (ret << 2) | EAST;
+            ret = (EAST << 2*hops) | ret;
             i++;
         } else {
-            if (!found) {
-                ret = EAST;
-                found = true;
-            }
-            ret = (ret << 2) | WEST;
+            ret = (WEST << 2*hops) | ret;
             i--;
         }
+        hops++;
     }
     while (j != destJ) {
         if (j < destJ) {
-            if (!found) {
-                ret = SOUTH;
-                found = true;
-            }
-            ret = (ret << 2) | NORTH;
+            ret = (NORTH << 2*hops) | ret;
             j++;
         } else {
-            if (!found) {
-                ret = NORTH;
-                found = true;
-            }
-            ret = (ret << 2) | SOUTH;
+            ret = (SOUTH << 2*hops) | ret;
             j--;
         }
+        hops++;
     }
-    return ret;
+    int oppositeDirection = 0;
+    switch (ret >> 2*hops) {
+        case NORTH: oppositeDirection = SOUTH;
+        case SOUTH: oppositeDirection = NORTH;
+        case EAST:  oppositeDirection = WEST;
+        case WEST:  oppositeDirection = EAST;
+    }
+    return (oppositeDirection << 2*(hops+1)) | ret;
 }
 
 uint64_t closestTap(int i, int j, int width) {
@@ -400,7 +393,7 @@ uint64_t closestTap(int i, int j, int width) {
     return 67;
 }
 
-uint64_t getTap(int coreID) {
+inline uint64_t getTap(int coreID) {
     return 64 + (coreID >> 4);
 }
 
