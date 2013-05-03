@@ -349,9 +349,9 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
         default:
             break;
     }
+    uint64_t ret = 0;
     if (i == destI && j == destJ)
         return (uint64_t) sourceDir;
-    uint64_t ret = 0;
     int hops = 0;
     while (i != destI) {
         if (i < destI) {
@@ -374,13 +374,13 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
         hops++;
     }
     int oppositeDirection = 0;
-    switch (ret >> 2*hops) {
-        case NORTH: oppositeDirection = SOUTH;
-        case SOUTH: oppositeDirection = NORTH;
-        case EAST:  oppositeDirection = WEST;
-        case WEST:  oppositeDirection = EAST;
+    switch (ret >> 2*(hops-1)) {
+        case NORTH: oppositeDirection = SOUTH; break;
+        case SOUTH: oppositeDirection = NORTH; break;
+        case EAST:  oppositeDirection = WEST;  break;
+        case WEST:  oppositeDirection = EAST;  break;
     }
-    return (oppositeDirection << 2*(hops+1)) | ret;
+    return (oppositeDirection << 2*hops) | ret;
 }
 
 uint64_t closestTap(int i, int j, int width) {
