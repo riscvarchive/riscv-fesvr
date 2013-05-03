@@ -401,7 +401,7 @@ uint64_t closestTap(int i, int j, int width) {
 }
 
 uint64_t getTap(int coreID) {
-    return coreID >> 4;
+    return 64 + (coreID >> 4);
 }
 
 void configure_cores(htif_t* htif, int ncores) {
