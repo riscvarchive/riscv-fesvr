@@ -67,9 +67,9 @@ void htif_t::start(int coreid)
     uint32_t buf[16] = {mem_mb(), ncores};
     write_chunk(0, sizeof(buf), (uint8_t *)buf);
 
-    // Reset all network taps
+    // Enable all network taps
     for (int i = 64; i < 68; i++)
-        write_cr(i, R_RESET, 1);
+        write_cr(i, R_RESET, 0);
 
     for (int i = 0; i < ncores; i++)
     {
@@ -78,16 +78,6 @@ void htif_t::start(int coreid)
     }
   }
     
-  int tap;
-  if (coreid == 0)
-      tap = 67;
-  else if (coreid == 1)
-      tap = 64;
-  else if (coreid == 2)
-      tap = 65;
-  else
-      tap = 66;
-  write_cr(tap,    R_RESET, 0); // Enable Tap
   write_cr(coreid, R_RESET, 0);
 }
 
