@@ -426,10 +426,10 @@ void configure_cores(htif_t* htif, int ncores) {
         htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(tap, dimensionOrderRouting(tap, i, j, 3))); // Route back to myself
         htif->write_cr(srcCore, R_CHIPID, srcCore);
         for (int destCore = 0; destCore < 68; destCore++) {
-            if ((destCore < ncores) && (destCore != srcCore)) {
+            if (((destCore < ncores) && (destCore != srcCore)) || (destCore > 63)) {
                 htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(destCore, i, j, -1)));
-            } else { // Route to nearest tap
-                htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(tap, dimensionOrderRouting(tap, i, j, -1)));
+            } else { // Otherwise, route to tap
+                htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(tap, i, j, -1)));
             }
         }
     }
