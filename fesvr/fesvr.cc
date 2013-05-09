@@ -438,12 +438,9 @@ void configure_cores(htif_t* htif, int ncores) {
         uint64_t tap = 64 + (srcCore & 3);
         htif->write_cr(srcCore, R_CHIPID, srcCore);
         htif->write_cr(srcCore, R_OFF_CHIP_NODE, tap);
-        fprintf(stderr, "%d\n", srcCore);
         for (int destCore = 0; destCore < 68; destCore++) {
             if (((destCore < ncores) && (destCore != srcCore)) || (destCore > 63)) {
-                uint64_t x = dimensionOrderRouting(destCore, i, j, -1);
                 htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(destCore, i, j, -1)));
-                fprintf(stderr, "\t%d %llx\n", destCore, x);
             } else { // Otherwise, route to tap
                 htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(tap, i, j, -1)));
             }

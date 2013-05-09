@@ -21,7 +21,7 @@ void packet_t::set_payload(const void* pay, size_t size, bool isResp)
   if (!isResp) {
       addr_width = 1;
       if (header.cmd == HTIF_CMD_READ_MEM || header.cmd == HTIF_CMD_WRITE_MEM) {
-          addr_width = 5;
+          addr_width = 4;
       }
   }
 
