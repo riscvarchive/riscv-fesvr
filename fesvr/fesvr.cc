@@ -353,7 +353,7 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
     if (i == destI && j == destJ)
         return (uint64_t) sourceDir;
     int hops = 0;
-    while (i != destI) {
+    while (i != destI && i > -1 && i < 2) {
         if (i < destI) {
             ret = (EAST << 2*hops) | ret;
             i++;
@@ -370,6 +370,17 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
         } else {
             ret = (SOUTH << 2*hops) | ret;
             j--;
+        }
+        hops++;
+    }
+    // Routing to off chip ports EAST and WEST
+    if (i != destI && (destI < 0 || destI >= 2)) {
+        if (i < destI) {
+            ret = (EAST << 2*hops) | ret;
+            i++;
+        } else {
+            ret = (WEST << 2*hops) | ret;
+            i--;
         }
         hops++;
     }
@@ -427,9 +438,12 @@ void configure_cores(htif_t* htif, int ncores) {
         uint64_t tap = 64 + (srcCore & 3);
         htif->write_cr(srcCore, R_CHIPID, srcCore);
         htif->write_cr(srcCore, R_OFF_CHIP_NODE, tap);
+        fprintf(stderr, "%d\n", srcCore);
         for (int destCore = 0; destCore < 68; destCore++) {
             if (((destCore < ncores) && (destCore != srcCore)) || (destCore > 63)) {
+                uint64_t x = dimensionOrderRouting(destCore, i, j, -1);
                 htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(destCore, i, j, -1)));
+                fprintf(stderr, "\t%d %llx\n", destCore, x);
             } else { // Otherwise, route to tap
                 htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(destCore, dimensionOrderRouting(tap, i, j, -1)));
             }
