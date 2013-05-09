@@ -353,7 +353,7 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
     if (i == destI && j == destJ)
         return (uint64_t) sourceDir;
     int hops = 0;
-    while (i != destI && i > -1 && i < 2) {
+    while ((i != destI) && ((i > 0 && i > destI) || (i < 1 && i < destI)))  {
         if (i < destI) {
             ret = (EAST << 2*hops) | ret;
             i++;
