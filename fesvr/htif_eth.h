@@ -20,7 +20,7 @@ typedef struct sockaddr sockaddr_ll_t;
 #endif
 
 const size_t ETH_DATA_ALIGN = 64;
-const size_t ETH_MAX_DATA_SIZE = 64; // largest multiple of 64 <= MTU
+const size_t ETH_MAX_DATA_SIZE = 68; // largest multiple of 64 <= MTU
 const unsigned short HTIF_ETHERTYPE = 0x8888;
 
 class htif_eth_t : public htif_t
@@ -32,7 +32,7 @@ public:
   uint32_t mem_mb() { return 512; }
 
   size_t chunk_align() { return ETH_DATA_ALIGN; }
-  size_t chunk_max_size() { return ETH_MAX_DATA_SIZE; }
+  size_t chunk_max_size() { return 64; }
 
 protected:
   ssize_t read(void* buf, size_t max_size);
