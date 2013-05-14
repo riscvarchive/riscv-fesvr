@@ -16,6 +16,8 @@
 #include <queue>
 #include <string>
 
+#define WIDTH 2
+
 uint64_t mainvars[512];
 size_t mainvars_sz;
 
@@ -24,7 +26,7 @@ void load_program(const char* name, memif_t* memif);
 int poll_tohost(htif_t* htif, int coreid, addr_t sig_addr, int sig_len);
 void poll_devices(htif_t* htif);
 
-void configure_cores(htif_t* htif, int ncores);
+void configure_cores(htif_t* htif);
 
 int main(int argc, char** argv)
 {
@@ -123,7 +125,7 @@ int main(int argc, char** argv)
     mainvars_sz += len;
   }
 
-  configure_cores(htif, ncores);
+  configure_cores(htif);
 
   if (pkrun)
     load_pk(&htif->memif());
@@ -328,23 +330,23 @@ void poll_devices(htif_t* htif)
 
 uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
     const int NORTH = 0, SOUTH = 1, EAST = 2, WEST = 3;
-    int destI = dest / 2, destJ = dest % 2;
+    int destI = dest / WIDTH, destJ = dest % WIDTH;
     switch (dest) {
         case 64: // NORTH TAP
-            destI = 0;
-            destJ = 2;
+            destI = WIDTH/2 - 1;
+            destJ = WIDTH; // Out
             break;
         case 65: // SOUTH TAP
-            destI = 1;
-            destJ = -1;
+            destI = WIDTH/2;
+            destJ = -1; // Out
             break;
         case 66: // EAST TAP
-            destI = 2;
-            destJ = 1;
+            destI = WIDTH; // Out
+            destJ = WIDTH/2;
             break;
         case 67: // WEST TAP
-            destI = -1;
-            destJ = 0;
+            destI = -1; // Out
+            destJ = WIDTH/2 - 1;
             break;
         default:
             break;
@@ -374,7 +376,7 @@ uint64_t dimensionOrderRouting(int dest, int i, int j, int sourceDir) {
         hops++;
     }
     // Routing to off chip ports EAST and WEST
-    if (i != destI && (destI < 0 || destI >= 2)) {
+    if (i != destI && (destI < 0 || destI >= WIDTH)) {
         if (i < destI) {
             ret = (EAST << 2*hops) | ret;
             i++;
@@ -408,8 +410,9 @@ inline uint64_t getTap(int coreID) {
     return 64 + (coreID >> 4);
 }
 
-void configure_cores(htif_t* htif, int ncores) {
-    const int width = 2;
+void configure_cores(htif_t* htif) {
+    const int width = WIDTH;
+    const int ncores = width*width;
     // North Tap - 64
     htif->write_cr(64, R_CHIPID, 64);
     for (int i = 0; i < 64; i++)
@@ -431,7 +434,7 @@ void configure_cores(htif_t* htif, int ncores) {
         htif->write_cr(67, R_ROUTE_TABLE, ROUTE_TABLE_REQ(i, dimensionOrderRouting(i, 0, 0, 3)));
 
     // Cores
-    for (int srcCore = 0; srcCore < 4; srcCore++) {
+    for (int srcCore = 0; srcCore < ncores; srcCore++) {
         int i = srcCore / width, j = srcCore % width;
         uint64_t htifTap = getTap(srcCore);
         htif->write_cr(srcCore, R_ROUTE_TABLE, ROUTE_TABLE_REQ(htifTap, dimensionOrderRouting(htifTap, i, j, 3))); // Route back to myself

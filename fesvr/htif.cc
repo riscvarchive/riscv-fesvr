@@ -68,10 +68,14 @@ void htif_t::start(int coreid)
     write_chunk(0, sizeof(buf), (uint8_t *)buf);
 
     // Enable all network taps
-    for (int i = 64; i < 68; i++)
+    // for (int i = 64; i < 68; i++)
+    //     write_cr(i, R_RESET, 0);
+    for (int i = 64; i < (64 + ncores); i++)
         write_cr(i, R_RESET, 0);
 
-    for (int i = 0; i < ncores; i++)
+    const int width = 2;
+
+    for (int i = 0; i < width*width; i++)
     {
       write_cr(i, R_RESET, 1);
       write_cr(i, 10, i);
