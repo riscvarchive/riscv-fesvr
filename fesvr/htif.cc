@@ -78,7 +78,7 @@ void htif_t::start(int coreid)
     for (int i = 0; i < width*width; i++)
     {
       write_cr(i, R_RESET, 1);
-      write_cr(i, 10, i);
+      write_cr(i, R_COREID, i);
     }
   }
     
