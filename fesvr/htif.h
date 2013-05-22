@@ -21,8 +21,8 @@ class htif_t
   virtual void stop();
 
   int run();
-  bool done() { return exitcode & 1; }
-  int exit_code() { return exitcode >> 1; }
+  bool done();
+  int exit_code();
 
   virtual reg_t read_cr(uint32_t coreid, uint16_t regnum);
   virtual reg_t write_cr(uint32_t coreid, uint16_t regnum, reg_t val);

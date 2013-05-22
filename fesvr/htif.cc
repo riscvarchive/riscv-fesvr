@@ -10,6 +10,14 @@
 #include <iostream>
 #include <stdio.h>
 #include <unistd.h>
+#include <signal.h>
+
+// XXX make this per-object instead of global?
+static bool signal_exit = false;
+void handle_signal(int sig)
+{
+  signal_exit = true;
+}
 
 htif_t::htif_t(const std::vector<std::string>& args)
   : exitcode(0), mem(this), syscall(this), seqno(1), started(false),
@@ -24,6 +32,9 @@ htif_t::htif_t(const std::vector<std::string>& args)
   targs.insert(targs.begin(), args.begin() + i, args.end());
 
   term = std::auto_ptr<canonical_terminal_t>(new canonical_terminal_t);
+
+  signal(SIGINT, &handle_signal);
+  signal(SIGTERM, &handle_signal);
 }
 
 htif_t::~htif_t()
@@ -347,4 +358,14 @@ uint32_t htif_t::mem_mb()
   if (_mem_mb == 0)
     _mem_mb = read_cr(-1, 1);
   return _mem_mb;
+}
+
+bool htif_t::done()
+{
+  return signal_exit || (exitcode & 1);
+}
+
+int htif_t::exit_code()
+{
+  return exitcode >> 1;
 }
