@@ -107,7 +107,7 @@ void disk_t::handle_read(command_t cmd)
   cmd.htif()->memif().read(cmd.payload(), sizeof(req), &req);
 
   std::vector<uint8_t> buf(req.size);
-  if ((size_t)::read(fd, &buf[0], buf.size()) != req.size)
+  if ((size_t)::pread(fd, &buf[0], buf.size(), req.offset) != req.size)
     throw std::runtime_error("could not read " + id + " @ " + std::to_string(req.offset));
 
   cmd.htif()->memif().write(req.addr, buf.size(), &buf[0]);
@@ -122,7 +122,7 @@ void disk_t::handle_write(command_t cmd)
   std::vector<uint8_t> buf(req.size);
   cmd.htif()->memif().read(req.addr, buf.size(), &buf[0]);
 
-  if ((size_t)::write(fd, &buf[0], buf.size()) != req.size)
+  if ((size_t)::pwrite(fd, &buf[0], buf.size(), req.offset) != req.size)
     throw std::runtime_error("could not write " + id + " @ " + std::to_string(req.offset));
 
   cmd.respond(req.tag);
