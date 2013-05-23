@@ -41,6 +41,10 @@ class canonical_terminal_t
     assert(ret == 1);
     return ch;
   }
+  void write(char ch)
+  {
+    assert(::write(1, &ch, 1) == 1);
+  }
  private:
   struct termios old_tios;
   bool restore_tios;

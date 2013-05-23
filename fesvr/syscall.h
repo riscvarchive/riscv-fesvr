@@ -3,7 +3,7 @@
 #ifndef __SYSCALL_H
 #define __SYSCALL_H
 
-#include "packet.h"
+#include "device.h"
 #include <vector>
 #include <string>
 
@@ -21,17 +21,20 @@ class memif_t;
 
 std::string itoa(int);
 
-class syscall_t
+class syscall_t : public device_t
 {
  public:
   syscall_t(htif_t*);
-  void dispatch(addr_t mm);
   
  private:
+  const char* identity() { return "syscall_proxy"; }
+
   htif_t* htif;
   memif_t* memif;
-
   std::vector<syscall_func_t> table;
+
+  void handle_syscall(command_t cmd);
+  void dispatch(addr_t mm);
 
   sysret_t sys_exit(reg_t, reg_t, reg_t, reg_t);
   sysret_t sys_open(reg_t, reg_t, reg_t, reg_t);

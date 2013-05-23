@@ -5,11 +5,9 @@
 
 #include "memif.h"
 #include "syscall.h"
+#include "device.h"
 #include <string.h>
 #include <vector>
-#include <memory>
-
-class canonical_terminal_t;
 
 class htif_t
 {
@@ -51,7 +49,6 @@ class htif_t
 
  private:
   memif_t mem;
-  syscall_t syscall;
   bool writezeros;
   seqno_t seqno;
   bool started;
@@ -62,7 +59,12 @@ class htif_t
   std::vector<uint32_t> coremap_pool;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
-  std::auto_ptr<canonical_terminal_t> term;
+
+  device_list_t device_list;
+  syscall_t syscall_proxy;
+  bcd_t bcd;
+
+  const std::vector<std::string>& target_args() { return targs; }
 
   std::vector<char> read_buf;
   virtual packet_t read_packet(seqno_t expected_seqno);
@@ -70,12 +72,6 @@ class htif_t
 
   friend class memif_t;
   friend class syscall_t;
-
-  struct core_status;
-  const std::vector<std::string>& target_args() { return targs; }
-  void poll_tohost(int coreid, core_status* s);
-  void poll_keyboard(int coreid, core_status* s);
-  void drain_fromhost_writes(int coreid, core_status* s, bool sync);
 };
 
 #endif // __HTIF_H

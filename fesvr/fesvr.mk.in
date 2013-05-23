@@ -23,6 +23,7 @@ fesvr_hdrs = \
 	htif_zedboard.h \
 	option_parser.h \
 	term.h \
+	device.h \
 
 fesvr_srcs = \
 	elfloader.cc \
@@ -30,6 +31,7 @@ fesvr_srcs = \
   packet.cc \
 	memif.cc \
 	syscall.cc \
+	device.cc \
 	htif_pthread.cc \
 	htif_rs232.cc \
 	htif_hexwriter.cc \

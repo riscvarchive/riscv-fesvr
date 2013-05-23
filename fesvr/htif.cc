@@ -20,9 +20,13 @@ void handle_signal(int sig)
 }
 
 htif_t::htif_t(const std::vector<std::string>& args)
-  : exitcode(0), mem(this), syscall(this), seqno(1), started(false),
-    _mem_mb(0), _num_cores(0), sig_addr(0), sig_len(0)
+  : exitcode(0), mem(this), seqno(1), started(false),
+    _mem_mb(0), _num_cores(0), sig_addr(0), sig_len(0),
+    syscall_proxy(this)
 {
+  signal(SIGINT, &handle_signal);
+  signal(SIGTERM, &handle_signal);
+
   size_t i;
   for (i = 0; i < args.size(); i++)
     if (args[i].length() && args[i][0] != '-' && args[i][0] != '+')
@@ -31,10 +35,8 @@ htif_t::htif_t(const std::vector<std::string>& args)
   hargs.insert(hargs.begin(), args.begin(), args.begin() + i);
   targs.insert(targs.begin(), args.begin() + i, args.end());
 
-  term = std::auto_ptr<canonical_terminal_t>(new canonical_terminal_t);
-
-  signal(SIGINT, &handle_signal);
-  signal(SIGTERM, &handle_signal);
+  device_list.register_device(&syscall_proxy);
+  device_list.register_device(&bcd);
 }
 
 htif_t::~htif_t()
@@ -245,105 +247,37 @@ reg_t htif_t::write_cr(uint32_t coreid, uint16_t regnum, reg_t val)
   return val;
 }
 
-struct htif_t::core_status
-{
-  core_status() : poll_keyboard(0) {}
-  std::queue<reg_t> fromhost;
-  reg_t poll_keyboard;
-};
-
 int htif_t::run()
 {
   start();
-  std::vector<core_status> status(num_cores());
+  std::vector<std::queue<reg_t>> fromhost(num_cores());
+
+  auto enq_func = [](std::queue<reg_t>* q, uint64_t x) { q->push(x); };
+  std::vector<std::function<void(reg_t)>> fromhost_callbacks;
+  for (size_t i = 0; i < num_cores(); i++)
+    fromhost_callbacks.push_back(std::bind(enq_func, &fromhost[i], std::placeholders::_1));
 
   while (!done())
   {
     for (uint32_t coreid = 0; coreid < num_cores(); coreid++)
     {
-      poll_tohost(coreid, &status[coreid]);
-      poll_keyboard(coreid, &status[coreid]);
-      drain_fromhost_writes(coreid, &status[coreid], false);
+      if (auto tohost = read_cr(coreid, 30))
+      {
+        command_t cmd(this, tohost, fromhost_callbacks[coreid]);
+        device_list.handle_command(cmd);
+      }
+
+      device_list.tick();
+
+      if (!fromhost[coreid].empty())
+        if (write_cr(coreid, 31, fromhost[coreid].front()) == 0)
+          fromhost[coreid].pop();
     }
   }
-
-  for (uint32_t coreid = 0; coreid < num_cores(); coreid++)
-    drain_fromhost_writes(coreid, &status[coreid], true);
 
   stop();
 
   return exit_code();
-}
-
-void htif_t::poll_tohost(int coreid, core_status* s)
-{
-  reg_t tohost = read_cr(coreid, 30);
-  if (tohost == 0)
-    return;
-
-  #define DEVICE(reg) (((reg) >> 56) & 0xFF)
-  #define COMMAND(reg) (((reg) >> 48) & 0xFF)
-  #define PAYLOAD(reg) ((reg) & 0xFFFFFFFFFFFF)
-
-  switch (DEVICE(tohost))
-  {
-    case 0: // proxy syscall or test pass/fail
-    {
-      if (PAYLOAD(tohost) & 1) // test pass/fail
-      {
-        exitcode = PAYLOAD(tohost);
-        if (exit_code())
-          std::cerr << "*** FAILED *** (tohost = " << exit_code() << ")" << std::endl;
-      }
-      else
-        syscall.dispatch(PAYLOAD(tohost));
-      s->fromhost.push(1);
-      break;
-    }
-    case 1: // console
-    {
-      switch (COMMAND(tohost))
-      {
-        case 0: // read
-          if (s->poll_keyboard)
-            return;
-          s->poll_keyboard = tohost;
-          break;
-        case 1: // write
-        {
-          unsigned char ch = PAYLOAD(tohost);
-          if (ch == 0)
-            exitcode = 1;
-          assert(::write(1, &ch, 1) == 1);
-          break;
-        }
-      };
-      break;
-    }
-  };
-}
-
-void htif_t::poll_keyboard(int coreid, core_status* s)
-{
-  if (s->poll_keyboard)
-  {
-    if (!term->empty())
-    {
-      s->fromhost.push(s->poll_keyboard | uint8_t(term->read()));
-      s->poll_keyboard = 0;
-    }
-  }
-}
-
-void htif_t::drain_fromhost_writes(int coreid, core_status* s, bool sync)
-{
-  while (!s->fromhost.empty())
-  {
-    reg_t value = s->fromhost.front();
-    if (write_cr(coreid, 31, value) == 0)
-      s->fromhost.pop();
-    if (!sync) break;
-  }
 }
 
 uint32_t htif_t::num_cores()

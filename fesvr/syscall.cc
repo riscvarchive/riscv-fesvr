@@ -10,6 +10,8 @@
 #include <assert.h>
 #include <termios.h>
 #include <sstream>
+#include <iostream>
+using namespace std::placeholders;
 
 struct riscv_stat
 {
@@ -51,6 +53,22 @@ syscall_t::syscall_t(htif_t* htif)
   table[180] = &syscall_t::sys_pread;
   table[181] = &syscall_t::sys_pwrite;
   table[201] = &syscall_t::sys_getmainvars;
+
+  register_command(0, std::bind(&syscall_t::handle_syscall, this, _1), "syscall");
+}
+
+void syscall_t::handle_syscall(command_t cmd)
+{
+  if (cmd.payload() & 1) // test pass/fail
+  {
+    htif->exitcode = cmd.payload();
+    if (htif->exit_code())
+      std::cerr << "*** FAILED *** (tohost = " << htif->exit_code() << ")" << std::endl;
+  }
+  else // proxied system call
+    dispatch(cmd.payload());
+
+  cmd.respond(1);
 }
 
 sysret_t syscall_t::sys_exit(reg_t code, reg_t a1, reg_t a2, reg_t a3)
