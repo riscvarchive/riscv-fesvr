@@ -192,14 +192,13 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
       continue;
     }
 
-    if (packet.ethertype != htons(HTIF_ETHERTYPE))
-      continue;
     if (memcmp(packet.dst_mac, src_mac, ETHER_ADDR_LEN))
       continue;
 
     bytes -= 16; //offsetof(eth_header_t, htif_header)
     bytes = std::min(bytes, (ssize_t)(8+512)/8);
     bytes = std::min(bytes, (ssize_t)max_size);
+    bytes = packet->ethertype >> 8;
     memcpy(buf, &packet.htif_header, bytes);
 
     debug("read packet\n");
