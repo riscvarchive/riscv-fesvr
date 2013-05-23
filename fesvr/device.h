@@ -37,7 +37,7 @@ class device_t
  public:
   device_t();
   virtual ~device_t() {}
-  virtual const char* identity() { return ""; }
+  virtual const char* identity() = 0;
   virtual void tick() {}
 
   void handle_command(command_t cmd);
@@ -73,6 +73,36 @@ class bcd_t : public device_t
   std::queue<command_t> pending_reads;
 };
 
+class disk_t : public device_t
+{
+ public:
+  disk_t(const char* fn);
+  ~disk_t();
+  const char* identity() { return id.c_str(); }
+
+ private:
+  struct request_t
+  {
+    uint64_t addr;
+    uint64_t offset;
+    uint64_t size;
+    uint64_t tag;
+  };
+
+  void handle_read(command_t cmd);
+  void handle_write(command_t cmd);
+
+  std::string id;
+  size_t size;
+  int fd;
+};
+
+class null_device_t : public device_t
+{
+ public:
+  const char* identity() { return ""; }
+};
+
 class device_list_t
 {
  public:
@@ -83,7 +113,7 @@ class device_list_t
 
  private:
   std::vector<device_t*> devices;
-  device_t null_device;
+  null_device_t null_device;
   size_t num_devices;
 };
 

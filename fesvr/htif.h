@@ -63,6 +63,7 @@ class htif_t
   device_list_t device_list;
   syscall_t syscall_proxy;
   bcd_t bcd;
+  std::vector<disk_t*> disks;
 
   const std::vector<std::string>& target_args() { return targs; }
 

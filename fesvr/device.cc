@@ -3,7 +3,10 @@
 #include <cassert>
 #include <algorithm>
 #include <climits>
+#include <iostream>
 #include <thread>
+#include <fcntl.h>
+#include <sys/stat.h>
 using namespace std::placeholders;
 
 device_t::device_t()
@@ -12,9 +15,7 @@ device_t::device_t()
 {
   for (size_t cmd = 0; cmd < command_t::MAX_COMMANDS; cmd++)
     register_command(cmd, std::bind(&device_t::handle_null_command, this, _1), "");
-
-  assert(strlen(identity()) < IDENTITY_SIZE);
-  register_command(command_t::MAX_COMMANDS-1, std::bind(&device_t::handle_identify, this, _1), identity());
+  register_command(command_t::MAX_COMMANDS-1, std::bind(&device_t::handle_identify, this, _1), "identity");
 }
 
 void device_t::register_command(size_t cmd, command_func_t handler, const char* name)
@@ -36,12 +37,18 @@ void device_t::handle_null_command(command_t cmd)
 
 void device_t::handle_identify(command_t cmd)
 {
-  size_t what = cmd.payload() % command_t::MAX_COMMANDS;;
+  size_t what = cmd.payload() % command_t::MAX_COMMANDS;
   uint64_t addr = cmd.payload() / command_t::MAX_COMMANDS;
   assert(addr % IDENTITY_SIZE == 0);
 
   char id[IDENTITY_SIZE] = {0};
-  strcpy(id, command_names[what].c_str());
+  if (what == command_t::MAX_COMMANDS-1)
+  {
+    assert(strlen(identity()) < IDENTITY_SIZE);
+    strcpy(id, identity());
+  }
+  else
+    strcpy(id, command_names[what].c_str());
 
   cmd.htif()->memif().write(addr, IDENTITY_SIZE, id);
   cmd.respond(1);
@@ -70,6 +77,55 @@ void bcd_t::tick()
     pending_reads.front().respond(0x100 | term.read());
     pending_reads.pop();
   }
+}
+
+disk_t::disk_t(const char* fn)
+{
+  fd = ::open(fn, O_RDWR);
+  if (fd < 0)
+    throw std::runtime_error("could not open " + std::string(fn));
+
+  register_command(0, std::bind(&disk_t::handle_read, this, _1), "read");
+  register_command(1, std::bind(&disk_t::handle_write, this, _1), "write");
+
+  struct stat st;
+  if (fstat(fd, &st) < 0)
+    throw std::runtime_error("could not stat " + std::string(fn));
+
+  size = st.st_size;
+  id = "disk size=" + std::to_string(size);
+}
+
+disk_t::~disk_t()
+{
+  close(fd);
+}
+
+void disk_t::handle_read(command_t cmd)
+{
+  request_t req;
+  cmd.htif()->memif().read(cmd.payload(), sizeof(req), &req);
+
+  std::vector<uint8_t> buf(req.size);
+  if ((size_t)::read(fd, &buf[0], buf.size()) != req.size)
+    throw std::runtime_error("could not read " + id + " @ " + std::to_string(req.offset));
+
+  cmd.htif()->memif().write(req.addr, buf.size(), &buf[0]);
+  cmd.respond(req.tag);
+}
+
+void disk_t::handle_write(command_t cmd)
+{
+  request_t req;
+  cmd.htif()->memif().read(cmd.payload(), sizeof(req), &req);
+
+  std::vector<uint8_t> buf(req.size);
+  cmd.htif()->memif().read(req.addr, buf.size(), &buf[0]);
+
+  if ((size_t)::write(fd, &buf[0], buf.size()) != req.size)
+    throw std::runtime_error("could not write " + id + " @ " + std::to_string(req.offset));
+
+  cmd.respond(req.tag);
 }
 
 device_list_t::device_list_t()

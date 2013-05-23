@@ -37,10 +37,21 @@ htif_t::htif_t(const std::vector<std::string>& args)
 
   device_list.register_device(&syscall_proxy);
   device_list.register_device(&bcd);
+  for (auto& arg : hargs)
+  {
+    if (arg.find("+disk=") == 0)
+    {
+      disk_t* disk = new disk_t(arg.c_str() + strlen("+disk="));
+      disks.push_back(disk);
+      device_list.register_device(disk);
+    }
+  }
 }
 
 htif_t::~htif_t()
 {
+  for (auto d : disks)
+    delete d;
 }
 
 packet_t htif_t::read_packet(seqno_t expected_seqno)
@@ -101,17 +112,13 @@ void htif_t::load_program()
   if (targs.size() == 0 || targs[0] == "none")
     return;
 
-  const char* rvpath = getenv("RISCV");
-  std::string p1 = rvpath ? rvpath + ("/target/bin/" + targs[0]) : "";
-  std::string p2 = targs[0];
-  if (access(p1.c_str(), F_OK))
-  {
-    p1 = p2;
-    if (access(p1.c_str(), F_OK) != 0)
-      throw std::runtime_error("could not open " + targs[0]);
-  }
+  std::string path = targs[0];
+  if (path.find('/') == std::string::npos)
+    path = getenv("RISCV") ? getenv("RISCV") + ("/target/bin/" + path) : "";
+  if (access(path.c_str(), F_OK))
+    throw std::runtime_error("could not open " + targs[0]);
 
-  std::map<std::string, uint64_t> symbols = load_elf(p1.c_str(), &mem);
+  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem);
 
   // detect torture tests so we can print the memory signature at the end
   if (symbols.count("begin_signature") && symbols.count("end_signature"))
