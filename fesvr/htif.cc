@@ -60,7 +60,7 @@ packet_t htif_t::read_packet(seqno_t expected_seqno)
           case HTIF_CMD_NACK:
             throw packet_error("nack!");
           default:
-            throw packet_error("illegal command " + itoa(p.get_header().cmd));
+            throw packet_error("illegal command " + std::to_string(p.get_header().cmd));
         }
         read_buf.erase(read_buf.begin(), read_buf.begin() + hdr.get_packet_size());
         return p;

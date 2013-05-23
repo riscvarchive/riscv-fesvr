@@ -220,18 +220,11 @@ void syscall_t::dispatch(reg_t mm)
 
   reg_t n = magicmem[0];
   if (n >= table.size() || !table[n])
-    throw std::runtime_error("bad syscall #" + itoa(n));
+    throw std::runtime_error("bad syscall #" + std::to_string(n));
 
   sysret_t ret = (this->*table[n])(magicmem[1], magicmem[2], magicmem[3], magicmem[4]);
 
   magicmem[0] = ret.result;
   magicmem[1] = ret.err;
   memif->write(mm, sizeof(magicmem), magicmem);
-}
-
-std::string itoa(int x)
-{
-  std::stringstream s;
-  s << x;
-  return s.str();
 }

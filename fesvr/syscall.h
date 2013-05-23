@@ -19,8 +19,6 @@ typedef sysret_t (syscall_t::*syscall_func_t)(reg_t, reg_t, reg_t, reg_t);
 class htif_t;
 class memif_t;
 
-std::string itoa(int);
-
 class syscall_t : public device_t
 {
  public:
