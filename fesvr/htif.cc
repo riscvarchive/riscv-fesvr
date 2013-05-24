@@ -13,7 +13,7 @@
 #include <signal.h>
 
 // XXX make this per-object instead of global?
-static bool signal_exit = false;
+static volatile bool signal_exit = false;
 void handle_signal(int sig)
 {
   signal_exit = true;
