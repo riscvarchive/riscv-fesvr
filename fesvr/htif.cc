@@ -1,7 +1,7 @@
 // See LICENSE for license details.
 
 #include "htif.h"
-#include "term.h"
+#include "rfb.h"
 #include "elfloader.h"
 #include <algorithm>
 #include <assert.h>
@@ -35,22 +35,25 @@ htif_t::htif_t(const std::vector<std::string>& args)
   hargs.insert(hargs.begin(), args.begin(), args.begin() + i);
   targs.insert(targs.begin(), args.begin() + i, args.end());
 
-  device_list.register_device(&syscall_proxy);
-  device_list.register_device(&bcd);
   for (auto& arg : hargs)
   {
-    if (arg.find("+disk=") == 0)
-    {
-      disk_t* disk = new disk_t(arg.c_str() + strlen("+disk="));
-      disks.push_back(disk);
-      device_list.register_device(disk);
-    }
+    if (arg == "+rfb")
+      dynamic_devices.push_back(new rfb_t);
+    else if (arg.find("+rfb=") == 0)
+      dynamic_devices.push_back(new rfb_t(atoi(arg.c_str() + strlen("+rfb="))));
+    else if (arg.find("+disk=") == 0)
+      dynamic_devices.push_back(new disk_t(arg.c_str() + strlen("+disk=")));
   }
+
+  device_list.register_device(&syscall_proxy);
+  device_list.register_device(&bcd);
+  for (auto d : dynamic_devices)
+    device_list.register_device(d);
 }
 
 htif_t::~htif_t()
 {
-  for (auto d : disks)
+  for (auto d : dynamic_devices)
     delete d;
 }
 
