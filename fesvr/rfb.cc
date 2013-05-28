@@ -12,8 +12,8 @@
 using namespace std::placeholders;
 
 rfb_t::rfb_t(int display)
-  : memif(0), addr(0), width(0), height(0), bpp(0), display(display), fb(0),
-    thread(pthread_self()), nticks(0)
+  : memif(0), addr(0), width(0), height(0), bpp(0), display(display),
+    thread(pthread_self()), fb1(0), fb2(0), read_pos(0)
 {
   register_command(0, std::bind(&rfb_t::handle_configure, this, _1), "configure");
   register_command(1, std::bind(&rfb_t::handle_set_address, this, _1), "set_address");
@@ -90,7 +90,8 @@ rfb_t::~rfb_t()
   addr = 0;
   if (!pthread_equal(pthread_self(), thread))
     pthread_join(thread, 0);
-  delete [] fb;
+  delete [] fb1;
+  delete [] fb2;
 }
 
 void rfb_t::set_encodings(const std::string& s)
@@ -116,7 +117,7 @@ void rfb_t::fb_update(const std::string& s)
   u += str(uint16_t(htons(width)));
   u += str(uint16_t(htons(height)));
   u += str(uint32_t(htonl(0)));
-  u += std::string((char*)fb, fb_bytes());
+  u += std::string((char*)fb1, fb_bytes());
   write(u);
 }
 
@@ -124,8 +125,10 @@ void rfb_t::tick()
 {
   if (!(addr && fb_bytes()))
     return;
-  if (nticks++ % 100 == 0)
-    memif->read(addr, fb_bytes(), const_cast<char*>(fb));
+  memif->read(addr + read_pos, FB_ALIGN, const_cast<char*>(fb2 + read_pos));
+  read_pos = (read_pos + FB_ALIGN) % fb_bytes();
+  if (read_pos == 0)
+    std::swap(fb1, fb2);
 }
 
 std::string rfb_t::pixel_format()
@@ -179,7 +182,11 @@ void rfb_t::handle_configure(command_t cmd)
   if (bpp != 32)
     throw std::runtime_error("rfb requires 32 bpp true color");
 
-  fb = new char[fb_bytes()];
+  if (fb_bytes() % FB_ALIGN != 0)
+    throw std::runtime_error("rfb size must be a multiple of " + std::to_string(FB_ALIGN));
+
+  fb1 = new char[fb_bytes()];
+  fb2 = new char[fb_bytes()];
   if (pthread_create(&thread, 0, rfb_thread_main, this))
     throw std::runtime_error("could not create thread");
   cmd.respond(1);
@@ -188,6 +195,8 @@ void rfb_t::handle_configure(command_t cmd)
 void rfb_t::handle_set_address(command_t cmd)
 {
   addr = cmd.payload();
+  if (addr % FB_ALIGN != 0)
+    throw std::runtime_error("rfb address must be " + std::to_string(FB_ALIGN) + "-byte aligned");
   memif = &cmd.htif()->memif();
   cmd.respond(1);
 }
