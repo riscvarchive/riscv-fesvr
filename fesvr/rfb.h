@@ -2,6 +2,7 @@
 #define _RFB_H
 
 #include "device.h"
+#include <thread>
 
 class memif_t;
 
@@ -21,7 +22,8 @@ class rfb_t : public device_t
   {
     return std::string((char*)&x, sizeof(x));
   }
-  void init();
+  size_t fb_bytes() { return size_t(width) * height * bpp/8; }
+  void thread_main();
   std::string pixel_format();
   void fb_update(const std::string& s);
   void set_encodings(const std::string& s);
@@ -34,10 +36,14 @@ class rfb_t : public device_t
   int sockfd;
   int afd;
   memif_t* memif;
-  reg_t addr;
+  volatile reg_t addr;
   uint16_t width;
   uint16_t height;
+  uint16_t bpp;
   int display;
+  volatile char* fb;
+  std::thread* thread;
+  int nticks;
 };
 
 #endif

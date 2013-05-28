@@ -12,13 +12,14 @@
 using namespace std::placeholders;
 
 rfb_t::rfb_t(int display)
-  : memif(0), addr(0), width(0), height(0), display(display)
+  : memif(0), addr(0), width(0), height(0), bpp(0), display(display), fb(0),
+    thread(0), nticks(0)
 {
   register_command(0, std::bind(&rfb_t::handle_configure, this, _1), "configure");
   register_command(1, std::bind(&rfb_t::handle_set_address, this, _1), "set_address");
 }
 
-void rfb_t::init()
+void rfb_t::thread_main()
 {
   int port = 5900 + display;
   sockfd = socket(PF_INET, SOCK_STREAM, 0);
@@ -45,7 +46,6 @@ void rfb_t::init()
     throw std::runtime_error("bad client version");
 
   write(str(htonl(1)));
-  //write(str(htonl(0)));
 
   read(); // clientinit
 
@@ -57,12 +57,38 @@ void rfb_t::init()
   serverinit += str(htonl(name.length()));
   serverinit += name;
   write(serverinit);
+
+  while (addr == 0);
+    std::this_thread::yield();
+
+  while (addr != 0)
+  {
+    printf("spin\n");
+    std::string s = read();
+    if (s.length() < 4)
+      break; //throw std::runtime_error("bad command");
+
+    switch (s[0])
+    {
+      case 0: set_pixel_format(s); break;
+      case 2: set_encodings(s); break;
+      case 3: fb_update(s); break;
+    }
+  }
+
+  close(afd);
+  close(sockfd);
 }
 
 rfb_t::~rfb_t()
 {
-  close(afd);
-  close(sockfd);
+  addr = 0;
+  if (thread)
+  {
+    thread->join();
+    delete thread;
+  }
+  delete [] fb;
 }
 
 void rfb_t::set_encodings(const std::string& s)
@@ -79,9 +105,6 @@ void rfb_t::set_pixel_format(const std::string& s)
 
 void rfb_t::fb_update(const std::string& s)
 {
-  uint16_t fb[width * height];
-  memif->read(addr, width * height * 2, fb);
-
   std::string u;
   u += str(uint8_t(0));
   u += str(uint8_t(0));
@@ -91,30 +114,24 @@ void rfb_t::fb_update(const std::string& s)
   u += str(htons(width));
   u += str(htons(height));
   u += str(htonl(0));
-  u += std::string((char*)fb, sizeof(fb));
+  u += std::string((char*)fb, fb_bytes());
   write(u);
 }
 
 void rfb_t::tick()
 {
-  if (!addr || !width || !height)
+  if (!(addr && fb_bytes()))
     return;
-
-  std::string s = read();
-  if (s.length() < 4)
-    throw std::runtime_error("bad command");
-
-  switch (s[0])
+  if (nticks++ % 100 == 0)
   {
-    case 0: return set_pixel_format(s);
-    case 2: return set_encodings(s);
-    case 3: return fb_update(s);
+    printf("htif\n");
+    memif->read(addr, fb_bytes(), const_cast<char*>(fb));
   }
 }
 
 std::string rfb_t::pixel_format()
 {
-  int red_bits = 5, green_bits = 6, blue_bits = 5;
+  int red_bits = 8, green_bits = 8, blue_bits = 8;
   int bpp = red_bits + green_bits + blue_bits;
   while (bpp & (bpp-1)) bpp++;
 
@@ -153,18 +170,18 @@ std::string rfb_t::read()
 
 void rfb_t::handle_configure(command_t cmd)
 {
-  if (width || height)
+  if (width || height || bpp)
     throw std::runtime_error("you must only set the rfb configuration once");
 
   width = cmd.payload();
   height = cmd.payload() >> 16;
 
-  uint16_t bpp = cmd.payload() >> 32;
-  if (bpp != 16)
-    throw std::runtime_error("rfb requires 16 bpp");
+  bpp = cmd.payload() >> 32;
+  if (bpp != 32)
+    throw std::runtime_error("rfb requires 32 bpp true color");
 
-  printf("init\n");
-  init();
+  fb = new char[fb_bytes()];
+  thread = new std::thread(&rfb_t::thread_main, this);
   cmd.respond(1);
 }
 
