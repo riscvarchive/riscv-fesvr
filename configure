@@ -2705,6 +2705,8 @@ ac_compiler_gnu=$ac_cv_c_compiler_gnu
 
 CFLAGS="-Wall -g -O3"
 
+LDFLAGS="-pthread"
+
 
 # Check for C++ compiler and set default C++ compiler flags
 ac_ext=cpp

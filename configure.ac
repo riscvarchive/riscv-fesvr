@@ -47,6 +47,7 @@ AC_CANONICAL_HOST
 # Check for C compiler and set default C compiler flags
 AC_PROG_CC
 AC_SUBST([CFLAGS],["-Wall -g -O3"])
+AC_SUBST([LDFLAGS],["-pthread"])
 
 # Check for C++ compiler and set default C++ compiler flags
 AC_PROG_CXX

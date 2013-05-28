@@ -2,7 +2,7 @@
 #define _RFB_H
 
 #include "device.h"
-#include <thread>
+#include <pthread.h>
 
 class memif_t;
 
@@ -42,8 +42,10 @@ class rfb_t : public device_t
   uint16_t bpp;
   int display;
   volatile char* fb;
-  std::thread* thread;
+  pthread_t thread;
   int nticks;
+
+  friend void* rfb_thread_main(void*);
 };
 
 #endif

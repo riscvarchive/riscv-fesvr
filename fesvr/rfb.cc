@@ -13,10 +13,16 @@ using namespace std::placeholders;
 
 rfb_t::rfb_t(int display)
   : memif(0), addr(0), width(0), height(0), bpp(0), display(display), fb(0),
-    thread(0), nticks(0)
+    thread(pthread_self()), nticks(0)
 {
   register_command(0, std::bind(&rfb_t::handle_configure, this, _1), "configure");
   register_command(1, std::bind(&rfb_t::handle_set_address, this, _1), "set_address");
+}
+
+void* rfb_thread_main(void* arg)
+{
+  ((rfb_t*)arg)->thread_main();
+  return 0;
 }
 
 void rfb_t::thread_main()
@@ -59,7 +65,7 @@ void rfb_t::thread_main()
   write(serverinit);
 
   while (addr == 0);
-    std::this_thread::yield();
+    pthread_yield();
 
   while (addr != 0)
   {
@@ -82,11 +88,8 @@ void rfb_t::thread_main()
 rfb_t::~rfb_t()
 {
   addr = 0;
-  if (thread)
-  {
-    thread->join();
-    delete thread;
-  }
+  if (!pthread_equal(pthread_self(), thread))
+    pthread_join(thread, 0);
   delete [] fb;
 }
 
@@ -177,7 +180,8 @@ void rfb_t::handle_configure(command_t cmd)
     throw std::runtime_error("rfb requires 32 bpp true color");
 
   fb = new char[fb_bytes()];
-  thread = new std::thread(&rfb_t::thread_main, this);
+  if (pthread_create(&thread, 0, rfb_thread_main, this))
+    throw std::runtime_error("could not create thread");
   cmd.respond(1);
 }
 
