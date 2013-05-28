@@ -143,9 +143,9 @@ std::string rfb_t::pixel_format()
   fmt += str(htons((1<<red_bits)-1));
   fmt += str(htons((1<<green_bits)-1));
   fmt += str(htons((1<<blue_bits)-1));
-  fmt += str(uint8_t(0));
-  fmt += str(uint8_t(blue_bits));
   fmt += str(uint8_t(blue_bits+green_bits));
+  fmt += str(uint8_t(blue_bits));
+  fmt += str(uint8_t(0));
   fmt += str(uint16_t(0)); // pad
   fmt += str(uint8_t(0)); // pad
   return fmt;
