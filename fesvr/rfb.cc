@@ -51,20 +51,20 @@ void rfb_t::thread_main()
   if (read() != version)
     throw std::runtime_error("bad client version");
 
-  write(str(htonl(1)));
+  write(str(uint32_t(htonl(1))));
 
   read(); // clientinit
 
   std::string serverinit;
-  serverinit += str(htons(width));
-  serverinit += str(htons(height));
+  serverinit += str(uint16_t(htons(width)));
+  serverinit += str(uint16_t(htons(height)));
   serverinit += pixel_format();
   std::string name = "RISC-V";
-  serverinit += str(htonl(name.length()));
+  serverinit += str(uint32_t(htonl(name.length())));
   serverinit += name;
   write(serverinit);
 
-  while (addr == 0);
+  while (addr == 0)
     pthread_yield();
 
   while (addr != 0)
@@ -110,12 +110,12 @@ void rfb_t::fb_update(const std::string& s)
   std::string u;
   u += str(uint8_t(0));
   u += str(uint8_t(0));
-  u += str(htons(1));
-  u += str(htons(0));
-  u += str(htons(0));
-  u += str(htons(width));
-  u += str(htons(height));
-  u += str(htonl(0));
+  u += str(uint16_t(htons(1)));
+  u += str(uint16_t(htons(0)));
+  u += str(uint16_t(htons(0)));
+  u += str(uint16_t(htons(width)));
+  u += str(uint16_t(htons(height)));
+  u += str(uint32_t(htonl(0)));
   u += std::string((char*)fb, fb_bytes());
   write(u);
 }
@@ -139,9 +139,9 @@ std::string rfb_t::pixel_format()
   fmt += str(uint8_t(red_bits + green_bits + blue_bits));
   fmt += str(uint8_t(0)); // little-endian
   fmt += str(uint8_t(1)); // true color
-  fmt += str(htons((1<<red_bits)-1));
-  fmt += str(htons((1<<green_bits)-1));
-  fmt += str(htons((1<<blue_bits)-1));
+  fmt += str(uint16_t(htons((1<<red_bits)-1)));
+  fmt += str(uint16_t(htons((1<<green_bits)-1)));
+  fmt += str(uint16_t(htons((1<<blue_bits)-1)));
   fmt += str(uint8_t(blue_bits+green_bits));
   fmt += str(uint8_t(blue_bits));
   fmt += str(uint8_t(0));
