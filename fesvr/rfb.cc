@@ -63,7 +63,6 @@ void rfb_t::thread_main()
 
   while (addr != 0)
   {
-    printf("spin\n");
     std::string s = read();
     if (s.length() < 4)
       break; //throw std::runtime_error("bad command");
@@ -123,10 +122,7 @@ void rfb_t::tick()
   if (!(addr && fb_bytes()))
     return;
   if (nticks++ % 100 == 0)
-  {
-    printf("htif\n");
     memif->read(addr, fb_bytes(), const_cast<char*>(fb));
-  }
 }
 
 std::string rfb_t::pixel_format()
