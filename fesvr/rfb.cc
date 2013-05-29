@@ -12,8 +12,10 @@
 using namespace std::placeholders;
 
 rfb_t::rfb_t(int display)
-  : memif(0), addr(0), width(0), height(0), bpp(0), display(display),
-    thread(pthread_self()), fb1(0), fb2(0), read_pos(0), connected(false)
+  : sockfd(-1), afd(-1),
+    memif(0), addr(0), width(0), height(0), bpp(0), display(display),
+    thread(pthread_self()), fb1(0), fb2(0), read_pos(0),
+    lock(PTHREAD_MUTEX_INITIALIZER)
 {
   register_command(0, std::bind(&rfb_t::handle_configure, this, _1), "configure");
   register_command(1, std::bind(&rfb_t::handle_set_address, this, _1), "set_address");
@@ -27,6 +29,8 @@ void* rfb_thread_main(void* arg)
 
 void rfb_t::thread_main()
 {
+  pthread_mutex_lock(&lock);
+
   int port = 5900 + display;
   sockfd = socket(PF_INET, SOCK_STREAM, 0);
   if (sockfd < 0)
@@ -64,11 +68,12 @@ void rfb_t::thread_main()
   serverinit += name;
   write(serverinit);
 
-  connected = true;
-  while (addr == 0)
+  pthread_mutex_unlock(&lock);
+
+  while (memif == NULL)
     pthread_yield();
 
-  while (addr != 0)
+  while (memif != NULL)
   {
     std::string s = read();
     if (s.length() < 4)
@@ -82,13 +87,19 @@ void rfb_t::thread_main()
     }
   }
 
+  pthread_mutex_lock(&lock);
   close(afd);
   close(sockfd);
+  afd = -1;
+  sockfd = -1;
+  pthread_mutex_unlock(&lock);
+
+  thread_main();
 }
 
 rfb_t::~rfb_t()
 {
-  addr = 0;
+  memif = 0;
   if (!pthread_equal(pthread_self(), thread))
     pthread_join(thread, 0);
   delete [] fb1;
@@ -119,19 +130,31 @@ void rfb_t::fb_update(const std::string& s)
   u += str(uint16_t(htons(height)));
   u += str(uint32_t(htonl(0)));
   u += std::string((char*)fb1, fb_bytes());
-  write(u);
+
+  try
+  {
+    write(u);
+  }
+  catch (std::runtime_error& e)
+  {
+  }
 }
 
 void rfb_t::tick()
 {
-  if (!connected)
+  if (fb_bytes() == 0 || memif == NULL)
     return;
+
   memif->read(addr + read_pos, FB_ALIGN, const_cast<char*>(fb2 + read_pos));
   read_pos = (read_pos + FB_ALIGN) % fb_bytes();
   if (read_pos == 0)
   {
     std::swap(fb1, fb2);
-    fb_update("");
+    if (pthread_mutex_trylock(&lock) == 0)
+    {
+      fb_update("");
+      pthread_mutex_unlock(&lock);
+    }
   }
 }
 
@@ -176,7 +199,7 @@ std::string rfb_t::read()
 
 void rfb_t::handle_configure(command_t cmd)
 {
-  if (width || height || bpp)
+  if (fb1)
     throw std::runtime_error("you must only set the rfb configuration once");
 
   width = cmd.payload();

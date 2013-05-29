@@ -37,7 +37,7 @@ class rfb_t : public device_t
   int sockfd;
   int afd;
   memif_t* memif;
-  volatile reg_t addr;
+  reg_t addr;
   uint16_t width;
   uint16_t height;
   uint16_t bpp;
@@ -46,7 +46,7 @@ class rfb_t : public device_t
   volatile char* volatile fb1;
   volatile char* volatile fb2;
   size_t read_pos;
-  volatile bool connected;
+  pthread_mutex_t lock;
 
   static const int FB_ALIGN = 256;
 };
