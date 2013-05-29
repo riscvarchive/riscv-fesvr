@@ -2,6 +2,7 @@
 #include "htif.h"
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sched.h>
 #include <netinet/in.h>
 #include <unistd.h>
 #include <cstdlib>
@@ -71,7 +72,7 @@ void rfb_t::thread_main()
   pthread_mutex_unlock(&lock);
 
   while (memif == NULL)
-    pthread_yield();
+    sched_yield();
 
   while (memif != NULL)
   {
