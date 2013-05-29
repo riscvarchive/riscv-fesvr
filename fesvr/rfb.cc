@@ -13,7 +13,7 @@ using namespace std::placeholders;
 
 rfb_t::rfb_t(int display)
   : memif(0), addr(0), width(0), height(0), bpp(0), display(display),
-    thread(pthread_self()), fb1(0), fb2(0), read_pos(0)
+    thread(pthread_self()), fb1(0), fb2(0), read_pos(0), connected(false)
 {
   register_command(0, std::bind(&rfb_t::handle_configure, this, _1), "configure");
   register_command(1, std::bind(&rfb_t::handle_set_address, this, _1), "set_address");
@@ -64,6 +64,7 @@ void rfb_t::thread_main()
   serverinit += name;
   write(serverinit);
 
+  connected = true;
   while (addr == 0)
     pthread_yield();
 
@@ -77,7 +78,7 @@ void rfb_t::thread_main()
     {
       case 0: set_pixel_format(s); break;
       case 2: set_encodings(s); break;
-      case 3: fb_update(s); break;
+      case 3: break;
     }
   }
 
@@ -123,12 +124,15 @@ void rfb_t::fb_update(const std::string& s)
 
 void rfb_t::tick()
 {
-  if (!(addr && fb_bytes()))
+  if (!connected)
     return;
   memif->read(addr + read_pos, FB_ALIGN, const_cast<char*>(fb2 + read_pos));
   read_pos = (read_pos + FB_ALIGN) % fb_bytes();
   if (read_pos == 0)
+  {
     std::swap(fb1, fb2);
+    fb_update("");
+  }
 }
 
 std::string rfb_t::pixel_format()

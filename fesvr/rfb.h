@@ -46,8 +46,9 @@ class rfb_t : public device_t
   volatile char* volatile fb1;
   volatile char* volatile fb2;
   size_t read_pos;
+  volatile bool connected;
 
-  static const int FB_ALIGN = 64;
+  static const int FB_ALIGN = 256;
 };
 
 #endif
