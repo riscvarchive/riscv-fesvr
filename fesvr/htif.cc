@@ -115,10 +115,16 @@ void htif_t::load_program()
   if (targs.size() == 0 || targs[0] == "none")
     return;
 
-  std::string path = targs[0];
-  if (path.find('/') == std::string::npos)
-    path = getenv("RISCV") ? getenv("RISCV") + ("/target/bin/" + path) : "";
-  if (access(path.c_str(), F_OK))
+  std::string path;
+  if (access(targs[0].c_str(), F_OK) == 0)
+    path = targs[0];
+  if (targs[0].find('/') == std::string::npos && getenv("RISCV") != NULL)
+  {
+    std::string test_path = getenv("RISCV") + ("/target/bin/" + targs[0]);
+    if (access(test_path.c_str(), F_OK) == 0)
+      path = test_path;
+  }
+  if (path.empty())
     throw std::runtime_error("could not open " + targs[0]);
 
   std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem);
