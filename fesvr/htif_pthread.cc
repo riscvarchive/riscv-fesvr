@@ -18,7 +18,6 @@ htif_pthread_t::htif_pthread_t(const std::vector<std::string>& args)
   assert(pthread_cond_init(&th_cond, 0) == 0);
   assert(pthread_mutex_init(&ht_lock, 0) == 0);
   assert(pthread_cond_init(&ht_cond, 0) == 0);
-  assert(pthread_mutex_init(&stop_once, 0) == 0);
   assert(pthread_create(&host, 0, thread_main, this) == 0);
 }
 

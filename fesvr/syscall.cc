@@ -17,42 +17,51 @@ struct riscv_stat
 {
   uint64_t dev;
   uint64_t ino;
-  uint64_t nlink;
-  uint64_t mode;
-  uint64_t uid;
-  uint64_t gid;
+  uint32_t mode;
+  uint32_t nlink;
+  uint32_t uid;
+  uint32_t gid;
   uint64_t rdev;
+  uint64_t __pad1;
   uint64_t size;
-  uint64_t blksize;
+  uint32_t blksize;
+  uint32_t __pad2;
   uint64_t blocks;
   uint64_t atime;
+  uint64_t __pad3;
   uint64_t mtime;
+  uint64_t __pad4;
   uint64_t ctime;
+  uint64_t __pad5;
+  uint32_t __unused4;
+  uint32_t __unused5;
 
   riscv_stat(const struct stat& s)
-    : dev(s.st_dev), ino(s.st_ino), nlink(s.st_nlink), mode(s.st_mode),
-      uid(s.st_uid), gid(s.st_gid), rdev(s.st_rdev), size(s.st_size),
-      blksize(s.st_blksize), blocks(s.st_blocks), atime(s.st_atime),
-      mtime(s.st_mtime), ctime(s.st_ctime) {}
+    : dev(s.st_dev), ino(s.st_ino), mode(s.st_mode), nlink(s.st_nlink),
+      uid(s.st_uid), gid(s.st_gid), rdev(s.st_rdev), __pad1(0),
+      size(s.st_size), blksize(s.st_blksize), __pad2(0),
+      blocks(s.st_blocks), atime(s.st_atime), __pad3(0),
+      mtime(s.st_mtime), __pad4(0), ctime(s.st_ctime), __pad5(0),
+      __unused4(0), __unused5(0) {}
 };
 
 syscall_t::syscall_t(htif_t* htif)
-  : htif(htif), memif(&htif->memif()), table(256)
+  : htif(htif), memif(&htif->memif()), table(2048)
 {
-  table[1] = &syscall_t::sys_exit;
-  table[3] = &syscall_t::sys_read;
-  table[4] = &syscall_t::sys_write;
-  table[5] = &syscall_t::sys_open;
-  table[6] = &syscall_t::sys_close;
-  table[28] = &syscall_t::sys_fstat;
-  table[19] = &syscall_t::sys_lseek;
-  table[18] = &syscall_t::sys_stat;
-  table[84] = &syscall_t::sys_lstat;
-  table[9] = &syscall_t::sys_link;
-  table[10] = &syscall_t::sys_unlink;
-  table[180] = &syscall_t::sys_pread;
-  table[181] = &syscall_t::sys_pwrite;
-  table[201] = &syscall_t::sys_getmainvars;
+  table[93] = &syscall_t::sys_exit;
+  table[63] = &syscall_t::sys_read;
+  table[64] = &syscall_t::sys_write;
+  table[1024] = &syscall_t::sys_open;
+  table[57] = &syscall_t::sys_close;
+  table[80] = &syscall_t::sys_fstat;
+  table[62] = &syscall_t::sys_lseek;
+  table[1038] = &syscall_t::sys_stat;
+  table[1039] = &syscall_t::sys_lstat;
+  table[1025] = &syscall_t::sys_link;
+  table[1026] = &syscall_t::sys_unlink;
+  table[67] = &syscall_t::sys_pread;
+  table[68] = &syscall_t::sys_pwrite;
+  table[2011] = &syscall_t::sys_getmainvars;
 
   register_command(0, std::bind(&syscall_t::handle_syscall, this, _1), "syscall");
 }
@@ -77,17 +86,22 @@ sysret_t syscall_t::sys_exit(reg_t code, reg_t a1, reg_t a2, reg_t a3)
   return (sysret_t){0, 0};
 }
 
+static sysret_t sysret_errno(sreg_t ret)
+{
+  return (sysret_t){ret, ret == -1 ? errno : 0};
+}
+
 sysret_t syscall_t::sys_open(reg_t pname, reg_t len, reg_t flags, reg_t mode)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return (sysret_t){open(&name[0], flags, mode), errno};
+  return sysret_errno(open(&name[0], flags, mode));
 }
 
 sysret_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
   std::vector<char> buf(len);
-  sysret_t ret = {read(fd, &buf[0], len), errno};
+  sysret_t ret = sysret_errno(read(fd, &buf[0], len));
   if(ret.result != -1)
     memif->write(pbuf, ret.result, &buf[0]);
   return ret;
@@ -96,7 +110,7 @@ sysret_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 sysret_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
   std::vector<char> buf(len);
-  sysret_t ret = {pread(fd, &buf[0], len, off), errno};
+  sysret_t ret = sysret_errno(pread(fd, &buf[0], len, off));
   if(ret.result != -1)
     memif->write(pbuf, ret.result, &buf[0]);
   return ret;
@@ -106,7 +120,7 @@ sysret_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
   std::vector<char> buf(len);
   memif->read(pbuf, len, &buf[0]);
-  sysret_t ret = {write(fd, &buf[0], len), errno};
+  sysret_t ret = sysret_errno(write(fd, &buf[0], len));
   return ret;
 }
 
@@ -114,24 +128,24 @@ sysret_t syscall_t::sys_pwrite(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
   std::vector<char> buf(len);
   memif->read(pbuf, len, &buf[0]);
-  sysret_t ret = {pwrite(fd, &buf[0], len, off), errno};
+  sysret_t ret = sysret_errno(pwrite(fd, &buf[0], len, off));
   return ret;
 }
 
 sysret_t syscall_t::sys_close(reg_t fd, reg_t a1, reg_t a2, reg_t a3)
 {
-  return (sysret_t){close(fd), errno};
+  return sysret_errno(close(fd));
 }
 
 sysret_t syscall_t::sys_lseek(reg_t fd, reg_t ptr, reg_t dir, reg_t a3)
 {
-  return (sysret_t){lseek(fd, ptr, dir), errno};
+  return sysret_errno(lseek(fd, ptr, dir));
 }
 
 sysret_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3)
 {
   struct stat buf;
-  sysret_t ret = {fstat(fd, &buf), errno};
+  sysret_t ret = sysret_errno(fstat(fd, &buf));
   if (ret.result != -1)
   {
     riscv_stat rbuf(buf);
@@ -146,7 +160,7 @@ sysret_t syscall_t::sys_stat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
   memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  sysret_t ret = {stat(&name[0], &buf), errno};
+  sysret_t ret = sysret_errno(stat(&name[0], &buf));
   if (ret.result != -1)
   {
     riscv_stat rbuf(buf);
@@ -161,7 +175,7 @@ sysret_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3)
   memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  sysret_t ret = {lstat(&name[0], &buf), errno};
+  sysret_t ret = sysret_errno(lstat(&name[0], &buf));
   riscv_stat rbuf(buf);
   if (ret.result != -1)
   {
@@ -176,14 +190,14 @@ sysret_t syscall_t::sys_link(reg_t poname, reg_t olen, reg_t pnname, reg_t nlen)
   std::vector<char> oname(olen), nname(nlen);
   memif->read(poname, olen, &oname[0]);
   memif->read(pnname, nlen, &nname[0]);
-  return (sysret_t){link(&oname[0], &nname[0]), errno};
+  return sysret_errno(link(&oname[0], &nname[0]));
 }
 
 sysret_t syscall_t::sys_unlink(reg_t pname, reg_t len, reg_t a2, reg_t a3)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return (sysret_t){unlink(&name[0]), errno};
+  return sysret_errno(unlink(&name[0]));
 }
 
 sysret_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3)

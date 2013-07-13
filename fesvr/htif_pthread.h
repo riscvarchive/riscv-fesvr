@@ -35,7 +35,6 @@ class htif_pthread_t : public htif_t
   pthread_mutex_t ht_lock;
   pthread_cond_t ht_cond;
   std::deque<char> ht_data;
-  pthread_mutex_t stop_once;
 };
 
 #endif
