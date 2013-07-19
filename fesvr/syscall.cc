@@ -64,6 +64,14 @@ syscall_t::syscall_t(htif_t* htif)
   table[2011] = &syscall_t::sys_getmainvars;
 
   register_command(0, std::bind(&syscall_t::handle_syscall, this, _1), "syscall");
+
+  int stdin_fd = dup(0), stdout_fd0 = dup(1), stdout_fd1 = dup(1);
+  if (stdin_fd < 0 || stdout_fd0 < 0 || stdout_fd1 < 0)
+    throw std::runtime_error("could not dup stdin/stdout");
+
+  fds.alloc(stdin_fd); // stdin -> stdin
+  fds.alloc(stdout_fd0); // stdout -> stdout
+  fds.alloc(stdout_fd1); // stderr -> stdout
 }
 
 void syscall_t::handle_syscall(command_t cmd)
@@ -95,13 +103,16 @@ sysret_t syscall_t::sys_open(reg_t pname, reg_t len, reg_t flags, reg_t mode)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(open(&name[0], flags, mode));
+  int fd = open(&name[0], flags, mode);
+  if (fd < 0)
+    return sysret_errno(-1);
+  return (sysret_t){(sreg_t)fds.alloc(fd), 0};
 }
 
 sysret_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
   std::vector<char> buf(len);
-  sysret_t ret = sysret_errno(read(fd, &buf[0], len));
+  sysret_t ret = sysret_errno(read(fds.lookup(fd), &buf[0], len));
   if(ret.result != -1)
     memif->write(pbuf, ret.result, &buf[0]);
   return ret;
@@ -110,7 +121,7 @@ sysret_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 sysret_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
   std::vector<char> buf(len);
-  sysret_t ret = sysret_errno(pread(fd, &buf[0], len, off));
+  sysret_t ret = sysret_errno(pread(fds.lookup(fd), &buf[0], len, off));
   if(ret.result != -1)
     memif->write(pbuf, ret.result, &buf[0]);
   return ret;
@@ -120,7 +131,7 @@ sysret_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3)
 {
   std::vector<char> buf(len);
   memif->read(pbuf, len, &buf[0]);
-  sysret_t ret = sysret_errno(write(fd, &buf[0], len));
+  sysret_t ret = sysret_errno(write(fds.lookup(fd), &buf[0], len));
   return ret;
 }
 
@@ -128,24 +139,27 @@ sysret_t syscall_t::sys_pwrite(reg_t fd, reg_t pbuf, reg_t len, reg_t off)
 {
   std::vector<char> buf(len);
   memif->read(pbuf, len, &buf[0]);
-  sysret_t ret = sysret_errno(pwrite(fd, &buf[0], len, off));
+  sysret_t ret = sysret_errno(pwrite(fds.lookup(fd), &buf[0], len, off));
   return ret;
 }
 
 sysret_t syscall_t::sys_close(reg_t fd, reg_t a1, reg_t a2, reg_t a3)
 {
-  return sysret_errno(close(fd));
+  if (close(fds.lookup(fd)) < 0)
+    return sysret_errno(-1);
+  fds.dealloc(fd);
+  return (sysret_t){0, 0};
 }
 
 sysret_t syscall_t::sys_lseek(reg_t fd, reg_t ptr, reg_t dir, reg_t a3)
 {
-  return sysret_errno(lseek(fd, ptr, dir));
+  return sysret_errno(lseek(fds.lookup(fd), ptr, dir));
 }
 
 sysret_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3)
 {
   struct stat buf;
-  sysret_t ret = sysret_errno(fstat(fd, &buf));
+  sysret_t ret = sysret_errno(fstat(fds.lookup(fd), &buf));
   if (ret.result != -1)
   {
     riscv_stat rbuf(buf);
@@ -241,4 +255,28 @@ void syscall_t::dispatch(reg_t mm)
   magicmem[0] = ret.result;
   magicmem[1] = ret.err;
   memif->write(mm, sizeof(magicmem), magicmem);
+}
+
+reg_t fds_t::alloc(int fd)
+{
+  reg_t i;
+  for (i = 0; i < fds.size(); i++)
+    if (fds[i] == -1)
+      break;
+
+  if (i == fds.size())
+    fds.resize(i+1);
+
+  fds[i] = fd;
+  return i;
+}
+
+void fds_t::dealloc(reg_t fd)
+{
+  fds[fd] = -1;
+}
+
+int fds_t::lookup(reg_t fd)
+{
+  return fd >= fds.size() ? -1 : fds[fd];
 }

@@ -6,6 +6,7 @@
 #include "device.h"
 #include <vector>
 #include <string>
+#include <map>
 
 struct sysret_t
 {
@@ -19,6 +20,16 @@ typedef sysret_t (syscall_t::*syscall_func_t)(reg_t, reg_t, reg_t, reg_t);
 class htif_t;
 class memif_t;
 
+class fds_t
+{
+ public:
+  reg_t alloc(int fd);
+  void dealloc(reg_t fd);
+  int lookup(reg_t fd);
+ private:
+  std::vector<int> fds;
+};
+
 class syscall_t : public device_t
 {
  public:
@@ -30,6 +41,7 @@ class syscall_t : public device_t
   htif_t* htif;
   memif_t* memif;
   std::vector<syscall_func_t> table;
+  fds_t fds;
 
   void handle_syscall(command_t cmd);
   void dispatch(addr_t mm);
