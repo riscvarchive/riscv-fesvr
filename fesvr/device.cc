@@ -1,4 +1,5 @@
 #include "device.h"
+#include "term.h"
 #include "htif.h"
 #include <cassert>
 #include <algorithm>
@@ -6,6 +7,7 @@
 #include <iostream>
 #include <thread>
 #include <fcntl.h>
+#include <unistd.h>
 #include <sys/stat.h>
 using namespace std::placeholders;
 
@@ -67,14 +69,14 @@ void bcd_t::handle_read(command_t cmd)
 
 void bcd_t::handle_write(command_t cmd)
 {
-  term.write(cmd.payload());
+  canonical_terminal_t::write(cmd.payload());
 }
 
 void bcd_t::tick()
 {
-  if (!pending_reads.empty() && !term.empty())
+  if (!pending_reads.empty() && !canonical_terminal_t::empty())
   {
-    pending_reads.front().respond(0x100 | term.read());
+    pending_reads.front().respond(0x100 | canonical_terminal_t::read());
     pending_reads.pop();
   }
 }

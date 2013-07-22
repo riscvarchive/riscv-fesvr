@@ -1,7 +1,6 @@
 #ifndef _DEVICE_H
 #define _DEVICE_H
 
-#include "term.h"
 #include "packet.h"
 #include <vector>
 #include <queue>
@@ -69,7 +68,6 @@ class bcd_t : public device_t
   void handle_read(command_t cmd);
   void handle_write(command_t cmd);
 
-  canonical_terminal_t term;
   std::queue<command_t> pending_reads;
 };
 

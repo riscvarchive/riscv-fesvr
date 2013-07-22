@@ -41,6 +41,7 @@ fesvr_srcs = \
 	htif_zedboard.cc \
   dummy.c \
 	option_parser.cc \
+	term.cc \
 
 fesvr_install_prog_srcs = \
   elf2hex.cc \

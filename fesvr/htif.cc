@@ -12,11 +12,13 @@
 #include <unistd.h>
 #include <signal.h>
 
-// XXX make this per-object instead of global?
 static volatile bool signal_exit = false;
-void handle_signal(int sig)
+static void handle_signal(int sig)
 {
+  if (signal_exit) // someone set up us the bomb!
+    exit(-1);
   signal_exit = true;
+  signal(sig, &handle_signal);
 }
 
 htif_t::htif_t(const std::vector<std::string>& args)
