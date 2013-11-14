@@ -52,6 +52,7 @@ class htif_t
   bool writezeros;
   seqno_t seqno;
   bool started;
+  bool stopped;
   uint32_t _mem_mb;
   uint32_t _num_cores;
   std::vector<std::string> hargs;

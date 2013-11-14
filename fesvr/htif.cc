@@ -211,6 +211,8 @@ void htif_t::stop()
 
   for (uint32_t i = 0, nc = num_cores(); i < nc; i++)
     write_cr(i, 29, 1);
+
+  stopped = true;
 }
 
 void htif_t::read_chunk(addr_t taddr, size_t len, void* dst)
@@ -285,7 +287,7 @@ int htif_t::run()
   for (size_t i = 0; i < num_cores(); i++)
     fromhost_callbacks.push_back(std::bind(enq_func, &fromhost[i], std::placeholders::_1));
 
-  while (!done())
+  while (!signal_exit && exitcode == 0)
   {
     for (uint32_t coreid = 0; coreid < num_cores(); coreid++)
     {
@@ -324,7 +326,7 @@ uint32_t htif_t::mem_mb()
 
 bool htif_t::done()
 {
-  return signal_exit || (exitcode & 1);
+  return stopped;
 }
 
 int htif_t::exit_code()
