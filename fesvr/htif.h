@@ -57,6 +57,7 @@ class htif_t
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
   std::vector<uint32_t> coremap_pool;
+  std::string sig_file;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
 

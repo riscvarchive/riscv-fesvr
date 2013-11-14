@@ -8,6 +8,8 @@
 #include <vector>
 #include <queue>
 #include <iostream>
+#include <fstream>
+#include <iomanip>
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
@@ -45,6 +47,8 @@ htif_t::htif_t(const std::vector<std::string>& args)
       dynamic_devices.push_back(new rfb_t(atoi(arg.c_str() + strlen("+rfb="))));
     else if (arg.find("+disk=") == 0)
       dynamic_devices.push_back(new disk_t(arg.c_str() + strlen("+disk=")));
+    else if (arg.find("+signature=") == 0)
+      sig_file = arg.c_str() + strlen("+signature=");
   }
 
   device_list.register_device(&syscall_proxy);
@@ -184,19 +188,25 @@ uint32_t htif_t::coremap(uint32_t x)
 
 void htif_t::stop()
 {
-  if (sig_len) // print final torture test signature
+  if (!sig_file.empty() && sig_len) // print final torture test signature
   {
     std::vector<uint8_t> buf(sig_len);
     mem.read(sig_addr, sig_len, &buf[0]);
+
+    std::ofstream sigs(sig_file);
+    assert(sigs && "can't open signature file!");
+    sigs << std::setfill('0') << std::hex;
 
     const addr_t incr = 16;
     assert(sig_len % incr == 0);
     for (addr_t i = 0; i < sig_len; i += incr)
     {
       for (addr_t j = incr; j > 0; j--)
-        printf("%02x", buf[i+j-1]);
-      printf("\n");
+        sigs << std::setw(2) << (uint16_t)buf[i+j-1];
+      sigs << '\n';
     }
+
+    sigs.close();
   }
 
   for (uint32_t i = 0, nc = num_cores(); i < nc; i++)
