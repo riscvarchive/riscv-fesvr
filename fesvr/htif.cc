@@ -291,7 +291,7 @@ int htif_t::run()
   {
     for (uint32_t coreid = 0; coreid < num_cores(); coreid++)
     {
-      if (auto tohost = read_cr(coreid, 30))
+      if (auto tohost = write_cr(coreid, 30, 0))
       {
         command_t cmd(this, tohost, fromhost_callbacks[coreid]);
         device_list.handle_command(cmd);
