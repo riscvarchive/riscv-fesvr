@@ -154,7 +154,7 @@ void htif_t::reset()
   for (uint32_t i = 0; i < num_cores(); i++)
   {
     write_cr(i, 29, 1);
-    write_cr(i, 10, coremap(i));
+    write_cr(i, 11, coremap(i));
     write_cr(i, 29, 0);
   }
 }
