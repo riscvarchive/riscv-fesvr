@@ -29,12 +29,11 @@ class htif_pthread_t : public htif_t
  private:
   bool kill;
   pthread_t host;
-  pthread_mutex_t th_lock;
-  pthread_cond_t th_cond;
+  pthread_mutex_t lock0;
+  pthread_mutex_t lock1;
   std::deque<char> th_data;
-  pthread_mutex_t ht_lock;
-  pthread_cond_t ht_cond;
   std::deque<char> ht_data;
+
 };
 
 #endif
