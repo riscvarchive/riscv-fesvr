@@ -148,6 +148,9 @@ htif_eth_t::htif_eth_t(const std::vector<std::string>& args)
     throw std::runtime_error("could not locate interface");
   freeifaddrs(ifaddr);
 
+  for (int i=0; i<6; i++)
+    src_mac[i] = 0xff;
+
   struct ifreq bound_if;
   strcpy(bound_if.ifr_name, interface.c_str());
   if (ioctl(sock, BIOCSETIF, &bound_if) == -1)

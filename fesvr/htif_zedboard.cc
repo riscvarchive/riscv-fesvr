@@ -11,7 +11,7 @@
 htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
   : htif_t(args)
 {
-  mem = (uintptr_t*)mmap(0, mem_mb() << 20, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0);
+  mem = (uintptr_t*)mmap(0, mem_mb() << 20, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANON, -1, 0);
   assert(mem != MAP_FAILED);
 
   int fd = open("/dev/mem", O_RDWR|O_SYNC);
