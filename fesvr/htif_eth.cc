@@ -190,8 +190,8 @@ ssize_t htif_eth_t::read(void* buf, size_t max_size)
 
     if (packet.ethertype != htons(HTIF_ETHERTYPE))
       continue;
-    if (memcmp(packet.dst_mac, src_mac, ETHER_ADDR_LEN))
-      continue;
+    //if (memcmp(packet.dst_mac, src_mac, ETHER_ADDR_LEN))
+    //  continue;
 
     bytes -= 16; //offsetof(eth_header_t, htif_header)
     bytes = std::min(bytes, (ssize_t)(sizeof(packet_header_t) + HTIF_DATA_ALIGN*packet.htif_header.data_size));

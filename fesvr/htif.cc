@@ -112,7 +112,8 @@ void htif_t::reset()
   memcpy(chunk, first_words, sizeof(first_words));
   write_chunk(0, sizeof(chunk), chunk);
 
-  for (uint32_t i = 0; i < num_cores(); i++)
+  //for (uint32_t i = 0; i < num_cores(); i++)
+  for (uint32_t i = 0; i < 1; i++)
   {
     write_cr(i, 29, 1);
     write_cr(i, 10, coremap(i));
