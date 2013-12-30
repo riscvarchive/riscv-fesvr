@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <cstdlib>
 #include "htif_eth.h"
 
 unsigned int count_1bits(unsigned int x)
@@ -15,31 +16,43 @@ int main(int argc, char** argv)
 {
   std::vector<std::string> args(argv + 1, argv + argc);
   htif_eth_t htif(args);
-  //htif.write_cr(0, 29, 1);
-  //htif.write_cr(0, 29, 0);
-  //printf("read clock divider %016lx\n", htif.write_cr(-1, 63, 32 | 16 << 16));
-  //htif.memif().write_uint64(0xa8b8,0xdeadbeef);
-  //for (int i=0; i<64; i++) {
-  //  htif.write_cr(0,13,1ULL<<i);
-  //  printf("read cr %016lx\n", htif.read_cr(0,13));
-  //}
-  //htif.memif().write_uint64(0x0, 0xdeadbeef);
 
-  bool testmem = false;
-  int testmem_mb = 1;
+  bool memtest = false;
+  int memtest_mb;
 
-  if (testmem)
+  int slowio = htif.read_cr(-1, 63);
+  int divisor = slowio & 0xffff;
+  int hold = (slowio >> 16) & 0xffff;
+
+  for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
   {
-    fprintf(stderr, "running memory test for %d MB...\n", testmem_mb);
+    if (a->substr(0, 9) == "+memtest=")
+      memtest = true, memtest_mb = std::atoi(a->substr(9).c_str());
+    if (a->substr(0, 9) == "+divisor=")
+      divisor = std::atoi(a->substr(9).c_str());
+    if (a->substr(0, 6) == "+hold=")
+      hold = std::atoi(a->substr(6).c_str());
+  }
 
-    uint64_t nwords = testmem_mb*1024*1024/8;
+  htif.write_cr(-1, 63, divisor | (hold<<16));
+  slowio = htif.read_cr(-1, 63);
+  divisor = slowio & 0xffff;
+  hold = (slowio >> 16) & 0xffff;
+
+  printf("uncore slowio divisor=%d, hold=%d\n", slowio & 0xffff, (slowio >> 16) & 0xffff);
+
+  if (memtest)
+  {
+    fprintf(stderr, "running memory test for %d MB...\n", memtest_mb);
+
+    uint64_t nwords = memtest_mb*1024*1024/8;
     uint64_t* target_memory = new uint64_t[nwords]; // 1MB
     srand(time(NULL));
     for (uint64_t a=0; a<nwords; a++)
       target_memory[a] = random() << 32 | random();
     for (uint64_t a=0; a<nwords/8; a++) {
       htif.memif().write(a*64, 64, (uint8_t*)&target_memory[a*8]);
-      fprintf(stderr, "\rwrote %016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx at 0x%08x",
+      fprintf(stderr, "\rwrote %016llx %016llx %016llx %016llx %016llx %016llx %016llx %016llx at 0x%08x",
         target_memory[a*8],
         target_memory[a*8+1],
         target_memory[a*8+2],
@@ -56,7 +69,7 @@ int main(int argc, char** argv)
     uint64_t chunk[8];
     for (uint64_t a=0; a<nwords/8; a++) {
       htif.memif().read(a*64, 64, (uint8_t*)chunk);
-      fprintf(stderr, "\rread  %016lx %016lx %016lx %016lx %016lx %016lx %016lx %016lx at 0x%08x",
+      fprintf(stderr, "\rread  %016llx %016llx %016llx %016llx %016llx %016llx %016llx %016llx at 0x%08x",
         chunk[0],
         chunk[1],
         chunk[2],
@@ -74,7 +87,7 @@ int main(int argc, char** argv)
             fprintf(stderr, "\n");
             fail = true;
           }
-          fprintf(stderr, "mem diff at memory location 0x%08x, desired=%016lx, read=%016lx\n", (uint32_t)a*8+l, target_memory[a*8+l], chunk[l]);
+          fprintf(stderr, "mem diff at memory location 0x%08x, desired=%016llx, read=%016llx\n", (uint32_t)a*8+l, target_memory[a*8+l], chunk[l]);
         }
         failcnt += count_1bits(diff);
         failcnt += count_1bits(diff>>32);
