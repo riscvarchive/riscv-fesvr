@@ -17,6 +17,7 @@ fesvr_hdrs = \
 	syscall.h \
 	packet.h \
 	htif_pthread.h \
+	htif_ucontext.h \
 	htif_rs232.h \
 	htif_hexwriter.h \
 	htif_eth.h \
@@ -34,7 +35,7 @@ fesvr_srcs = \
 	syscall.cc \
 	device.cc \
 	rfb.cc \
-	htif_pthread.cc \
+	htif_ucontext.cc \
 	htif_rs232.cc \
 	htif_hexwriter.cc \
 	htif_eth.cc \

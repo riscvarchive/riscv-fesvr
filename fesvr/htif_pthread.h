@@ -3,37 +3,9 @@
 #ifndef _HTIF_PTHREAD_H
 #define _HTIF_PTHREAD_H
 
-#include "htif.h"
-#include <pthread.h>
-#include <deque>
-
-class htif_pthread_t : public htif_t
-{
- public:
-  htif_pthread_t(const std::vector<std::string>& target_args);
-  virtual ~htif_pthread_t();
-
-  // target inteface
-  void send(const void* buf, size_t size);
-  void recv(void* buf, size_t size);
-  bool recv_nonblocking(void* buf, size_t size);
-
- protected:
-  // host interface
-  virtual ssize_t read(void* buf, size_t max_size);
-  virtual ssize_t write(const void* buf, size_t size);
-
-  virtual size_t chunk_align() { return 64; }
-  virtual size_t chunk_max_size() { return 1024; }
-
- private:
-  bool kill;
-  pthread_t host;
-  pthread_mutex_t lock0;
-  pthread_mutex_t lock1;
-  std::deque<char> th_data;
-  std::deque<char> ht_data;
-
-};
+// We don't use pthreads anymore, but the implementation's equivalent.
+// We probably shouldn't have exposed it in the name of the class :-)
+#include "htif_ucontext.h"
+typedef htif_ucontext_t htif_pthread_t;
 
 #endif
