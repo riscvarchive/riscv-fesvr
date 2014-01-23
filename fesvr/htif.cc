@@ -24,7 +24,7 @@ static void handle_signal(int sig)
 }
 
 htif_t::htif_t(const std::vector<std::string>& args)
-  : exitcode(0), mem(this), seqno(1), started(false),
+  : exitcode(0), mem(this), seqno(1), started(false), stopped(false),
     _mem_mb(0), _num_cores(0), sig_addr(0), sig_len(0),
     syscall_proxy(this)
 {
