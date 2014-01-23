@@ -93,8 +93,8 @@ LINK_C      := $(LD_C) -L. $(LDFLAGS)
 
 CXX         := @CXX@
 COMPILE_CXX := $(CXX) $(CXXFLAGS) -MMD -MP -I. -fPIC $(CPPFLAGS)
-LD_CXX      := $(CXX)
-LINK_CXX    := $(LD_CXX) -L. $(LDFLAGS)
+LD_CXX      := $(CXX) -static
+LINK_CXX    := $(LD_CXX) -L. $(LDFLAGS) -static
 
 # Library creation
 
