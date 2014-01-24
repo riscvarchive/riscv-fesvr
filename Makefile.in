@@ -78,8 +78,8 @@ install_exes_dir := $(DESTDIR)/bin
 #  - LDFLAGS  : flags for the linker (eg. -L)
 
 CPPFLAGS    := @CPPFLAGS@
-CFLAGS      := @CFLAGS@
-CXXFLAGS    := @CXXFLAGS@
+CFLAGS      := @CFLAGS@ -DPREFIX=\"$(prefix)\"
+CXXFLAGS    := @CXXFLAGS@ -DPREFIX=\"$(prefix)\"
 LDFLAGS     := @LDFLAGS@
 
 # C compiler and linker

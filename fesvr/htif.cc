@@ -14,6 +14,20 @@
 #include <unistd.h>
 #include <signal.h>
 
+/* Attempt to determine the execution prefix automatically.  autoconf
+ * sets PREFIX, and pconfigure sets __PCONFIGURE__PREFIX. */
+#if !defined(PREFIX) && defined(__PCONFIGURE__PREFIX)
+# define PREFIX __PCONFIGURE__PREFIX
+#endif
+
+#ifndef TARGET_ARCH
+# define TARGET_ARCH "riscv-elf"
+#endif
+
+#ifndef TARGET_DIR
+# define TARGET_DIR "/" TARGET_ARCH "/bin/"
+#endif
+
 static volatile bool signal_exit = false;
 static void handle_signal(int sig)
 {
@@ -124,12 +138,13 @@ void htif_t::load_program()
   std::string path;
   if (access(targs[0].c_str(), F_OK) == 0)
     path = targs[0];
-  if (targs[0].find('/') == std::string::npos && getenv("RISCV") != NULL)
+  else if (targs[0].find('/') == std::string::npos)
   {
-    std::string test_path = getenv("RISCV") + ("/target/bin/" + targs[0]);
+    std::string test_path = PREFIX TARGET_DIR + targs[0];
     if (access(test_path.c_str(), F_OK) == 0)
       path = test_path;
   }
+
   if (path.empty())
     throw std::runtime_error("could not open " + targs[0]);
 
