@@ -1,8 +1,1 @@
-#=========================================================================
-# Modular C++ Build System Subproject Autoconf Fragment
-#=========================================================================
-# Please read the documenation in 'mcppbs-uguide.txt' for more details
-# on how the Modular C++ Build System works.
-
-MCPPBS_SUBPROJECT([fesvr])
-
+AC_CHECK_LIB(pthread, pthread_create, [], [AC_MSG_ERROR([libpthread is required])])

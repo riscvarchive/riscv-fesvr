@@ -1,14 +1,3 @@
-#=========================================================================
-# Modular C++ Build System Subproject Makefile Fragment
-#=========================================================================
-# Please read the documenation in 'mcppbs-uguide.txt' for more details
-# on how the Modular C++ Build System works.
-
-fesvr_intdeps  = @fesvr_intdeps@
-fesvr_cppflags = @fesvr_cppflags@
-fesvr_ldflags  = @fesvr_ldflags@
-fesvr_libs     = libfesvr.a
-
 fesvr_hdrs = \
 	elf.h \
 	elfloader.h \
@@ -40,7 +29,7 @@ fesvr_srcs = \
 	htif_hexwriter.cc \
 	htif_eth.cc \
 	htif_zedboard.cc \
-  dummy.c \
+  dummy.cc \
 	option_parser.cc \
 	term.cc \
 
