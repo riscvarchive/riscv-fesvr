@@ -31,6 +31,7 @@ void context_t::init(void (*f)(void*), void* a)
   pthread_mutex_lock(&creator->mutex);
   creator->flag = 0;
   assert(pthread_create(&thread, NULL, &context_t::wrapper, this) == 0);
+  assert(pthread_detach(thread) == 0);
   while (!creator->flag)
     pthread_cond_wait(&creator->cond, &creator->mutex);
   pthread_mutex_unlock(&creator->mutex);
@@ -38,7 +39,6 @@ void context_t::init(void (*f)(void*), void* a)
 
 context_t::~context_t()
 {
-  assert(pthread_join(thread, NULL) == 0);
 }
 
 void context_t::switch_to()
