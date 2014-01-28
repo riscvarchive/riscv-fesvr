@@ -4,9 +4,12 @@
 #include <algorithm>
 #include <stdio.h>
 
-static void thread_main(void* htif)
+void htif_pthread_t::thread_main(void* arg)
 {
-  ((htif_pthread_t*)htif)->run();
+  htif_pthread_t* htif = static_cast<htif_pthread_t*>(arg);
+  htif->run();
+  while (true)
+    htif->target->switch_to();
 }
 
 htif_pthread_t::htif_pthread_t(const std::vector<std::string>& args)
