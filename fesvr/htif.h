@@ -5,6 +5,7 @@
 #include "syscall.h"
 #include <string.h>
 #include <vector>
+#include <sys/types.h>
 
 class htif_t
 {
