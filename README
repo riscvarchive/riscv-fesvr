@@ -1,31 +1,3 @@
-==========================================================================
-Modular C++ Build System Template
-==========================================================================
-# Author  : Christopher Batten
-# Date    : September 24, 2008
-# Version : (under version control)
-
-This is a template for the Modular C++ Build System. Please refer to the
-following documentation for more information on the build system:
-
- - 'mcppbs-uguide.txt'    : Modular C++ Build System User Guide
- - 'utst/utst-uguide.txt' : Unit Testing Framework User Guide
- - 'style-guide.txt'      : C++ Coding Style Guide
-
-Developers should eventually replace this 'README' file with information
-on their new project. It is recommended that the new 'README' file keep
-pointers to the above documentation so that end-users can learn about
-the build system. You may also want to keep the version information
-around so that you know what version of the build system you are using.
-
---------------------------------------------------------------------------
-Template Instantiation
---------------------------------------------------------------------------
-
- - Update project metadata (name, maintainer, etc) in 'configure.ac'
- - Run 'autoconf && autoheader' in project's root directory
- - Add subprojects and update the list in 'configure.ac'
-
 --------------------------------------------------------------------------
 Build Steps
 --------------------------------------------------------------------------
@@ -34,4 +6,16 @@ Build Steps
  % cd build
  % ../configure
  % make
+
+to build for Linux ARM target (to run on zynq board), use
+
+  ../configure --host=arm-xilinx-linux-gnueabi 
+
+and make sure you have the Xilinx SDK in your PATH
+
+e.g.
+
+which arm-xilinx-linux-gnueabi-gcc
+/opt/Xilinx/Vivado/2013.4/../../SDK/2013.4/gnu/arm/lin/bin/arm-xilinx-linux-gnueabi-gcc
+
 
