@@ -113,8 +113,7 @@ void htif_t::reset()
   memcpy(chunk, first_words, sizeof(first_words));
   write_chunk(0, sizeof(chunk), chunk);
 
-  //for (uint32_t i = 0; i < num_cores(); i++)
-  for (uint32_t i = 0; i < 1; i++)
+  for (uint32_t i = 0; i < num_cores(); i++)
   {
     write_cr(i, 29, 1);
     write_cr(i, 10, coremap(i));
@@ -223,7 +222,6 @@ reg_t htif_t::write_cr(uint32_t coreid, uint16_t regnum, reg_t val)
   reg_t addr = (reg_t)coreid << 20 | regnum;
   packet_header_t hdr(HTIF_CMD_WRITE_CONTROL_REG, seqno, 1, addr);
 
-  printf("htif_t::write_cr(coreid = %d, regnum = %d, val = %016llx) - seqno = %d \n", coreid, regnum, val, seqno);
   write_packet(packet_t(hdr, &val, sizeof(val)));
 
   packet_t resp = read_packet(seqno);
@@ -231,7 +229,6 @@ reg_t htif_t::write_cr(uint32_t coreid, uint16_t regnum, reg_t val)
 
   assert(resp.get_payload_size() == sizeof(reg_t));
   memcpy(&val, resp.get_payload(), sizeof(reg_t));
-  printf("htif_t::write_cr() returned %016llx\n", val);
   return val;
 }
 

@@ -50,7 +50,7 @@ AC_SUBST([CFLAGS],["-Wall -g -O3"])
 
 # Check for C++ compiler and set default C++ compiler flags
 AC_PROG_CXX
-AC_SUBST([CXXFLAGS],["-Wall -g -O3"])
+AC_SUBST([CXXFLAGS],["-std=c++0x -Wall -g -O3"])
 
 # Check for tools to build libraries
 AC_CHECK_TOOL([AR],[ar])

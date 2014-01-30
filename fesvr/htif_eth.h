@@ -31,6 +31,8 @@ public:
 
   size_t chunk_align() { return ETH_DATA_ALIGN; }
   size_t chunk_max_size() { return ETH_MAX_DATA_SIZE; }
+  uint32_t mem_mb() { return 512; }
+  uint32_t num_cores() { return 1; } // FIXME: only one core enabled for now
 
 protected:
   ssize_t read(void* buf, size_t max_size);
