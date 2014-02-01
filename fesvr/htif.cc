@@ -31,7 +31,7 @@
 static volatile bool signal_exit = false;
 static void handle_signal(int sig)
 {
-  if (signal_exit) // someone set up us the bomb!
+  if (sig == SIGABRT || signal_exit) // someone set up us the bomb!
     exit(-1);
   signal_exit = true;
   signal(sig, &handle_signal);
@@ -44,6 +44,7 @@ htif_t::htif_t(const std::vector<std::string>& args)
 {
   signal(SIGINT, &handle_signal);
   signal(SIGTERM, &handle_signal);
+  signal(SIGABRT, &handle_signal); // we still want to call static destructors
 
   size_t i;
   for (i = 0; i < args.size(); i++)
