@@ -19,13 +19,12 @@ class htif_zedboard_t : public htif_t
   size_t chunk_max_size() { return 64; }
   size_t chunk_align() { return 64; }
   uint32_t mem_mb() { return 256; }
+  uint32_t num_cores() { return 1; }
 
  private:
-  void poll_mem();
-  uintptr_t* mem;
   volatile uintptr_t* dev_vaddr;
 
-  const static uintptr_t dev_paddr = 0x40000000;
+  const static uintptr_t dev_paddr = 0x43C00000;
 };
 
 #endif // __HTIF_ZEDBOARD_H
