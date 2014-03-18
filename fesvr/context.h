@@ -5,6 +5,13 @@
 
 #include <pthread.h>
 
+#if defined(__GLIBC__)
+# undef USE_UCONTEXT
+# define USE_UCONTEXT
+# include <ucontext.h>
+# include <memory>
+#endif
+
 class context_t
 {
  public:
@@ -14,14 +21,19 @@ class context_t
   void switch_to();
   static context_t* current();
  private:
-  pthread_t thread;
-  pthread_mutex_t mutex;
-  pthread_cond_t cond;
   context_t* creator;
   void (*func)(void*);
   void* arg;
+#ifdef USE_UCONTEXT
+  std::unique_ptr<ucontext_t> context;
+  static void wrapper(context_t*);
+#else
+  pthread_t thread;
+  pthread_mutex_t mutex;
+  pthread_cond_t cond;
   volatile int flag;
   static void* wrapper(void*);
+#endif
 };
 
 #endif
