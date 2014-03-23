@@ -42,12 +42,22 @@ ssize_t htif_zedboard_t::write(const void* buf, size_t size)
 ssize_t htif_zedboard_t::read(void* buf, size_t max_size)
 {
 //  printf("htif_zedboard_t::read(buf, max_size = %u)\n", max_size);
-  uint16_t* x = (uint16_t*)buf;
+  uint32_t* x = (uint32_t*)buf;
   assert(max_size >= sizeof(*x));
-  uintptr_t v = read_reg(0);
-  *x = v >> 1;
-//  if (v & 1)
-//   printf("htif_zedboard_t::read() read_reg(0) returned %04x\n ", *x);
-  return (v & 1) ? sizeof(*x) : 0;
-}
 
+  // fifo data counter
+  uintptr_t c = read_reg(1); 
+  uint32_t count = 0;
+  if (c > 0)
+  {
+//    printf("htif_zedboard_t::read() read_reg(0) returned %u: ", c);
+    for (count=0; count<c && count*sizeof(*x)<max_size; count++)
+    {
+      x[count] = read_reg(0);
+//      printf("%08x ", x[count]);
+    }
+//    printf("\n");
+  }
+//  printf("htif_zedboard_t::read() returning %u\n", count*sizeof(*x));
+  return count*sizeof(*x);
+}
