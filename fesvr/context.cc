@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <sched.h>
 
-static thread_local context_t* cur;
+static __thread context_t* cur;
 
 context_t::context_t()
   : creator(NULL), func(NULL), arg(NULL),
