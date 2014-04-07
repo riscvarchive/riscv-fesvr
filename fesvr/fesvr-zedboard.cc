@@ -1,5 +1,6 @@
 // See LICENSE for license details.
 #include "htif_zedboard.h"
+#include <unistd.h>
 
 unsigned int count_1bits(unsigned int x)
 {
@@ -37,17 +38,7 @@ int main(int argc, char** argv)
   divisor = slowio & 0xffff;
   hold = (slowio >> 16) & 0xffff;
 
-  uint32_t f1, f2;
-  do {
-    f1 = htif.get_host_clk_freq();
-    f2 = htif.get_host_clk_freq();
-  } while (abs(f1-f2) > 500);
-
-
-  // freq is the number of host_clk cycles that happen during 1000000 fclk_clk0 cycles, where
-  // fclk_clk0 is set to 50 MHz.  so freq is the number of host_clk cycles in
-  // 20ms, multiplying freq by 50 yields the # of cycles/sec of host_clk
-  float mhz = (f1 * 50) / 1E6;
+  float mhz = htif.get_host_clk_freq();
 
   printf("uncore slowio divisor=%d, hold=%d\n", slowio & 0xffff, (slowio >> 16) & 0xffff);
   printf("host_clk frequency = %0.2f MHz\n", mhz);

@@ -16,7 +16,9 @@ htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
   dev_vaddr = (uintptr_t*)mmap(0, sysconf(_SC_PAGESIZE), PROT_READ|PROT_WRITE, MAP_SHARED, fd, dev_paddr);
   assert(dev_vaddr != MAP_FAILED);
 
-  write_reg(31, 0); // pulses reset_sync signal to EOS18 chip
+  printf("about to pulse reset signal\n");
+  write_reg(31, 1);
+  write_reg(31, 0);
   printf("reset completed\n");
 }
 
@@ -24,24 +26,30 @@ htif_zedboard_t::~htif_zedboard_t()
 {
 }
 
-uintptr_t htif_zedboard_t::get_host_clk_freq()
+float htif_zedboard_t::get_host_clk_freq()
 {
-  uintptr_t x = read_reg(2);
-  return x;
+  uintptr_t f1, f2;
+  // read multiple times to ensure accuracy
+  do {
+    f1 = read_reg(2);
+    usleep(10000);
+    f2 = read_reg(2);
+  } while (abs(f1-f2) > 500);
+
+  float freq = f1 / 1E4;
+  return freq;
 }
 
 ssize_t htif_zedboard_t::write(const void* buf, size_t size)
 {
   const uint32_t* x = (const uint32_t*)buf;
   assert(size >= sizeof(*x));
-//  printf("    htif_zedboard_t::write() calling write_reg(0, %08x)\n", *x);
   write_reg(0, *x);
   return sizeof(*x);
 }
 
 ssize_t htif_zedboard_t::read(void* buf, size_t max_size)
 {
-//  printf("htif_zedboard_t::read(buf, max_size = %u)\n", max_size);
   uint32_t* x = (uint32_t*)buf;
   assert(max_size >= sizeof(*x));
 
@@ -49,15 +57,8 @@ ssize_t htif_zedboard_t::read(void* buf, size_t max_size)
   uintptr_t c = read_reg(1); 
   uint32_t count = 0;
   if (c > 0)
-  {
-//    printf("htif_zedboard_t::read() read_reg(0) returned %u: ", c);
     for (count=0; count<c && count*sizeof(*x)<max_size; count++)
-    {
       x[count] = read_reg(0);
-//      printf("%08x ", x[count]);
-    }
-//    printf("\n");
-  }
-//  printf("htif_zedboard_t::read() returning %u\n", count*sizeof(*x));
+
   return count*sizeof(*x);
 }
