@@ -18,6 +18,7 @@ htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
 
   printf("about to pulse reset signal\n");
   write_reg(31, 1);
+  usleep(10000);
   write_reg(31, 0);
   printf("reset completed\n");
 }
