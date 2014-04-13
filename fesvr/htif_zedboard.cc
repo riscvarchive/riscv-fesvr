@@ -16,16 +16,24 @@ htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
   dev_vaddr = (uintptr_t*)mmap(0, sysconf(_SC_PAGESIZE), PROT_READ|PROT_WRITE, MAP_SHARED, fd, dev_paddr);
   assert(dev_vaddr != MAP_FAILED);
 
-  printf("about to pulse reset signal\n");
+  printf("about to toggle cpu reset pin\n");
   write_reg(31, 1);
   usleep(10000);
   write_reg(31, 0);
-  printf("reset completed\n");
+  printf("done\n");
 }
 
 htif_zedboard_t::~htif_zedboard_t()
 {
 }
+
+void htif_zedboard_t::reset_internal()
+{
+  write_reg(31, 2);
+  usleep(10000);
+  write_reg(31, 0);
+}
+
 
 float htif_zedboard_t::get_host_clk_freq()
 {
@@ -44,9 +52,16 @@ float htif_zedboard_t::get_host_clk_freq()
 ssize_t htif_zedboard_t::write(const void* buf, size_t size)
 {
   const uint32_t* x = (const uint32_t*)buf;
+//  printf("write(%d) : ", size);
+//  for (int i=0;i<size/4;i++)
+//    printf("%08x ", x[i]);
+//  printf("\n");
   assert(size >= sizeof(*x));
-  write_reg(0, *x);
-  return sizeof(*x);
+
+  for (int i=0;i<size/4;i++)
+    write_reg(0, x[i]);
+
+  return size;
 }
 
 ssize_t htif_zedboard_t::read(void* buf, size_t max_size)

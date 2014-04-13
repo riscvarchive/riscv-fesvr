@@ -10,6 +10,7 @@ class htif_zedboard_t : public htif_t
   htif_zedboard_t(const std::vector<std::string>& args);
   ~htif_zedboard_t();
   float get_host_clk_freq();
+  void reset_internal();
 
  protected:
   ssize_t read(void* buf, size_t max_size);

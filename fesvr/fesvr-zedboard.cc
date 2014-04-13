@@ -19,9 +19,8 @@ int main(int argc, char** argv)
   bool memtest = false;
   int memtest_mb;
 
-  int slowio = htif.read_cr(-1, 63);
-  int divisor = slowio & 0xffff;
-  int hold = (slowio >> 16) & 0xffff;
+  int divisor = 31;
+  int hold = 2;
 
   for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
   {
@@ -34,7 +33,11 @@ int main(int argc, char** argv)
   }
 
   htif.write_cr(-1, 63, divisor | (hold<<16));
-  slowio = htif.read_cr(-1, 63);
+
+  // reset internal logic after changing host_clk speed
+  htif.reset_internal();
+
+  int slowio = htif.read_cr(-1, 63);
   divisor = slowio & 0xffff;
   hold = (slowio >> 16) & 0xffff;
 
