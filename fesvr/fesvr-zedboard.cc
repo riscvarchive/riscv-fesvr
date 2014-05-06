@@ -32,7 +32,9 @@ int main(int argc, char** argv)
       hold = std::atoi(a->substr(6).c_str());
   }
 
-  htif.set_voltage();
+  htif.set_i2c_divider(7);
+  htif.set_voltage(I2C_R3_VDD18, 1.8);
+  htif.read_voltage(I2C_R3_VDD18);
 
   return 0;
 

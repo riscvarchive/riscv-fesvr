@@ -49,13 +49,32 @@ float htif_zedboard_t::get_host_clk_freq()
   return freq;
 }
 
-void htif_zedboard_t::set_voltage()
+void htif_zedboard_t::set_i2c_divider(short divider)
 {
-  write_reg(3, 128); // divisor
-  write_reg(4, 252); // wdata
-  write_reg(5, 418); // slave_addr
-  write_reg(6, 33024); // reg_addr
-  write_reg(7, 1); // toggle
+  write_reg(I2C_DIVISOR, 1 << divider); // divisor
+}
+void htif_zedboard_t::read_voltage(short supply_name)
+{
+  uintptr_t rdata;
+  write_reg(I2C_SLAVE_ADDR, supply_name << 1 | 1);
+  write_reg(I2C_REG_ADDR, 0);
+  write_reg(I2C_TOGGLE, 1); 
+  rdata = read_reg(I2C_RDATA);
+  printf("rdata: %d\n",(int) rdata);
+}
+
+void htif_zedboard_t::set_voltage(short supply_name, float vdd_value)
+{
+  float r2;
+  unsigned short wdata;
+
+  r2 = (vdd_value/0.2-1)*1240;
+  wdata = (unsigned short) (r2-40)*256/10000;
+  write_reg(I2C_WDATA, wdata);
+  write_reg(I2C_SLAVE_ADDR, supply_name << 1);
+  write_reg(I2C_REG_ADDR, 1 << 8);
+  write_reg(I2C_TOGGLE, 1); 
+  printf("wdata: %d\n",wdata);
 }
 
 ssize_t htif_zedboard_t::write(const void* buf, size_t size)

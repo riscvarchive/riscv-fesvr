@@ -4,13 +4,32 @@
 #include "htif.h"
 #include <vector>
 
+#define I2C_DIVISOR 3
+#define I2C_WDATA 4
+#define I2C_SLAVE_ADDR 5
+#define I2C_REG_ADDR 6
+#define I2C_TOGGLE 7
+#define I2C_RDATA 8
+
+#define I2C_R3_VDDHI 0x20
+#define I2C_R3_VDDHI_MEAS 0x70
+#define I2C_R3_VDDLO 0x22
+#define I2C_R3_VDDLO_MEAS 0x78
+#define I2C_R3_VDD18 0x21
+#define I2C_R3_VDD18_MEAS 0x72
+#define I2C_R3_VDD10 0x23
+#define I2C_R3_VDD10_MEAS 0x7A
+#define I2C_R3_DAC 0x1F
+
 class htif_zedboard_t : public htif_t
 {
  public:
   htif_zedboard_t(const std::vector<std::string>& args);
   ~htif_zedboard_t();
   float get_host_clk_freq();
-  void set_voltage();
+  void set_voltage(short supply_name, float vdd_value);
+  void read_voltage(short supply_name);
+  void set_i2c_divider(short divider);
   void reset_internal();
 
  protected:

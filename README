@@ -5,7 +5,9 @@ usually not meant to be used as a standalone package.
 Execute the following commands to install the library, assuming you've
 declared the RISCV environment variable to point to the RISC-V install path:
 
+On BWTC machines
+% export PATH=/tools/xilinx/SDK/2013.4/gnu/arm/lin/bin:$PATH
 % mkdir build
 % cd build
-% ../configure --prefix=$RISCV
-% make install
+% ../configure --host=arm-xilinx-linux-gnueabi
+% make -j
