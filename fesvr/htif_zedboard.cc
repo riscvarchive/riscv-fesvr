@@ -49,6 +49,15 @@ float htif_zedboard_t::get_host_clk_freq()
   return freq;
 }
 
+void htif_zedboard_t::set_voltage()
+{
+  write_reg(3, 128); // divisor
+  write_reg(4, 252); // wdata
+  write_reg(5, 418); // slave_addr
+  write_reg(6, 33024); // reg_addr
+  write_reg(7, 1); // toggle
+}
+
 ssize_t htif_zedboard_t::write(const void* buf, size_t size)
 {
   const uint32_t* x = (const uint32_t*)buf;

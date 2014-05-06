@@ -10,6 +10,7 @@ class htif_zedboard_t : public htif_t
   htif_zedboard_t(const std::vector<std::string>& args);
   ~htif_zedboard_t();
   float get_host_clk_freq();
+  void set_voltage();
   void reset_internal();
 
  protected:

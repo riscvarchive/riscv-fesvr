@@ -32,6 +32,10 @@ int main(int argc, char** argv)
       hold = std::atoi(a->substr(6).c_str());
   }
 
+  htif.set_voltage();
+
+  return 0;
+
   htif.write_cr(-1, 63, divisor | (hold<<16));
 
   // reset internal logic after changing host_clk speed
