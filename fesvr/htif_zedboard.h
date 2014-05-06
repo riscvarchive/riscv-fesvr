@@ -11,15 +11,16 @@
 #define I2C_TOGGLE 7
 #define I2C_RDATA 8
 
-#define I2C_R3_VDDHI 0x20
+#define I2C_R3_VDDHI 0x50
 #define I2C_R3_VDDHI_MEAS 0x70
-#define I2C_R3_VDDLO 0x22
+#define I2C_R3_VDDLO 0x52
 #define I2C_R3_VDDLO_MEAS 0x78
-#define I2C_R3_VDD18 0x21
+#define I2C_R3_VDD18 0x51
 #define I2C_R3_VDD18_MEAS 0x72
-#define I2C_R3_VDD10 0x23
+#define I2C_R3_VDD10 0x53
 #define I2C_R3_VDD10_MEAS 0x7A
 #define I2C_R3_DAC 0x1F
+#define I2C_R3_CLOCK 0x55
 
 class htif_zedboard_t : public htif_t
 {
@@ -28,9 +29,19 @@ class htif_zedboard_t : public htif_t
   ~htif_zedboard_t();
   float get_host_clk_freq();
   void set_voltage(short supply_name, float vdd_value);
+  void write_i2c_reg(short supply_name, short reg_addr, short num_bytes, short wdata);
+  short read_i2c_reg(short supply_name, short reg_addr, short num_bytes);
   void read_voltage(short supply_name);
+  void write_clock(float freq);
+  float read_sense_voltage(short supply_name);
+  float read_sense_current(short supply_name);
   void set_i2c_divider(short divider);
   void reset_internal();
+  void st_sram_init();
+  void bz_sram_init();
+  void dcdc_init();
+  void cassia_init();
+  void clock_init();
 
  protected:
   ssize_t read(void* buf, size_t max_size);

@@ -37,6 +37,11 @@ int main(int argc, char** argv)
   htif.read_voltage(I2C_R3_VDD18);
 
   return 0;
+  htif.cassia_init();
+  htif.clock_init();
+  htif.bz_sram_init();
+  htif.st_sram_init();
+  htif.dcdc_init();
 
   htif.write_cr(-1, 63, divisor | (hold<<16));
 

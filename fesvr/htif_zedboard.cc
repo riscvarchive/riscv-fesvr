@@ -49,19 +49,140 @@ float htif_zedboard_t::get_host_clk_freq()
   return freq;
 }
 
+void htif_zedboard_t::st_sram_init()
+{
+  write_cr(-1, 62, 1);
+  write_cr(-1, 62, 0);
+  write_cr(-1, 62, 1);
+}
+void htif_zedboard_t::bz_sram_init()
+{
+  write_cr(-1, 61, 0x4060);
+}
+
+void htif_zedboard_t::dcdc_init()
+{
+  write_cr(-1, 15, -1);
+  write_cr(-1, 16, -1);
+
+  write_cr(-1, 8, 0);
+  write_cr(-1, 9, 0);
+  write_cr(-1, 10, 0);
+  write_cr(-1, 11, 1);
+  write_cr(-1, 12, 3);
+  write_cr(-1, 13, 1);
+  write_cr(-1, 14, 2);
+
+  write_cr(-1, 11, 0);
+  write_cr(-1, 8, 1);
+  write_cr(-1, 10, 1);
+  write_cr(-1, 11, 1);
+  write_cr(-1, 57, 1);
+}
+
+void htif_zedboard_t::clock_init()
+{
+  write_cr(-1, 52, 0); // core_clksel
+  write_cr(-1, 53, 0); // cassia_clksel
+  write_cr(-1, 54, 0); // dcdc_clksel
+  write_cr(-1, 55, 0); // dcdcslow_clksel
+  write_cr(-1, 56, 0); // bist_clksel
+  write_cr(-1, 57, 0); // dcdc_counter_clksel
+}
+
+void htif_zedboard_t::cassia_init()
+{
+  //int cassia_seed = (3<<9)|(3<<4)|(1<<3)|(1<<2);
+  write_cr(-1, 48, 0);
+  //write_cr(-1, 48, cassia_seed);
+  //cassia_seed = cassia_seed | (1<<0);
+  //write_cr(-1, 48, cassia_seed);
+  //cassia_seed = cassia_seed | (1<<1);
+  //write_cr(-1, 48, cassia_seed);
+}
+
+void htif_zedboard_t::write_i2c_reg(short supply_name, short reg_addr, short num_bytes, short wdata)
+{
+  write_reg(I2C_SLAVE_ADDR, supply_name << 1 | 0);
+  write_reg(I2C_REG_ADDR, num_bytes << 8 | (reg_addr & 0xFF));
+  write_reg(I2C_WDATA, wdata);
+  write_reg(I2C_TOGGLE, 1); 
+  printf("wdata: %d\n",wdata);
+}
+
+short htif_zedboard_t::read_i2c_reg(short supply_name, short reg_addr, short num_bytes)
+{
+  short rdata;
+
+  write_reg(I2C_SLAVE_ADDR, supply_name << 1 | 1);
+  write_reg(I2C_REG_ADDR, num_bytes << 8 | (reg_addr & 0xFF));
+  write_reg(I2C_TOGGLE, 1); 
+  rdata = read_reg(I2C_RDATA);
+  printf("rdata: %d\n",(int) rdata);
+  return rdata;
+}
+
 void htif_zedboard_t::set_i2c_divider(short divider)
 {
   write_reg(I2C_DIVISOR, 1 << divider); // divisor
 }
+
+void htif_zedboard_t::write_clock(float freq)
+{
+  short new_r135;
+  short old_r135;
+
+  // Freeze DCO
+  write_i2c_reg(I2C_R3_CLOCK, 137, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 7, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 8, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 9, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 10, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 11, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 12, 0X10,1);
+
+  // Remember old settings
+  old_r135 = read_i2c_reg(I2C_R3_CLOCK,135,1);
+  new_r135 = (old_r135 & 0xFF) | 0x40;
+
+  // Unfreeze DCO
+  write_i2c_reg(I2C_R3_CLOCK, 137, 1, 0X00);
+  write_i2c_reg(I2C_R3_CLOCK, 135, 1, new_r135);
+
+}
+
 void htif_zedboard_t::read_voltage(short supply_name)
 {
-  uintptr_t rdata;
-  write_reg(I2C_SLAVE_ADDR, supply_name << 1 | 1);
-  write_reg(I2C_REG_ADDR, 0);
-  write_reg(I2C_TOGGLE, 1); 
-  rdata = read_reg(I2C_RDATA);
-  printf("rdata: %d\n",(int) rdata);
+  read_i2c_reg(supply_name,0,1);
 }
+
+float htif_zedboard_t::read_sense_voltage(short supply_name)
+{
+  uintptr_t rdata;
+  float measured_voltage;
+
+  // Set X8 gain to measure up to 1A
+  write_i2c_reg(supply_name, 0x0A, 1, 3);
+  rdata = read_i2c_reg(supply_name, 0x02, 2);
+  measured_voltage = ((unsigned short) rdata >> 4)*57.3/4096.0;
+  printf("voltage: %f\n",measured_voltage);
+  return measured_voltage;
+}
+
+float htif_zedboard_t::read_sense_current(short supply_name)
+{
+  uintptr_t rdata;
+  float measured_current;
+
+  // Set ADC mux
+  write_i2c_reg(supply_name, 0x0A, 1, 2);
+  rdata = read_i2c_reg(supply_name, 0x02, 2);
+  measured_current = (((unsigned short) rdata >> 4)*13.44e-6)/0.05;
+  printf("current: %f\n",measured_current);
+  return measured_current;
+}
+
+
 
 void htif_zedboard_t::set_voltage(short supply_name, float vdd_value)
 {
@@ -70,11 +191,7 @@ void htif_zedboard_t::set_voltage(short supply_name, float vdd_value)
 
   r2 = (vdd_value/0.2-1)*1240;
   wdata = (unsigned short) (r2-40)*256/10000;
-  write_reg(I2C_WDATA, wdata);
-  write_reg(I2C_SLAVE_ADDR, supply_name << 1);
-  write_reg(I2C_REG_ADDR, 1 << 8);
-  write_reg(I2C_TOGGLE, 1); 
-  printf("wdata: %d\n",wdata);
+  write_i2c_reg(supply_name, 0, 1, wdata);
 }
 
 ssize_t htif_zedboard_t::write(const void* buf, size_t size)
