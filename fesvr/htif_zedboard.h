@@ -4,6 +4,7 @@
 #include "htif.h"
 #include <vector>
 #include "clk_lookup.h"
+#include "bist.h" 
 
 #define I2C_DIVISOR 3
 #define I2C_WDATA 4
@@ -26,6 +27,7 @@
 #define I2C_R3_GNDS 2
 #define I2C_R3_VREF 1
 #define I2C_R3_VDD_REPLICA 0
+
 
 class htif_zedboard_t : public htif_t
 {
@@ -59,6 +61,7 @@ class htif_zedboard_t : public htif_t
   uint32_t num_cores() { return 1; } // FIXME
 
  private:
+    bist_t bist;
 
   volatile uintptr_t* dev_vaddr;
   const static uintptr_t dev_paddr = 0x43C00000;

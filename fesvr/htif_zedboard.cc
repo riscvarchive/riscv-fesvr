@@ -4,13 +4,14 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdio.h>
+#include <math.h>
 #include "fout.h" // Lookup table for clock gen
 
 #define read_reg(r) (dev_vaddr[r])
 #define write_reg(r, v) (dev_vaddr[r] = v)
 
 htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
-  : htif_t(args)
+  : htif_t(args), bist(this,args)
 {
   int fd = open("/dev/mem", O_RDWR|O_SYNC);
   assert(fd != -1);
@@ -128,10 +129,25 @@ void htif_zedboard_t::set_i2c_divider(short divider)
   write_reg(I2C_DIVISOR, 1 << divider); // divisor
 }
 
+int freq_compare(const void *c1, const void *c2)
+{
+  //return ((const struct clk_lookup*) c1)->fout - ((const struct clk_lookup*) c2)->fout;
+}
+
+
 void htif_zedboard_t::write_clock(float freq)
 {
+  float rounded_freq;  
   short new_r135;
   short old_r135;
+  int count = sizeof (clk_freqs) / sizeof (struct clk_lookup);
+  struct clk_lookup target,*result;
+
+  rounded_freq = round(freq/1e6)*1e6;
+  target.fout = rounded_freq;
+
+  // Search for closest matching frequency
+  //result = bsearch(&target,clk_freqs,count,sizeof (struct clk_lookup),freq_compare);
 
   // Freeze DCO
   write_i2c_reg(I2C_R3_CLOCK, 137, 0X10,1);
@@ -188,7 +204,7 @@ void htif_zedboard_t::set_reference_voltage(short reference_name, float vdd_valu
 {
   short dac_code;
 
-  write_i2c_reg(I2C_R3_DAC, reference_name, 2, 0x72);
+  write_i2c_reg(I2C_R3_DAC, 0x72, 2, 0);
   dac_code = (short) vdd_value*((float) (1 << 12))/2.048;
   write_i2c_reg(I2C_R3_DAC,0xC | (reference_name & 0x3),2,dac_code << 4);
 
