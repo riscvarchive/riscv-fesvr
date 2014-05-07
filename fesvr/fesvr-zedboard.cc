@@ -33,10 +33,17 @@ int main(int argc, char** argv)
   }
 
   htif.set_i2c_divider(7);
+  htif.set_voltage(I2C_R3_VDDHI, 1.8);
+  htif.set_voltage(I2C_R3_VDDLO, 1.0);
   htif.set_voltage(I2C_R3_VDD18, 1.8);
+  htif.set_voltage(I2C_R3_VDD10, 1.0);
+  htif.read_voltage(I2C_R3_VDDHI);
+  htif.read_voltage(I2C_R3_VDDLO);
   htif.read_voltage(I2C_R3_VDD18);
-
+  htif.read_voltage(I2C_R3_VDD10);
+  htif.set_clksel(1); // pll_clk_in
   return 0;
+
   htif.cassia_init();
   htif.clock_init();
   htif.bz_sram_init();

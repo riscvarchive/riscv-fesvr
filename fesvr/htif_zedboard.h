@@ -11,6 +11,7 @@
 #define I2C_REG_ADDR 6
 #define I2C_TOGGLE 7
 #define I2C_RDATA 8
+#define CLK_SEL_ADDR 9
 
 #define I2C_R3_VDDHI 0x50
 #define I2C_R3_VDDHI_MEAS 0x70
@@ -42,6 +43,7 @@ class htif_zedboard_t : public htif_t
   float read_sense_voltage(short supply_name);
   float read_sense_current(short supply_name);
   void set_i2c_divider(short divider);
+  void set_clksel(int sel);
   void reset_internal();
   void st_sram_init();
   void bz_sram_init();

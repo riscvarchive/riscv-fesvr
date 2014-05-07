@@ -128,6 +128,11 @@ void htif_zedboard_t::set_i2c_divider(short divider)
   write_reg(I2C_DIVISOR, 1 << divider); // divisor
 }
 
+void htif_zedboard_t::set_clksel(int sel)
+{
+  write_reg(CLK_SEL_ADDR, sel);
+}
+
 void htif_zedboard_t::write_clock(float freq)
 {
   short new_r135;
