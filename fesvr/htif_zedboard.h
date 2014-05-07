@@ -29,6 +29,7 @@
 #define I2C_R3_VREF 1
 #define I2C_R3_VDD_REPLICA 0
 
+int freq_compare(const void *c1, const void *c2);
 
 class htif_zedboard_t : public htif_t
 {

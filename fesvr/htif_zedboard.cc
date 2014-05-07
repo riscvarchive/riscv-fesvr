@@ -112,7 +112,7 @@ void htif_zedboard_t::write_i2c_reg(short supply_name, short reg_addr, short num
   write_reg(I2C_REG_ADDR, num_bytes << 8 | (reg_addr & 0xFF));
   write_reg(I2C_WDATA, wdata);
   write_reg(I2C_TOGGLE, 1); 
-  printf("wdata: %d\n",wdata);
+  printf("reg_addr: %d, wdata: %d\n",reg_addr & 0xFF,wdata);
 }
 
 short htif_zedboard_t::read_i2c_reg(short supply_name, short reg_addr, short num_bytes)
@@ -134,7 +134,8 @@ void htif_zedboard_t::set_i2c_divider(short divider)
 
 int freq_compare(const void *c1, const void *c2)
 {
-  //return ((const struct clk_lookup*) c1)->fout - ((const struct clk_lookup*) c2)->fout;
+  return ((const struct clk_lookup*) c1)->fout - ((const struct clk_lookup*) c2)->fout;
+  //return 1;
 }
 
 void htif_zedboard_t::set_clksel(int sel)
@@ -147,23 +148,30 @@ void htif_zedboard_t::write_clock(float freq)
   float rounded_freq;  
   short new_r135;
   short old_r135;
-  int count = sizeof (clk_freqs) / sizeof (struct clk_lookup);
+  int count = sizeof(clk_freqs) / sizeof(struct clk_lookup);
   struct clk_lookup target,*result;
+  uint64_t rfreq_hex;
+  uint64_t whole,frac;
 
   rounded_freq = round(freq/1e6)*1e6;
   target.fout = rounded_freq;
 
   // Search for closest matching frequency
-  //result = bsearch(&target,clk_freqs,count,sizeof (struct clk_lookup),freq_compare);
+  result = (clk_lookup*) bsearch((void*) &target,(void*) clk_freqs,count,sizeof(struct clk_lookup),freq_compare);
+  printf("found freq:%f\n",result->fout);
+
+  whole = ((unsigned int) result->rfreq);
+  frac = (unsigned int) ((result->rfreq-(float) whole)*(1<<28));
+  rfreq_hex = ((whole << 28) & 0x3FF0000000UL) | (frac & 0xFFFFFFFUL);
 
   // Freeze DCO
-  write_i2c_reg(I2C_R3_CLOCK, 137, 0X10,1);
-  write_i2c_reg(I2C_R3_CLOCK, 7, 0X10,1);
-  write_i2c_reg(I2C_R3_CLOCK, 8, 0X10,1);
-  write_i2c_reg(I2C_R3_CLOCK, 9, 0X10,1);
-  write_i2c_reg(I2C_R3_CLOCK, 10, 0X10,1);
-  write_i2c_reg(I2C_R3_CLOCK, 11, 0X10,1);
-  write_i2c_reg(I2C_R3_CLOCK, 12, 0X10,1);
+  write_i2c_reg(I2C_R3_CLOCK, 137, 1, 0X10);
+  write_i2c_reg(I2C_R3_CLOCK, 7, 1, (((result->hsdif - 4) & 0x7) << 5) | (((result->w -1) & 0x7F) >> 2));
+  write_i2c_reg(I2C_R3_CLOCK, 8, 1, ((((result->w)-1) & 0x3) << 6) | ( (unsigned int) (rfreq_hex >>32) & 0x3F));
+  write_i2c_reg(I2C_R3_CLOCK, 9, 1, (rfreq_hex >> 24) & 0xFF);
+  write_i2c_reg(I2C_R3_CLOCK, 10, 1, (rfreq_hex >> 16) & 0xFF);
+  write_i2c_reg(I2C_R3_CLOCK, 11, 1, (rfreq_hex >> 8) & 0xFF);
+  write_i2c_reg(I2C_R3_CLOCK, 12, 1, (rfreq_hex) & 0xFF);
 
   // Remember old settings
   old_r135 = read_i2c_reg(I2C_R3_CLOCK,135,1);
@@ -212,8 +220,11 @@ void htif_zedboard_t::set_reference_voltage(short reference_name, float vdd_valu
   short dac_code;
 
   write_i2c_reg(I2C_R3_DAC, 0x72, 2, 0);
-  dac_code = (short) vdd_value*((float) (1 << 12))/2.048;
-  write_i2c_reg(I2C_R3_DAC,0xC | (reference_name & 0x3),2,dac_code << 4);
+  printf("scale: %f\n",((float) (1 << 12))/2.048);
+  printf("vdd_value: %f\n",vdd_value);
+  dac_code = (short) (vdd_value*((float) (1 << 12))/2.048);
+  printf("dac_code: %d\n",dac_code);
+  write_i2c_reg(I2C_R3_DAC,0x30 | (reference_name & 0xF),2,dac_code << 4);
 
 }
 

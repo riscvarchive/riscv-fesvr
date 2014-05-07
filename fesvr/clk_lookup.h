@@ -3,8 +3,8 @@
 
 struct clk_lookup {
   float f_dco_new;
-  int hsdif;
-  int w;
+  uint32_t hsdif;
+  uint32_t w;
   float fout;
   float rfreq;
 };

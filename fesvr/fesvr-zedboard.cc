@@ -21,6 +21,7 @@ int main(int argc, char** argv)
 
   int divisor = 31;
   int hold = 2;
+  float freq = 50e6;
 
   for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
   {
@@ -30,6 +31,8 @@ int main(int argc, char** argv)
       divisor = std::atoi(a->substr(9).c_str());
     if (a->substr(0, 6) == "+hold=")
       hold = std::atoi(a->substr(6).c_str());
+    if (a->substr(0, 6) == "+freq=")
+      freq = std::atof(a->substr(6).c_str());
   }
 
   htif.set_i2c_divider(7);
@@ -45,6 +48,8 @@ int main(int argc, char** argv)
   htif.read_voltage(I2C_R3_VDDLO);
   htif.read_voltage(I2C_R3_VDD18);
   htif.read_voltage(I2C_R3_VDD10);
+  htif.write_clock(freq);
+  return 0;
   htif.set_clksel(1); // pll_clk_in
 
   htif.write_cr(-1, 63, divisor | (hold<<16));
