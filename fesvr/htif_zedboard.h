@@ -52,7 +52,8 @@ class htif_zedboard_t : public htif_t
   void bz_sram_init();
   void dcdc_init();
   void cassia_init();
-  void clock_init();
+  void clock_init(int core_clksel, int cassia_clksel, int bist_clksel);
+  void run_bist();
 
  protected:
   ssize_t read(void* buf, size_t max_size);

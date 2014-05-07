@@ -136,6 +136,10 @@ class bist_t
           wdata_string = line.substr(pos+2);
           wdata = strtoul(wdata_string.c_str(), NULL, 10);
           fprintf(stdout,"Poll: %u == %u\n",waddr,wdata);
+          // Raise the voltage
+          //if(waddr==109){
+            //htif->set_voltage(I2C_R3_VDDLO,1.0);
+          //}
           while(1){
             pollresponse = htif->read_cr(-1,waddr);
             if(wdata == pollresponse){
@@ -143,6 +147,7 @@ class bist_t
             }
 
           }
+          // Lower the voltage
 
         } else if (line.find("*") != -1) {
           fprintf(stdout,"%s\n",line.c_str());
@@ -198,9 +203,9 @@ class bist_t
       size_t i;
       size_t pos;
       for (i = 0; i < args.size(); i++){
-          pos = args[i].find("bist=");
+          pos = args[i].find("+bist=");
           if(pos != -1){
-          bistfname = args[i].substr(pos+5);
+          bistfname = args[i].substr(pos+6);
           }
       }
 

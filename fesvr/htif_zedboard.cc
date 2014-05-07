@@ -62,6 +62,11 @@ void htif_zedboard_t::bz_sram_init()
   write_cr(-1, 61, 0x4060);
 }
 
+void htif_zedboard_t::run_bist()
+{
+  bist.run_bist();
+}
+
 void htif_zedboard_t::dcdc_init()
 {
   write_cr(-1, 15, 2);
@@ -85,13 +90,13 @@ void htif_zedboard_t::dcdc_init()
   //write_cr(-1, 8, 6); // 0.5V
 }
 
-void htif_zedboard_t::clock_init()
+void htif_zedboard_t::clock_init(int core_clksel, int cassia_clksel, int bist_clksel)
 {
-  write_cr(-1, 52, 0); // core_clksel
+  write_cr(-1, 52, core_clksel); // core_clksel
   write_cr(-1, 53, 0); // cassia_clksel
   write_cr(-1, 54, 0); // dcdc_clksel
   write_cr(-1, 55, 0); // dcdcslow_clksel
-  write_cr(-1, 56, 0); // bist_clksel
+  write_cr(-1, 56, bist_clksel); // bist_clksel
   write_cr(-1, 57, 0); // dcdc_counter_clksel
 }
 
@@ -232,6 +237,15 @@ void htif_zedboard_t::set_voltage(short supply_name, float vdd_value)
 {
   float r2;
   unsigned short wdata;
+
+  if(supply_name == I2C_R3_VDDLO | supply_name == I2C_R3_VDD10)
+  {
+    if (vdd_value - 1.2 > 0)
+    {
+      printf("Tried to set too high a Vdd...\n");
+      vdd_value = 1.0;
+    }
+  }
 
   r2 = (vdd_value/0.2-1)*1240;
   wdata = (unsigned short) (r2-40)*256/10000;

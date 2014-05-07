@@ -21,7 +21,13 @@ int main(int argc, char** argv)
 
   int divisor = 31;
   int hold = 2;
+  int bisten = 0;
+  float vdd_backup = 1.0;
   float freq = 50e6;
+  int bist_clksel = 0;
+  int uncore_clksel = 1;
+  int cassia_clksel = 0;
+  int core_clksel = 0;
 
   for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
   {
@@ -33,11 +39,24 @@ int main(int argc, char** argv)
       hold = std::atoi(a->substr(6).c_str());
     if (a->substr(0, 6) == "+freq=")
       freq = std::atof(a->substr(6).c_str());
+    if (a->substr(0, 6) == "+bist=")
+      bisten = 1;
+    if (a->substr(0, 5) == "+vdd=")
+      vdd_backup = std::atof(a->substr(5).c_str());
+    if (a->substr(0, 13) == "+bist_clksel=")
+      bist_clksel = std::atof(a->substr(13).c_str());
+    if (a->substr(0, 13) == "+core_clksel=")
+      core_clksel = std::atof(a->substr(13).c_str());
+    if (a->substr(0, 15) == "+cassia_clksel=")
+      cassia_clksel = std::atof(a->substr(15).c_str());
+    if (a->substr(0, 15) == "+uncore_clksel=")
+      uncore_clksel = std::atof(a->substr(15).c_str());
   }
 
   htif.set_i2c_divider(7);
   htif.set_voltage(I2C_R3_VDDHI, 1.8);
-  htif.set_voltage(I2C_R3_VDDLO, 1.0);
+  printf("Setting vdd to: %f\n",vdd_backup);
+  htif.set_voltage(I2C_R3_VDDLO, vdd_backup);
   htif.set_voltage(I2C_R3_VDD18, 1.8);
   htif.set_voltage(I2C_R3_VDD10, 1.0);
   htif.set_reference_voltage(I2C_R3_VDDS, 0);
@@ -49,8 +68,7 @@ int main(int argc, char** argv)
   htif.read_voltage(I2C_R3_VDD18);
   htif.read_voltage(I2C_R3_VDD10);
   htif.write_clock(freq);
-  return 0;
-  htif.set_clksel(1); // pll_clk_in
+  htif.set_clksel(uncore_clksel);
 
   htif.write_cr(-1, 63, divisor | (hold<<16));
   int slowio = htif.read_cr(-1, 63);
@@ -62,10 +80,15 @@ int main(int argc, char** argv)
   printf("cpu_clk frequency  = %0.2f MHz\n", mhz * (divisor+1));
 
   htif.cassia_init();
-  htif.clock_init();
+  htif.clock_init(core_clksel, cassia_clksel, bist_clksel);
   htif.bz_sram_init();
   htif.st_sram_init();
   htif.dcdc_init();
+
+  if(bisten)
+  {
+    htif.run_bist();
+  }
   
   printf("cores = %d\n", (int)htif.read_cr(-1, 0));
   printf("mb = %d\n", (int)htif.read_cr(-1, 1));
