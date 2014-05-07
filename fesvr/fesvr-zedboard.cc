@@ -33,30 +33,41 @@ int main(int argc, char** argv)
   }
 
   htif.set_i2c_divider(7);
+  htif.set_voltage(I2C_R3_VDDHI, 1.8);
+  htif.set_voltage(I2C_R3_VDDLO, 1.0);
   htif.set_voltage(I2C_R3_VDD18, 1.8);
+  htif.set_voltage(I2C_R3_VDD10, 1.0);
+  htif.set_reference_voltage(I2C_R3_VDDS, 0);
+  htif.set_reference_voltage(I2C_R3_GNDS, 0);
+  htif.set_reference_voltage(I2C_R3_VREF, 0.75);
+  htif.set_reference_voltage(I2C_R3_VDD_REPLICA, 0.2);
+  htif.read_voltage(I2C_R3_VDDHI);
+  htif.read_voltage(I2C_R3_VDDLO);
   htif.read_voltage(I2C_R3_VDD18);
+  htif.read_voltage(I2C_R3_VDD10);
+  htif.set_clksel(1); // pll_clk_in
 
-  return 0;
+  htif.write_cr(-1, 63, divisor | (hold<<16));
+  int slowio = htif.read_cr(-1, 63);
+  divisor = slowio & 0xffff;
+  hold = (slowio >> 16) & 0xffff;
+  float mhz = htif.get_host_clk_freq();
+  printf("uncore slowio divisor=%d, hold=%d\n", slowio & 0xffff, (slowio >> 16) & 0xffff);
+  printf("host_clk frequency = %0.2f MHz\n", mhz);
+  printf("cpu_clk frequency  = %0.2f MHz\n", mhz * (divisor+1));
+
   htif.cassia_init();
   htif.clock_init();
   htif.bz_sram_init();
   htif.st_sram_init();
   htif.dcdc_init();
+  
+  printf("cores = %d\n", (int)htif.read_cr(-1, 0));
+  printf("mb = %d\n", (int)htif.read_cr(-1, 1));
+  printf("reset = %d\n", (int)htif.read_cr(0, 29));
+  htif.write_cr(0, 13, 0xdeadbeef);
+  printf("k0 = %08lx\n", (int)htif.read_cr(0, 13));
 
-  htif.write_cr(-1, 63, divisor | (hold<<16));
-
-  // reset internal logic after changing host_clk speed
-  htif.reset_internal();
-
-  int slowio = htif.read_cr(-1, 63);
-  divisor = slowio & 0xffff;
-  hold = (slowio >> 16) & 0xffff;
-
-  float mhz = htif.get_host_clk_freq();
-
-  printf("uncore slowio divisor=%d, hold=%d\n", slowio & 0xffff, (slowio >> 16) & 0xffff);
-  printf("host_clk frequency = %0.2f MHz\n", mhz);
-  printf("cpu_clk frequency  = %0.2f MHz\n", mhz * (divisor+1));
   if (memtest)
   {
     fprintf(stderr, "running memory test for %d MB...\n", memtest_mb);

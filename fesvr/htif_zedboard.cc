@@ -64,8 +64,8 @@ void htif_zedboard_t::bz_sram_init()
 
 void htif_zedboard_t::dcdc_init()
 {
-  write_cr(-1, 15, -1);
-  write_cr(-1, 16, -1);
+  write_cr(-1, 15, 2);
+  write_cr(-1, 16, 0xfff);
 
   write_cr(-1, 8, 0);
   write_cr(-1, 9, 0);
@@ -80,6 +80,9 @@ void htif_zedboard_t::dcdc_init()
   write_cr(-1, 10, 1);
   write_cr(-1, 11, 1);
   write_cr(-1, 57, 1);
+  //write_cr(-1, 8, 0); // 0.9V
+  //write_cr(-1, 8, 2); // 0.67V
+  //write_cr(-1, 8, 6); // 0.5V
 }
 
 void htif_zedboard_t::clock_init()
@@ -134,6 +137,10 @@ int freq_compare(const void *c1, const void *c2)
   //return ((const struct clk_lookup*) c1)->fout - ((const struct clk_lookup*) c2)->fout;
 }
 
+void htif_zedboard_t::set_clksel(int sel)
+{
+  write_reg(CLK_SEL_ADDR, sel);
+}
 
 void htif_zedboard_t::write_clock(float freq)
 {
