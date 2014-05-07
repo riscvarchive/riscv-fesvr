@@ -3,6 +3,7 @@
 
 #include "htif.h"
 #include <vector>
+#include "clk_lookup.h"
 
 #define I2C_DIVISOR 3
 #define I2C_WDATA 4
@@ -21,6 +22,10 @@
 #define I2C_R3_VDD10_MEAS 0x7A
 #define I2C_R3_DAC 0x1F
 #define I2C_R3_CLOCK 0x55
+#define I2C_R3_VDDS 3
+#define I2C_R3_GNDS 2
+#define I2C_R3_VREF 1
+#define I2C_R3_VDD_REPLICA 0
 
 class htif_zedboard_t : public htif_t
 {
@@ -29,6 +34,7 @@ class htif_zedboard_t : public htif_t
   ~htif_zedboard_t();
   float get_host_clk_freq();
   void set_voltage(short supply_name, float vdd_value);
+  void set_reference_voltage(short reference_name, float vdd_value);
   void write_i2c_reg(short supply_name, short reg_addr, short num_bytes, short wdata);
   short read_i2c_reg(short supply_name, short reg_addr, short num_bytes);
   void read_voltage(short supply_name);

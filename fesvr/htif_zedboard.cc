@@ -4,6 +4,7 @@
 #include <sys/mman.h>
 #include <assert.h>
 #include <stdio.h>
+#include "fout.h" // Lookup table for clock gen
 
 #define read_reg(r) (dev_vaddr[r])
 #define write_reg(r, v) (dev_vaddr[r] = v)
@@ -183,6 +184,15 @@ float htif_zedboard_t::read_sense_current(short supply_name)
 }
 
 
+void htif_zedboard_t::set_reference_voltage(short reference_name, float vdd_value)
+{
+  short dac_code;
+
+  write_i2c_reg(I2C_R3_DAC, reference_name, 2, 0x72);
+  dac_code = (short) vdd_value*((float) (1 << 12))/2.048;
+  write_i2c_reg(I2C_R3_DAC,0xC | (reference_name & 0x3),2,dac_code << 4);
+
+}
 
 void htif_zedboard_t::set_voltage(short supply_name, float vdd_value)
 {
