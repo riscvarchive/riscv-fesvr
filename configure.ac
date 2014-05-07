@@ -52,14 +52,11 @@ AC_CHECK_TOOL([AR],[ar])
 AC_CHECK_TOOL([RANLIB],[ranlib])
 
 #-------------------------------------------------------------------------
-# MCPPBS specific program checks
+# MCPPBS specific program check
 #-------------------------------------------------------------------------
-# These macros check to see if we can do a stow-based install and also
-# check for an isa simulator suitable for running the unit test programs
-# via the makefile.
+# This macro check to see if we can do a stow-based install.
 
 MCPPBS_PROG_INSTALL
-MCPPBS_PROG_RUN
 
 #-------------------------------------------------------------------------
 # Checks for header files
