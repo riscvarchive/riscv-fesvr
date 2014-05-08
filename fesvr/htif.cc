@@ -150,6 +150,10 @@ void htif_t::reset()
     write_cr(i, 29, 1);
     write_cr(i, 10, coremap(i));
     write_cr(i, 29, 0);
+    reg_t p0 = read_cr(i, 4);
+    usleep(10000);
+    reg_t p1 = read_cr(i, 4);
+    printf("core%d freq (approximately) = %0.2f MHz\n", i, (p1-p0)/0.01/1e6);
   }
 }
 
