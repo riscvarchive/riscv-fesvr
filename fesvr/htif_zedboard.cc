@@ -157,19 +157,24 @@ void htif_zedboard_t::set_clksel(int sel)
 
 void htif_zedboard_t::write_clock(float freq)
 {
-  float rounded_freq;  
   short new_r135;
   short old_r135;
-  int count = sizeof(clk_freqs) / sizeof(struct clk_lookup);
-  struct clk_lookup target,*result;
+  unsigned count = sizeof(clk_freqs) / sizeof(struct clk_lookup);
+  struct clk_lookup *result;
   uint64_t rfreq_hex;
   uint64_t whole,frac;
 
-  rounded_freq = round(freq/1e6)*1e6;
-  target.fout = rounded_freq;
-
   // Search for closest matching frequency
-  result = (clk_lookup*) bsearch((void*) &target,(void*) clk_freqs,count,sizeof(struct clk_lookup),freq_compare);
+  unsigned idx;
+  for (idx=0; idx<count; idx++) {
+    if (clk_freqs[idx].fout > freq) {
+      break;
+    }
+  }
+  if (idx != 0) {
+    idx--;
+  }
+  result = &clk_freqs[idx];
   printf("found freq:%f\n",result->fout);
 
   whole = ((unsigned int) result->rfreq);
