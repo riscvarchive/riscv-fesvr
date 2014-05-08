@@ -11,7 +11,7 @@
 #define write_reg(r, v) (dev_vaddr[r] = v)
 
 htif_zedboard_t::htif_zedboard_t(const std::vector<std::string>& args)
-  : htif_t(args), bist(this,args)
+  : htif_t(args)
 {
   int fd = open("/dev/mem", O_RDWR|O_SYNC);
   assert(fd != -1);
@@ -57,15 +57,22 @@ void htif_zedboard_t::st_sram_init()
   write_cr(-1, 62, 0);
   write_cr(-1, 62, 1);
 }
-void htif_zedboard_t::bz_sram_init()
+void htif_zedboard_t::bz_sram_init(unsigned int saen_width_ctrl, unsigned int write_delay_ctrl, unsigned int write_timing_sel, unsigned int saen_sel, unsigned int use_sa,unsigned int use_fbb,unsigned int n_vref_ctrl,unsigned int saen_delay_ctrl,unsigned int bl_boost_ctrl)
 {
-  write_cr(-1, 61, 0x4060);
+  uint16_t bzconf = 0;
+  bzconf = bzconf | (uint16_t) ((saen_width_ctrl & 0x3) << 14);
+  bzconf = bzconf | (uint16_t) ((write_delay_ctrl & 0x3) << 12);
+  bzconf = bzconf | (uint16_t) ((write_timing_sel & 0x1) << 11);
+  bzconf = bzconf | (uint16_t) ((saen_sel & 0x3) << 9);
+  bzconf = bzconf | (uint16_t) ((use_sa & 0x1) << 8);
+  bzconf = bzconf | (uint16_t) ((use_fbb & 0x1) << 7);
+  bzconf = bzconf | (uint16_t) ((n_vref_ctrl & 0x3) << 5);
+  bzconf = bzconf | (uint16_t) ((saen_delay_ctrl & 0x3) << 3);
+  bzconf = bzconf | (uint16_t) ((bl_boost_ctrl & 0x7));
+  write_cr(-1, 61, bzconf);
+  printf("bzconf: %016x\n",bzconf);
 }
 
-void htif_zedboard_t::run_bist()
-{
-  bist.run_bist();
-}
 
 void htif_zedboard_t::dcdc_init()
 {
@@ -117,7 +124,7 @@ void htif_zedboard_t::write_i2c_reg(short supply_name, short reg_addr, short num
   write_reg(I2C_REG_ADDR, num_bytes << 8 | (reg_addr & 0xFF));
   write_reg(I2C_WDATA, wdata);
   write_reg(I2C_TOGGLE, 1); 
-  printf("reg_addr: %d, wdata: %d\n",reg_addr & 0xFF,wdata);
+  printf("slave_addr: %d, reg_addr: %d, wdata: %d\n",supply_name, reg_addr & 0xFF,wdata);
 }
 
 short htif_zedboard_t::read_i2c_reg(short supply_name, short reg_addr, short num_bytes)
@@ -238,7 +245,7 @@ void htif_zedboard_t::set_voltage(short supply_name, float vdd_value)
   float r2;
   unsigned short wdata;
 
-  if(supply_name == I2C_R3_VDDLO | supply_name == I2C_R3_VDD10)
+  if((supply_name == I2C_R3_VDDLO) | (supply_name == I2C_R3_VDD10))
   {
     if (vdd_value - 1.2 > 0)
     {
@@ -261,7 +268,7 @@ ssize_t htif_zedboard_t::write(const void* buf, size_t size)
 //  printf("\n");
   assert(size >= sizeof(*x));
 
-  for (int i=0;i<size/4;i++)
+  for (unsigned int i=0;i<size/4;i++)
     write_reg(0, x[i]);
 
   return size;

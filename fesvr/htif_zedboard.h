@@ -4,7 +4,6 @@
 #include "htif.h"
 #include <vector>
 #include "clk_lookup.h"
-#include "bist.h" 
 
 #define I2C_DIVISOR 3
 #define I2C_WDATA 4
@@ -53,7 +52,7 @@ class htif_zedboard_t : public htif_t
   void dcdc_init();
   void cassia_init();
   void clock_init(int core_clksel, int cassia_clksel, int bist_clksel);
-  void run_bist();
+  void bz_sram_init(unsigned int saen_width_ctrl, unsigned int write_delay_ctrl, unsigned int write_timing_sel, unsigned int saen_sel, unsigned int use_sa,unsigned int use_fbb,unsigned int n_vref_ctrl,unsigned int saen_delay_ctrl,unsigned int bl_boost_ctrl);
 
  protected:
   ssize_t read(void* buf, size_t max_size);
@@ -65,8 +64,6 @@ class htif_zedboard_t : public htif_t
   uint32_t num_cores() { return 1; } // FIXME
 
  private:
-    bist_t bist;
-
   volatile uintptr_t* dev_vaddr;
   const static uintptr_t dev_paddr = 0x43C00000;
 };

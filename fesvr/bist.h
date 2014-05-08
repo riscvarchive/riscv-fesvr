@@ -7,18 +7,24 @@
 #define LAST(k,n) ((k) & ((1<<(n))-1))
 #define MID(k,m,n) LAST((k)>>(m),((n)-(m)))
 
+struct HTIF_split
+{
+  size_t waddr;
+  reg_t startpos;
+  reg_t endpos;
+};
+
 
 class bist_t
 {
    public:
-    bist_t(htif_t* htif,const std::vector<std::string>& args)
+    bist_t(htif_zedboard_t* htif,const std::vector<std::string>& args)
       : htif(htif) 
     {
       set_bist_fname(args);
     }
 
      void run_bist(){
-
 
       std::map<std::string, size_t> cr_mapping;
       std::map<std::string, std::vector<HTIF_split>> split_cr_mapping;
@@ -29,15 +35,12 @@ class bist_t
       std::string line;
       std::string wdata_string;
       std::string longhex;
-      size_t longhex_i;
       size_t pos;
       size_t hex_pos;
       size_t waddr;
       reg_t wdata;
-      reg_t mask;
       reg_t pollresponse;
       uint64_t upper_buffer;
-      uint64_t middle_buffer;
       uint64_t lower_buffer;
       uint64_t zi;
 
@@ -130,28 +133,47 @@ class bist_t
 
         // See if write or poll
         // Can't poll on anything longer than 64 bits
-        if (line.find("@") != -1){
+        if (line.find("@") != std::string::npos){
           fprintf(stdout,"FOUND POLL\n");
           waddr = cr_mapping[line.substr(1,pos-1)];
           wdata_string = line.substr(pos+2);
           wdata = strtoul(wdata_string.c_str(), NULL, 10);
-          fprintf(stdout,"Poll: %u == %u\n",waddr,wdata);
-          // Raise the voltage
-          //if(waddr==109){
-            //htif->set_voltage(I2C_R3_VDDLO,1.0);
-          //}
+          fprintf(stdout,"Poll: %u == %llu\n",waddr,wdata);
+          if (waddr==cr_mapping["bist_transfer_output_scanchain"]){
+            printf("Setting safe voltage for scan\n");
+            htif->set_voltage(I2C_R3_VDDLO,1.0);
+            usleep(10000);
+
+          }
           while(1){
             pollresponse = htif->read_cr(-1,waddr);
             if(wdata == pollresponse){
               break;
             }
-
           }
-          // Lower the voltage
+          // TODO: Move these outside to respond automatically?
+          // Raise the voltage
+          if(waddr==cr_mapping["bist_want_safe_voltage"] && wdata==1){
+            printf("Setting safe voltage\n");
+            htif->set_voltage(I2C_R3_VDDLO,1.0);
+            usleep(10000);
+            // Respond that safe
+            htif->write_cr(-1,cr_mapping["bist_sram_vdd_is_safe"],1);
+          }
+          // Or lower it
+          if((waddr==cr_mapping["bist_want_safe_voltage"]) && wdata==0){
+            printf("Setting test voltage\n");
+            htif->set_voltage(I2C_R3_VDDLO,vdd_backup);
+            usleep(10000);
+            // Respond that unsafe
+            // TODO: only works with vdd_backup
+            htif->write_cr(-1,cr_mapping["bist_sram_vdd_is_safe"],0);
+          }
 
-        } else if (line.find("*") != -1) {
+
+        } else if (line.find("*") != std::string::npos) {
           fprintf(stdout,"%s\n",line.c_str());
-        } else if (line.find("#echo") != -1) {
+        } else if (line.find("#echo") != std::string::npos) {
           fprintf(stdout,"FOUND ECHO\n");
           // For some weird reason, I couldn't do in pieces
           // any larger than 32 bits
@@ -159,7 +181,7 @@ class bist_t
           htif->write_cr(-1,95,zi);
           upper_buffer = htif->read_cr(-1,bist_atspeed_error_buffer_split_84_64.waddr);
           lower_buffer = htif->read_cr(-1,bist_atspeed_error_buffer_split_63_0.waddr);
-          fprintf(stdout,"Buffer: %d, Addr: %d, Dout: %06x%06x%06x, Test: %d\n",zi,MID(upper_buffer,11,20),(MID(upper_buffer,0,10+1) << 13 ) | MID(lower_buffer,51,63+1), MID(lower_buffer,27,50+1),MID(lower_buffer,3,26+1),MID(lower_buffer,0,2+1));
+          fprintf(stdout,"Buffer: %llu, Addr: %u Dout: %06x%06x%06x, Test: %u\n",zi, (unsigned int) MID(upper_buffer,11,20), (unsigned int) ((MID(upper_buffer,0,10+1) << 13 ) | MID(lower_buffer,51,63+1)), (unsigned int)  MID(lower_buffer,27,50+1), (unsigned int) MID(lower_buffer,3,26+1), (unsigned int) MID(lower_buffer,0,2+1));
           }
 
         } else {
@@ -167,11 +189,11 @@ class bist_t
         hex_pos = wdata_string.find("x");
         // Anything greater than 64 bits must be written in HEX
         // Anything greater than 64 bits must have indexes % 4 = 0
-        if (hex_pos != -1){
+        if (hex_pos != std::string::npos){
           longhex = wdata_string.substr(hex_pos+1);
-          if(longhex.size() < 64){
+          //if(longhex.size() < 64){
             wdata = strtoul(longhex.c_str(), NULL, 16);
-          } // if bigger, just parse longhex later
+          //} // if bigger, just parse longhex later
         } else {
           wdata = strtoul(wdata_string.c_str(), NULL, 10);
         }
@@ -185,44 +207,36 @@ class bist_t
           container = split_cr_mapping[line.substr(0,pos)];
           for(p_splits = container.begin(); p_splits != container.end(); p_splits++){
             wdata = strtoul(longhex.substr(longhex.size() -1 - p_splits->startpos / 4, (p_splits->startpos / 4 - p_splits->endpos / 4) + 1).c_str(), NULL, 16);
-            fprintf(stdout,"Line: %u %u\n", p_splits->waddr, wdata);
+            fprintf(stdout,"Line: %u %llu\n", p_splits->waddr, wdata);
             htif->write_cr(-1,p_splits->waddr,wdata);
           }
         } else {
           // Normal
           waddr = cr_mapping[line.substr(0,pos)];
-        fprintf(stdout,"Line: %u, %u\n",waddr,wdata);
-        htif->write_cr(-1,waddr,wdata);
+          fprintf(stdout,"Line: %u, %llu\n",waddr,wdata);
+          htif->write_cr(-1,waddr,wdata);
         }
        }
 
       }
      }
 
-     void set_bist_fname(const std::vector<std::string>& args){
-      size_t i;
-      size_t pos;
-      for (i = 0; i < args.size(); i++){
-          pos = args[i].find("+bist=");
-          if(pos != -1){
-          bistfname = args[i].substr(pos+6);
-          }
+     void set_bist_fname(const std::vector<std::string>& args)
+     {
+      for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
+      {
+        if (a->substr(0, 5) == "+vdd=")
+          vdd_backup = std::atof(a->substr(5).c_str());
+        if (a->substr(0, 6) == "+bist=")
+          bistfname = a->substr(6);
       }
-
-
-
      }
 
    private:
-     htif_t* htif;
+     htif_zedboard_t* htif;
      std::string bistfname;
+     float vdd_backup;
      std::ifstream bistfile;
-      typedef struct HTIF_split
-      {
-        size_t waddr;
-        reg_t startpos;
-        reg_t endpos;
-      };
 
 
 };
