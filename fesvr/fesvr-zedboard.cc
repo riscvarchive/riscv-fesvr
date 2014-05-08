@@ -30,6 +30,8 @@ int main(int argc, char** argv)
   int uncore_clksel = 1;
   int cassia_clksel = 0;
   int core_clksel = 0;
+  unsigned int cassia_s1 = 31;
+  unsigned int cassia_s2 = 31;
   unsigned int saen_width_ctrl=1;
   unsigned int write_delay_ctrl=0;
   unsigned int write_timing_sel=0;
@@ -62,6 +64,10 @@ int main(int argc, char** argv)
       cassia_clksel = std::atof(a->substr(15).c_str());
     if (a->substr(0, 15) == "+uncore_clksel=")
       uncore_clksel = std::atof(a->substr(15).c_str());
+    if (a->substr(0, 11) == "+cassia_s1=")
+      cassia_s1 = std::atoi(a->substr(11).c_str());
+    if (a->substr(0, 11) == "+cassia_s2=")
+      cassia_s2 = std::atoi(a->substr(11).c_str());
     if (a->substr(0, 17) == "+saen_width_ctrl=")
       saen_width_ctrl = std::atoi(a->substr(17).c_str());
     if (a->substr(0, 18) == "+write_delay_ctrl=")
@@ -107,18 +113,18 @@ int main(int argc, char** argv)
   hold = (slowio >> 16) & 0xffff;
   float mhz = htif.get_host_clk_freq();
   printf("uncore slowio divisor=%d, hold=%d\n", slowio & 0xffff, (slowio >> 16) & 0xffff);
-  printf("host_clk frequency = %0.2f MHz\n", mhz);
-  printf("cpu_clk frequency  = %0.2f MHz\n", mhz * (divisor+1));
+  printf("host clk frequency = %0.2f MHz\n", mhz);
+  printf("uncore clk frequency  = %0.2f MHz\n", mhz * (divisor+1));
 
-  htif.cassia_init();
+  htif.cassia_init(cassia_s1, cassia_s2);
   htif.clock_init(core_clksel, cassia_clksel, bist_clksel);
   htif.bz_sram_init(saen_width_ctrl, write_delay_ctrl, write_timing_sel, saen_sel, use_sa,use_fbb,n_vref_ctrl,saen_delay_ctrl,bl_boost_ctrl);
   htif.st_sram_init();
   htif.dcdc_init();
 
-  if(bisten)
-  {
+  if (bisten) {
     bist.run_bist();
+    return 0;
   }
   
   printf("cores = %d\n", (int)htif.read_cr(-1, 0));
@@ -127,8 +133,7 @@ int main(int argc, char** argv)
   htif.write_cr(0, 13, 0xdeadbeef);
   printf("k0 = %08lx\n", (long unsigned int)htif.read_cr(0, 13));
 
-  if (memtest)
-  {
+  if (memtest) {
     fprintf(stderr, "running memory test for %d MB...\n", memtest_mb);
 
     uint64_t nwords = memtest_mb*1024*1024/8;

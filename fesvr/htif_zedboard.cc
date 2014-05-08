@@ -57,6 +57,7 @@ void htif_zedboard_t::st_sram_init()
   write_cr(-1, 62, 0);
   write_cr(-1, 62, 1);
 }
+
 void htif_zedboard_t::bz_sram_init(unsigned int saen_width_ctrl, unsigned int write_delay_ctrl, unsigned int write_timing_sel, unsigned int saen_sel, unsigned int use_sa,unsigned int use_fbb,unsigned int n_vref_ctrl,unsigned int saen_delay_ctrl,unsigned int bl_boost_ctrl)
 {
   uint16_t bzconf = 0;
@@ -107,15 +108,31 @@ void htif_zedboard_t::clock_init(int core_clksel, int cassia_clksel, int bist_cl
   write_cr(-1, 57, 0); // dcdc_counter_clksel
 }
 
-void htif_zedboard_t::cassia_init()
+#define bit(in, pos) \
+  (((in)>>pos)&0x1)
+
+static unsigned five_bit_swap(unsigned in)
 {
-  //int cassia_seed = (3<<9)|(3<<4)|(1<<3)|(1<<2);
+  return (bit(in,0)<<4) | (bit(in,1)<<3) | (bit(in,3)<<1) | (bit(in,4)<<0);
+}
+
+void htif_zedboard_t::cassia_init(unsigned int s1, unsigned int s2)
+{
+  //assign dll_en = cassia_ctrl[0];
+  //assign ctrl_en = cassia_ctrl[1];
+  //assign clk_en = cassia_ctrl[2];
+  //assign wd_en = cassia_ctrl[3];
+  //assign ctrl_s1 = cassia_ctrl[8:4];
+  //assign ctrl_s2 = cassia_ctrl[13:9];
+
+  int cassia_seed = (five_bit_swap(s2&0x1f)<<9)|(five_bit_swap(s1&0x1f)<<4)|(1<<3)|(1<<2);
   write_cr(-1, 48, 0);
-  //write_cr(-1, 48, cassia_seed);
-  //cassia_seed = cassia_seed | (1<<0);
-  //write_cr(-1, 48, cassia_seed);
-  //cassia_seed = cassia_seed | (1<<1);
-  //write_cr(-1, 48, cassia_seed);
+  write_cr(-1, 48, cassia_seed);
+  cassia_seed = cassia_seed | 1;
+  write_cr(-1, 48, cassia_seed);
+  usleep(10000);
+  cassia_seed = cassia_seed | (1<<1);
+  write_cr(-1, 48, cassia_seed);
 }
 
 void htif_zedboard_t::write_i2c_reg(short supply_name, short reg_addr, short num_bytes, short wdata)

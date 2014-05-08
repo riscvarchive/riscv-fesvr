@@ -50,7 +50,7 @@ class htif_zedboard_t : public htif_t
   void st_sram_init();
   void bz_sram_init();
   void dcdc_init();
-  void cassia_init();
+  void cassia_init(unsigned int s1, unsigned int s2);
   void clock_init(int core_clksel, int cassia_clksel, int bist_clksel);
   void bz_sram_init(unsigned int saen_width_ctrl, unsigned int write_delay_ctrl, unsigned int write_timing_sel, unsigned int saen_sel, unsigned int use_sa,unsigned int use_fbb,unsigned int n_vref_ctrl,unsigned int saen_delay_ctrl,unsigned int bl_boost_ctrl);
 
