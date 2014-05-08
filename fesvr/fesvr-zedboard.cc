@@ -84,8 +84,10 @@ int main(int argc, char** argv)
 
   htif.set_i2c_divider(7);
   htif.set_voltage(I2C_R3_VDDHI, 1.8);
-  printf("Setting vdd to: %f\n",vdd_backup);
-  htif.set_voltage(I2C_R3_VDDLO, vdd_backup);
+  if(!bisten){
+    printf("Setting vdd to: %f\n",vdd_backup);
+    htif.set_voltage(I2C_R3_VDDLO, vdd_backup);
+  }
   htif.set_voltage(I2C_R3_VDD18, 1.8);
   htif.set_voltage(I2C_R3_VDD10, 1.0);
   htif.set_reference_voltage(I2C_R3_VDDS, 0);
@@ -184,6 +186,8 @@ int main(int argc, char** argv)
     delete [] target_memory;
   }
 
+  if(!bisten){
   printf("about to call htif.run()\n");
   return htif.run();
+  }
 }
