@@ -78,7 +78,7 @@ void htif_zedboard_t::bz_sram_init(unsigned int saen_width_ctrl, unsigned int wr
 void htif_zedboard_t::dcdc_init()
 {
   write_cr(-1, 15, 2);
-  write_cr(-1, 16, 0xfff);
+  write_cr(-1, 16, 0xffffff);
 
   write_cr(-1, 8, 0);
   write_cr(-1, 9, 0);
