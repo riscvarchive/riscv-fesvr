@@ -122,7 +122,7 @@ void htif_zedboard_t::clock_init(int core_clksel, int cassia_clksel, int bist_cl
 
 static unsigned five_bit_swap(unsigned in)
 {
-  return (bit(in,0)<<4) | (bit(in,1)<<3) | (bit(in,3)<<1) | (bit(in,4)<<0);
+  return (bit(in,0)<<4) | (bit(in,1)<<3) | (bit(in,2)<<2) | (bit(in,3)<<1) | (bit(in,4)<<0);
 }
 
 void htif_zedboard_t::cassia_init(unsigned int s1, unsigned int s2)
