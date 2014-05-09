@@ -176,9 +176,9 @@ class bist_t
         } else if (line.find("#echo") != std::string::npos) {
           fprintf(stdout,"SIMPLE ECHO\n");
           htif->write_cr(-1,95,10);
-          upper_buffer = htif->read_cr(-1,88);
-          lower_buffer = htif->read_cr(-1,89);
-          fprintf(stdout,"=\n%x,%x\n\n",upper_buffer,lower_buffer);
+          //upper_buffer = htif->read_cr(-1,88);
+          //lower_buffer = htif->read_cr(-1,89);
+          //fprintf(stdout,"=\n%x,%x\n\n",upper_buffer,lower_buffer);
 
           fprintf(stdout,"FOUND ECHO\n");
           // For some weird reason, I couldn't do in pieces
@@ -187,7 +187,7 @@ class bist_t
           htif->write_cr(-1,95,zi);
           upper_buffer = htif->read_cr(-1,bist_atspeed_error_buffer_split_84_64.waddr);
           lower_buffer = htif->read_cr(-1,bist_atspeed_error_buffer_split_63_0.waddr);
-          fprintf(stdout,"%x,%x",upper_buffer,lower_buffer);
+          //fprintf(stdout,"%x,%x",upper_buffer,lower_buffer);
           fprintf(stdout,"Buffer: %llu, Addr: %u Dout: %06x%06x%06x, Test: %u\n",zi, (unsigned int) MID(upper_buffer,11,20), (unsigned int) ((MID(upper_buffer,0,10+1) << 13 ) | MID(lower_buffer,51,63+1)), (unsigned int)  MID(lower_buffer,27,50+1), (unsigned int) MID(lower_buffer,3,26+1), (unsigned int) MID(lower_buffer,0,2+1));
           }
 

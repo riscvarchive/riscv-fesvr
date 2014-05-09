@@ -26,6 +26,14 @@ int main(int argc, char** argv)
   int bisten = 0;
   float vdd_backup = 1.0;
   float freq = 50e6;
+  float vref = 0.75;
+  float vddhi = 1.8;
+  float vddlo = 1.0;
+  float vdd18 = 1.8;
+  float vdd10 = 1.0;
+  float gnds = 0.0;
+  float vdds = 0.0;
+  float vdd_replica = 0.2;
   int bist_clksel = 0;
   int uncore_clksel = 1;
   int cassia_clksel = 0;
@@ -41,6 +49,8 @@ int main(int argc, char** argv)
   unsigned int n_vref_ctrl=3;
   unsigned int saen_delay_ctrl=0;
   unsigned int bl_boost_ctrl=0;
+
+  unsigned int dcdc_conf=0; //3: 0.9, 2: 0.67, 1: 0.5
 
   for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
   {
@@ -86,24 +96,48 @@ int main(int argc, char** argv)
       saen_delay_ctrl = std::atoi(a->substr(17).c_str());
     if (a->substr(0, 15) == "+bl_boost_ctrl=")
       bl_boost_ctrl = std::atoi(a->substr(15).c_str());
+    if (a->substr(0, 13) == "+vdd_replica=")
+      vdd_replica = std::atof(a->substr(13).c_str());
+
+    if (a->substr(0, 6) == "+vref=")
+      vref = std::atof(a->substr(6).c_str());
+    if (a->substr(0, 7) == "+vddhi=")
+      vddhi = std::atof(a->substr(7).c_str());
+    if (a->substr(0, 7) == "+vddlo=")
+      vddlo = std::atof(a->substr(7).c_str());
+    if (a->substr(0, 7) == "+vdd10=")
+      vdd10 = std::atof(a->substr(7).c_str());
+    if (a->substr(0, 7) == "+vdd18=")
+      vdd18 = std::atof(a->substr(7).c_str());
+
+    if (a->substr(0, 6) == "+dcdc=")
+      dcdc_conf = std::atoi(a->substr(6).c_str());
+
+    if (a->substr(0, 6) == "+gnds=")
+      gnds = std::atof(a->substr(6).c_str());
+    if (a->substr(0, 6) == "+vdds=")
+      vdds = std::atof(a->substr(6).c_str());
   }
 
   htif.set_i2c_divider(7);
-  htif.set_voltage(I2C_R3_VDDHI, 1.8);
-  if(!bisten){
+  htif.set_voltage(I2C_R3_VDDHI, vddhi);
+  if (!bisten){  // This BIST will be responsible for setting this voltage later
     printf("Setting vdd to: %f\n",vdd_backup);
     htif.set_voltage(I2C_R3_VDDLO, vdd_backup);
   }
-  htif.set_voltage(I2C_R3_VDD18, 1.8);
-  htif.set_voltage(I2C_R3_VDD10, 1.0);
-  htif.set_reference_voltage(I2C_R3_VDDS, 0);
-  htif.set_reference_voltage(I2C_R3_GNDS, 0);
-  htif.set_reference_voltage(I2C_R3_VREF, 0.75);
-  htif.set_reference_voltage(I2C_R3_VDD_REPLICA, 0.2);
-  htif.read_voltage(I2C_R3_VDDHI);
-  htif.read_voltage(I2C_R3_VDDLO);
-  htif.read_voltage(I2C_R3_VDD18);
-  htif.read_voltage(I2C_R3_VDD10);
+  if (dcdc_conf > 0){ //vddlo replaces vdd if dcdc is enabled
+    htif.set_voltage(I2C_R3_VDDLO, vddlo);
+  }
+  htif.set_voltage(I2C_R3_VDD18, vdd18);
+  htif.set_voltage(I2C_R3_VDD10, vdd10);
+  htif.set_reference_voltage(I2C_R3_VDDS, vdds);
+  htif.set_reference_voltage(I2C_R3_GNDS, gnds);
+  htif.set_reference_voltage(I2C_R3_VREF, vref);
+  htif.set_reference_voltage(I2C_R3_VDD_REPLICA, vdd_replica);
+  //htif.read_voltage(I2C_R3_VDDHI);
+  //htif.read_voltage(I2C_R3_VDDLO);
+  //htif.read_voltage(I2C_R3_VDD18);
+  //htif.read_voltage(I2C_R3_VDD10);
   htif.write_clock(freq);
   htif.set_clksel(uncore_clksel);
 
@@ -120,7 +154,7 @@ int main(int argc, char** argv)
   htif.clock_init(core_clksel, cassia_clksel, bist_clksel);
   htif.bz_sram_init(saen_width_ctrl, write_delay_ctrl, write_timing_sel, saen_sel, use_sa,use_fbb,n_vref_ctrl,saen_delay_ctrl,bl_boost_ctrl);
   htif.st_sram_init();
-  htif.dcdc_init();
+  htif.dcdc_init(dcdc_conf);
 
   if (bisten) {
     bist.run_bist();
