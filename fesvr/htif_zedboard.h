@@ -46,7 +46,6 @@ class htif_zedboard_t : public htif_t
   float read_sense_current(short supply_name);
   void set_i2c_divider(short divider);
   void set_clksel(int sel);
-  void reset_internal();
   void st_sram_init();
   void bz_sram_init();
   void dcdc_init(unsigned int dcdc_conf);
@@ -57,6 +56,7 @@ class htif_zedboard_t : public htif_t
  protected:
   ssize_t read(void* buf, size_t max_size);
   ssize_t write(const void* buf, size_t size);
+  void monitor();
 
   size_t chunk_max_size() { return 64; }
   size_t chunk_align() { return 64; }

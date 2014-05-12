@@ -293,6 +293,7 @@ int htif_t::run()
         if (write_cr(coreid, 31, fromhost[coreid].front()) == 0)
           fromhost[coreid].pop();
     }
+    monitor();
   }
 
   stop();

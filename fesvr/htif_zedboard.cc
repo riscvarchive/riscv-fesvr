@@ -29,14 +29,6 @@ htif_zedboard_t::~htif_zedboard_t()
 {
 }
 
-void htif_zedboard_t::reset_internal()
-{
-  write_reg(31, 2);
-  usleep(10000);
-  write_reg(31, 0);
-}
-
-
 float htif_zedboard_t::get_host_clk_freq()
 {
   uintptr_t f1, f2;
@@ -318,4 +310,12 @@ ssize_t htif_zedboard_t::read(void* buf, size_t max_size)
       x[count] = read_reg(0);
 
   return count*sizeof(*x);
+}
+
+void htif_zedboard_t::monitor()
+{
+  reg_t p0 = read_cr(0, 4);
+  usleep(10000);
+  reg_t p1 = read_cr(0, 4);
+  printf("\rcore freq (approximately) = %0.2f MHz", (p1-p0)/0.01/1e6);
 }
