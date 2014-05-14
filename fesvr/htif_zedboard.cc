@@ -142,7 +142,7 @@ void htif_zedboard_t::write_i2c_reg(short supply_name, short reg_addr, short num
   write_reg(I2C_REG_ADDR, num_bytes << 8 | (reg_addr & 0xFF));
   write_reg(I2C_WDATA, wdata);
   write_reg(I2C_TOGGLE, 1); 
-  printf("slave_addr: %d, reg_addr: %d, wdata: %d\n",supply_name, reg_addr & 0xFF,wdata);
+  //printf("slave_addr: %d, reg_addr: %d, wdata: %d\n",supply_name, reg_addr & 0xFF,wdata);
 }
 
 short htif_zedboard_t::read_i2c_reg(short supply_name, short reg_addr, short num_bytes)
@@ -153,7 +153,7 @@ short htif_zedboard_t::read_i2c_reg(short supply_name, short reg_addr, short num
   write_reg(I2C_REG_ADDR, num_bytes << 8 | (reg_addr & 0xFF));
   write_reg(I2C_TOGGLE, 1); 
   rdata = read_reg(I2C_RDATA);
-  printf("rdata: %d\n",(int) rdata);
+  //printf("rdata: %d\n",(int) rdata);
   return rdata;
 }
 
@@ -243,7 +243,7 @@ float htif_zedboard_t::read_sense_current(short supply_name)
 
   // Set ADC mux
   write_i2c_reg(supply_name, 0x0A, 1, 2);
-  rdata = read_i2c_reg(supply_name, 0x02, 2);
+  rdata = read_i2c_reg(supply_name, 0x00, 2);
   measured_current = (((unsigned short) rdata >> 4)*13.44e-6)/0.05;
   printf("current: %f\n",measured_current);
   return measured_current;
@@ -317,5 +317,11 @@ void htif_zedboard_t::monitor()
   reg_t p0 = read_cr(0, 4);
   usleep(10000);
   reg_t p1 = read_cr(0, 4);
-  printf("\rcore freq (approximately) = %0.2f MHz", (p1-p0)/0.01/1e6);
+  printf("\rcore freq (approximately) = %0.2f MHz\n", (p1-p0)/0.01/1e6);
+  printf("vddlo: ");
+  read_sense_current(I2C_R3_VDDLO_MEAS);
+  read_sense_voltage(I2C_R3_VDDLO_MEAS);
+  printf("vddhi: ");
+  read_sense_current(I2C_R3_VDDHI_MEAS);
+  read_sense_voltage(I2C_R3_VDDHI_MEAS);
 }
