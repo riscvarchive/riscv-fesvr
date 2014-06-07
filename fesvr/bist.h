@@ -4,8 +4,15 @@
 #include <fstream>
 #include <map>
 
-#define LAST(k,n) ((k) & ((1<<(n))-1))
+#define LAST(k,n) ((k) & ((((uint64_t) 1)<<(n))-1))
 #define MID(k,m,n) LAST((k)>>(m),((n)-(m)))
+
+
+uint64_t extract(uint64_t value, int begin, int end)
+{
+    uint64_t mask = (1 << (end - begin)) - 1;
+    return (value >> begin) & mask;
+}
 
 struct HTIF_split
 {
@@ -40,8 +47,8 @@ class bist_t
       size_t waddr;
       reg_t wdata;
       reg_t pollresponse;
-      uint64_t upper_buffer;
-      uint64_t lower_buffer;
+      reg_t upper_buffer;
+      reg_t lower_buffer;
       uint64_t zi;
 
 
@@ -137,16 +144,18 @@ class bist_t
           fprintf(stdout,"FOUND POLL\n");
           waddr = cr_mapping[line.substr(1,pos-1)];
           wdata_string = line.substr(pos+2);
-          wdata = strtoul(wdata_string.c_str(), NULL, 10);
+          wdata = strtoull(wdata_string.c_str(), NULL, 10);
           fprintf(stdout,"Poll: %u == %llu\n",waddr,wdata);
           if (waddr==cr_mapping["bist_transfer_output_scanchain"]){
             printf("Setting safe voltage for scan\n");
             htif->set_voltage(I2C_R3_VDDLO,1.0);
-            usleep(10000);
+            //usleep(10000);
 
           }
           while(1){
             pollresponse = htif->read_cr(-1,waddr);
+            fprintf(stdout,"m[ %u] == %llu\n",waddr,pollresponse);
+            //usleep(1000000);
             if(wdata == pollresponse){
               break;
             }
@@ -185,10 +194,14 @@ class bist_t
           // any larger than 32 bits
           for(zi = 0; zi <= 31; zi++){
           htif->write_cr(-1,95,zi);
+          //usleep(1000);
           upper_buffer = htif->read_cr(-1,bist_atspeed_error_buffer_split_84_64.waddr);
+          //usleep(1000);
           lower_buffer = htif->read_cr(-1,bist_atspeed_error_buffer_split_63_0.waddr);
-          //fprintf(stdout,"%x,%x",upper_buffer,lower_buffer);
-          fprintf(stdout,"Buffer: %llu, Addr: %u Dout: %06x%06x%06x, Test: %u\n",zi, (unsigned int) MID(upper_buffer,11,20), (unsigned int) ((MID(upper_buffer,0,10+1) << 13 ) | MID(lower_buffer,51,63+1)), (unsigned int)  MID(lower_buffer,27,50+1), (unsigned int) MID(lower_buffer,3,26+1), (unsigned int) MID(lower_buffer,0,2+1));
+          //usleep(1000);
+          //fprintf(stdout,"%016llx,%016llx\n",upper_buffer,lower_buffer);
+          //fprintf(stdout,"Buffer: %llu, Addr: %u Dout: %06x%06x%06x, Test: %u\n",zi, (unsigned int) MID(upper_buffer,11,20), (unsigned int) ((MID(upper_buffer,0,10+1) << 13 ) | MID(lower_buffer,51,63+1)), (unsigned int)  MID(lower_buffer,27,50+1), (unsigned int) MID(lower_buffer,3,26+1), (unsigned int) MID(lower_buffer,0,2+1));
+          fprintf(stdout,"Buffer: %lld, Addr: %lld, Dout: %06llx%06llx%06llx, Test: %d\n",zi,extract(upper_buffer,11,20),(extract(upper_buffer,0,10+1) << 13 ) | extract(lower_buffer,51,63+1), extract(lower_buffer,27,50+1),extract(lower_buffer,3,26+1),extract(lower_buffer,0,2+1));
           }
 
         } else {
@@ -199,10 +212,10 @@ class bist_t
         if (hex_pos != std::string::npos){
           longhex = wdata_string.substr(hex_pos+1);
           //if(longhex.size() < 64){
-            wdata = strtoul(longhex.c_str(), NULL, 16);
+            wdata = strtoull(longhex.c_str(), NULL, 16);
           //} // if bigger, just parse longhex later
         } else {
-          wdata = strtoul(wdata_string.c_str(), NULL, 10);
+          wdata = strtoull(wdata_string.c_str(), NULL, 10);
         }
         // Detect if normal or split entry
         std::map<std::string, std::vector<HTIF_split>>::iterator p = split_cr_mapping.find(line.substr(0,pos));
@@ -213,15 +226,17 @@ class bist_t
           // Derefence and iterate over these
           container = split_cr_mapping[line.substr(0,pos)];
           for(p_splits = container.begin(); p_splits != container.end(); p_splits++){
-            wdata = strtoul(longhex.substr(longhex.size() -1 - p_splits->startpos / 4, (p_splits->startpos / 4 - p_splits->endpos / 4) + 1).c_str(), NULL, 16);
-            fprintf(stdout,"Line: %u %llu\n", p_splits->waddr, wdata);
+            wdata = strtoull(longhex.substr(longhex.size() -1 - p_splits->startpos / 4, (p_splits->startpos / 4 - p_splits->endpos / 4) + 1).c_str(), NULL, 16);
             htif->write_cr(-1,p_splits->waddr,wdata);
+            fprintf(stdout,"Line: %u %016llX\n", p_splits->waddr, wdata);
+            //fprintf(stdout,"On-chip: %u, %016llX\n",p_splits->waddr,htif->read_cr(-1,p_splits->waddr));
           }
         } else {
           // Normal
           waddr = cr_mapping[line.substr(0,pos)];
-          fprintf(stdout,"Line: %u, %llu\n",waddr,wdata);
           htif->write_cr(-1,waddr,wdata);
+          fprintf(stdout,"Line: %u, %016llX\n",waddr,wdata);
+          //fprintf(stdout,"On-chip: %u, %016llX\n",waddr,htif->read_cr(-1,waddr));
         }
        }
 
