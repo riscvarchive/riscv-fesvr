@@ -129,19 +129,21 @@ reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, re
 reg_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
 {
   std::vector<char> buf(len);
-  reg_t ret = sysret_errno(read(fds.lookup(fd), &buf[0], len));
-  if(ret != (reg_t)-1)
+  ssize_t ret = read(fds.lookup(fd), &buf[0], len);
+  reg_t ret_errno = sysret_errno(ret);
+  if (ret > 0)
     memif->write(pbuf, ret, &buf[0]);
-  return ret;
+  return ret_errno;
 }
 
 reg_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4)
 {
   std::vector<char> buf(len);
-  reg_t ret = sysret_errno(pread(fds.lookup(fd), &buf[0], len, off));
-  if(ret != (reg_t)-1)
+  ssize_t ret = pread(fds.lookup(fd), &buf[0], len, off);
+  reg_t ret_errno = sysret_errno(ret);
+  if (ret > 0)
     memif->write(pbuf, ret, &buf[0]);
-  return ret;
+  return ret_errno;
 }
 
 reg_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
