@@ -32,22 +32,18 @@ class canonical_termios_t
 
 static canonical_termios_t tios; // exit() will clean up for us
 
-bool canonical_terminal_t::empty()
+int canonical_terminal_t::read()
 {
   struct pollfd pfd;
   pfd.fd = 0;
   pfd.events = POLLIN;
   int ret = poll(&pfd, 1, 0);
-  assert(ret >= 0);
-  return ret == 0 || !(pfd.revents & POLLIN);
-}
+  if (ret <= 0 || !(pfd.revents & POLLIN))
+    return -1;
 
-char canonical_terminal_t::read()
-{
-  char ch;
-  int ret = ::read(0, &ch, 1);
-  assert(ret == 1);
-  return ch;
+  unsigned char ch;
+  ret = ::read(0, &ch, 1);
+  return ret <= 0 ? -1 : ch;
 }
 
 void canonical_terminal_t::write(char ch)

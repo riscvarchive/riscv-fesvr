@@ -4,8 +4,7 @@
 class canonical_terminal_t
 {
  public:
-  static bool empty();
-  static char read();
+  static int read();
   static void write(char);
 };
 

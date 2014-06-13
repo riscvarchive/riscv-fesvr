@@ -74,9 +74,10 @@ void bcd_t::handle_write(command_t cmd)
 
 void bcd_t::tick()
 {
-  if (!pending_reads.empty() && !canonical_terminal_t::empty())
+  int ch;
+  if (!pending_reads.empty() && (ch = canonical_terminal_t::read()) != -1)
   {
-    pending_reads.front().respond(0x100 | canonical_terminal_t::read());
+    pending_reads.front().respond(0x100 | ch);
     pending_reads.pop();
   }
 }
