@@ -52,15 +52,21 @@ syscall_t::syscall_t(htif_t* htif)
   table[63] = &syscall_t::sys_read;
   table[64] = &syscall_t::sys_write;
   table[1024] = &syscall_t::sys_open;
+  #ifndef NO_POSIX_2008
   table[56] = &syscall_t::sys_openat;
+  #endif
   table[57] = &syscall_t::sys_close;
   table[80] = &syscall_t::sys_fstat;
   table[62] = &syscall_t::sys_lseek;
   table[1038] = &syscall_t::sys_stat;
   table[1039] = &syscall_t::sys_lstat;
+  #ifndef NO_POSIX_2008
   table[79] = &syscall_t::sys_fstatat;
+  #endif
   table[1033] = &syscall_t::sys_access;
+  #ifndef NO_POSIX_2008
   table[48] = &syscall_t::sys_faccessat;
+  #endif
   table[25] = &syscall_t::sys_fcntl;
   table[1025] = &syscall_t::sys_link;
   table[1026] = &syscall_t::sys_unlink;
@@ -116,6 +122,7 @@ reg_t syscall_t::sys_open(reg_t pname, reg_t len, reg_t flags, reg_t mode, reg_t
   return fds.alloc(fd);
 }
 
+#ifndef NO_POSIX_2008
 reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, reg_t mode)
 {
   std::vector<char> name(len);
@@ -125,6 +132,7 @@ reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, re
     return sysret_errno(-1);
   return fds.alloc(fd);
 }
+#endif
 
 reg_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
 {
@@ -223,6 +231,7 @@ reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a
   return ret;
 }
 
+#ifndef NO_POSIX_2008
 reg_t syscall_t::sys_fstatat(reg_t dirfd, reg_t pname, reg_t len, reg_t pbuf, reg_t flags)
 {
   std::vector<char> name(len);
@@ -237,6 +246,7 @@ reg_t syscall_t::sys_fstatat(reg_t dirfd, reg_t pname, reg_t len, reg_t pbuf, re
   }
   return ret;
 }
+#endif
 
 reg_t syscall_t::sys_access(reg_t pname, reg_t len, reg_t mode, reg_t a3, reg_t a4)
 {
@@ -245,12 +255,14 @@ reg_t syscall_t::sys_access(reg_t pname, reg_t len, reg_t mode, reg_t a3, reg_t 
   return sysret_errno(access(&name[0], mode));
 }
 
+#ifndef NO_POSIX_2008
 reg_t syscall_t::sys_faccessat(reg_t dirfd, reg_t pname, reg_t len, reg_t mode, reg_t flags)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
   return sysret_errno(faccessat(fds.lookup(dirfd), &name[0], mode, flags));
 }
+#endif
 
 reg_t syscall_t::sys_link(reg_t poname, reg_t olen, reg_t pnname, reg_t nlen, reg_t a4)
 {
