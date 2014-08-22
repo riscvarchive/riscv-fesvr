@@ -50,7 +50,7 @@ endif
 
 # Installation directories
 
-prefix       := @prefix@
+prefix       ?= @prefix@
 enable_stow  := @enable_stow@
 
 ifeq ($(enable_stow),yes)
