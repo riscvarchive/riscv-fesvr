@@ -7,6 +7,7 @@
 #include <stdint.h>
 #include <string>
 #include <assert.h>
+#include <cstring>
 
 enum
 {
