@@ -5,7 +5,7 @@
 
 #include <stdexcept>
 #include <stdint.h>
-#include <string.h>
+#include <string>
 #include <assert.h>
 
 enum
