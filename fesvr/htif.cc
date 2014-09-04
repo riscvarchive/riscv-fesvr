@@ -170,36 +170,8 @@ void htif_t::reset()
   for (uint32_t i = 0; i < num_cores(); i++)
   {
     write_cr(i, 29, 1);
-    write_cr(i, 11, coremap(i));
     write_cr(i, 29, 0);
   }
-}
-
-uint32_t htif_t::coremap(uint32_t x)
-{
-  if (coremap_pool.size() == 0)
-  {
-    coremap_pool.resize(num_cores());
-    for (uint32_t i = 0; i < num_cores(); i++)
-      coremap_pool[i] = i;
-
-    if (std::find(hargs.begin(), hargs.end(), "+coremap-reverse") != hargs.end())
-      std::reverse(coremap_pool.begin(), coremap_pool.end());
-    else if (std::find(hargs.begin(), hargs.end(), "+coremap-random") != hargs.end())
-    {
-      std::srand(time(NULL) ^ getpid());
-      std::random_shuffle(coremap_pool.begin(), coremap_pool.end());
-    }
-
-    if (std::find(hargs.begin(), hargs.end(), "+print-coremap") != hargs.end())
-    {
-      std::cerr << "core map:" << std::endl;
-      for (uint32_t i = 0; i < num_cores(); i++)
-        std::cerr << i << ", " << coremap_pool[i] << std::endl;
-    }
-  }
-
-  return coremap_pool[x];
 }
 
 void htif_t::stop()
