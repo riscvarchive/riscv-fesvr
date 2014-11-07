@@ -37,8 +37,10 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif)
     assert(size >= eh->e_phoff + eh->e_phnum*sizeof(*ph)); \
     for (unsigned i = 0; i < eh->e_phnum; i++) { \
       if(ph[i].p_type == SHT_PROGBITS && ph[i].p_memsz) { \
-        assert(size >= ph[i].p_offset + ph[i].p_filesz); \
-        memif->write(ph[i].p_paddr, ph[i].p_filesz, (uint8_t*)buf + ph[i].p_offset); \
+        if (ph[i].p_filesz) { \
+          assert(size >= ph[i].p_offset + ph[i].p_filesz); \
+          memif->write(ph[i].p_paddr, ph[i].p_filesz, (uint8_t*)buf + ph[i].p_offset); \
+        } \
         zeros.resize(ph[i].p_memsz - ph[i].p_filesz); \
         memif->write(ph[i].p_paddr + ph[i].p_filesz, ph[i].p_memsz - ph[i].p_filesz, &zeros[0]); \
       } \
