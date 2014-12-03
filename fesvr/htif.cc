@@ -21,7 +21,7 @@
 #endif
 
 #ifndef TARGET_ARCH
-# define TARGET_ARCH "riscv-elf"
+# define TARGET_ARCH "riscv64-unknown-elf"
 #endif
 
 #ifndef TARGET_DIR
