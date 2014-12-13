@@ -11,6 +11,7 @@ class htif_zedboard_t : public htif_t
   ~htif_zedboard_t();
   float get_host_clk_freq();
   void reset_internal();
+  void debug_enable() { debug_en = true; }
 
  protected:
   ssize_t read(void* buf, size_t max_size);
@@ -19,10 +20,11 @@ class htif_zedboard_t : public htif_t
   size_t chunk_max_size() { return 64; }
   size_t chunk_align() { return 64; }
   uint32_t mem_mb() { return 256; }
-  uint32_t num_cores() { return 1; } // FIXME
+  uint32_t num_cores() { return 2; }
 
  private:
 
+  bool debug_en = false;
   volatile uintptr_t* dev_vaddr;
   const static uintptr_t dev_paddr = 0x43C00000;
 };

@@ -24,6 +24,8 @@ int main(int argc, char** argv)
 
   for (std::vector<std::string>::const_iterator a = args.begin(); a != args.end(); ++a)
   {
+    if (a->substr(0, 6) == "+debug")
+      htif.debug_enable();
     if (a->substr(0, 9) == "+memtest=")
       memtest = true, memtest_mb = std::atoi(a->substr(9).c_str());
     if (a->substr(0, 9) == "+divisor=")
@@ -105,6 +107,5 @@ int main(int argc, char** argv)
     delete [] target_memory;
   }
 
-  printf("about to call htif.run()\n");
   return htif.run();
 }

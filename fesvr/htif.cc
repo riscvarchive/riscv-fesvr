@@ -148,7 +148,6 @@ void htif_t::reset()
   for (uint32_t i = 0; i < num_cores(); i++)
   {
     write_cr(i, 29, 1);
-    write_cr(i, 10, coremap(i));
     write_cr(i, 29, 0);
   }
 }
@@ -265,7 +264,7 @@ reg_t htif_t::write_cr(uint32_t coreid, uint16_t regnum, reg_t val)
 
 int htif_t::run()
 {
-  start();
+  start(); 
   std::vector<std::queue<reg_t>> fromhost(num_cores());
 
   auto enq_func = [](std::queue<reg_t>* q, uint64_t x) { q->push(x); };
