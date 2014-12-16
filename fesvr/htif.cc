@@ -3,6 +3,7 @@
 #include "htif.h"
 #include "rfb.h"
 #include "elfloader.h"
+#include "flatloader.h"
 #include <algorithm>
 #include <assert.h>
 #include <vector>
@@ -39,7 +40,7 @@ static void handle_signal(int sig)
 
 htif_t::htif_t(const std::vector<std::string>& args)
   : exitcode(0), mem(this), seqno(1), started(false), stopped(false),
-    _mem_mb(0), _num_cores(0), sig_addr(0), sig_len(0),
+    loadflat(false), _mem_mb(0), _num_cores(0), sig_addr(0), sig_len(0),
     syscall_proxy(this)
 {
   signal(SIGINT, &handle_signal);
@@ -148,6 +149,12 @@ void htif_t::load_program()
 
   if (path.empty())
     throw std::runtime_error("could not open " + targs[0]);
+
+  if(loadflat)
+  {
+    load_flat(path.c_str(), &mem);
+    return;
+  }
 
   std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem);
 
@@ -320,4 +327,9 @@ bool htif_t::done()
 int htif_t::exit_code()
 {
   return exitcode >> 1;
+}
+
+void htif_t::set_loadflat(bool value)
+{
+  loadflat = value;
 }

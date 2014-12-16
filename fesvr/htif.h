@@ -21,6 +21,7 @@ class htif_t
   int run();
   bool done();
   int exit_code();
+  void set_loadflat(bool value);
 
   virtual reg_t read_cr(uint32_t coreid, uint16_t regnum);
   virtual reg_t write_cr(uint32_t coreid, uint16_t regnum, reg_t val);
@@ -52,6 +53,7 @@ class htif_t
   seqno_t seqno;
   bool started;
   bool stopped;
+  bool loadflat;
   uint32_t _mem_mb;
   uint32_t _num_cores;
   std::vector<std::string> hargs;

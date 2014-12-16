@@ -1,6 +1,7 @@
 fesvr_hdrs = \
 	elf.h \
 	elfloader.h \
+	flatloader.h \
 	htif.h \
 	memif.h \
 	syscall.h \
@@ -18,6 +19,7 @@ fesvr_hdrs = \
 
 fesvr_srcs = \
 	elfloader.cc \
+	flatloader.cc \
   htif.cc \
   packet.cc \
 	memif.cc \
