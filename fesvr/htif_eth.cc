@@ -96,12 +96,15 @@ htif_eth_t::htif_eth_t(const std::vector<std::string>& args)
   }
   else
   {
-    // setuid root to open a raw socket.  if we fail, too bad
-    seteuid(0);
-    sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-    seteuid(getuid());
-    if(sock < 0)
+    // setuid root to open a raw socket.
+    if (seteuid(0) != 0)
+      throw std::runtime_error("couldn't setuid root");
+
+    if ((sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL))) < 0)
       throw std::runtime_error("socket() failed!");
+
+    if (seteuid(getuid()) != 0)
+      throw std::runtime_error("couldn't setuid away from root");
 
     // get MAC address of local ethernet device
     struct ifreq ifr;
