@@ -12,8 +12,9 @@
 #define IS_ELF32(hdr) (IS_ELF(hdr) && (hdr).e_ident[4] == 1)
 #define IS_ELF64(hdr) (IS_ELF(hdr) && (hdr).e_ident[4] == 2)
 
-#define SHT_PROGBITS 1
-#define SHT_NOBITS   8
+#define PT_LOAD 1
+
+#define SHT_NOBITS 8
 
 typedef struct {
   uint8_t  e_ident[16];
