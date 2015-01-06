@@ -6,8 +6,7 @@
 #include <map>
 #include <deque>
 #include <queue>
-#include <fesvr/context.h>
-#include <fesvr/htif_pthread.h>
+#include "htif_pthread.h"
 
 typedef std::map< uint32_t, uint32_t > map_t;
 typedef std::map< uint32_t, std::queue<uint32_t> > qmap_t;
@@ -86,18 +85,6 @@ class simif_t
     map_t mem_writes;
     map_t mem_reads;
 
-    // host's information
-    size_t hostlen;
-    size_t cmdlen;
-    size_t tracelen;
-    size_t snaplen;
-
-    // target's information
-    size_t htiflen;
-    size_t addrlen;
-    size_t memlen;
-    size_t taglen;
-
     // snapshot contends
     // TODO: data structure for snapshots
     FILE *snaps;
@@ -116,6 +103,18 @@ class simif_t
   protected:
     std::deque<char> from_htif;
     std::deque<char> to_htif;
+
+    // host's information
+    size_t hostlen;
+    size_t cmdlen;
+    size_t tracelen;
+    size_t snaplen;
+
+    // target's information
+    size_t htiflen;
+    size_t addrlen;
+    size_t memlen;
+    size_t taglen;
 
     void open_snap(std::string filename);
 

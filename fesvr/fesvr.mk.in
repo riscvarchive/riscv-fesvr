@@ -17,6 +17,7 @@ fesvr_hdrs = \
 	rfb.h \
 	simif.h \
 	simif_pthread.h \
+	simif_zedboard.h \
 
 fesvr_srcs = \
 	elfloader.cc \
@@ -37,6 +38,7 @@ fesvr_srcs = \
 	term.cc \
 	simif.cc \
 	simif_pthread.cc \
+	simif_zedboard.cc \
 
 fesvr_install_prog_srcs = \
   elf2hex.cc \

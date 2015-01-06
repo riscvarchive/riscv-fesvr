@@ -2,9 +2,8 @@
 #define __SIMIF_PTHREAD_H
 
 #include <queue>
-#include <fesvr/context.h>
-#include <fesvr/htif_pthread.h>
 #include "simif.h"
+#include "context.h"
 
 class simif_pthread_t : public simif_t
 {

@@ -1,10 +1,4 @@
 #include "simif_pthread.h"
-#include <assert.h>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <stdlib.h>
-#include <string.h>
 
 void simif_pthread_t::thread_main(void *arg) {
   simif_pthread_t* simif = static_cast<simif_pthread_t*>(arg);
