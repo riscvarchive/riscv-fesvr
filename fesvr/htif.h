@@ -57,6 +57,7 @@ class htif_t
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
   std::string sig_file;
+  std::string chroot;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
 
@@ -65,11 +66,12 @@ class htif_t
   bcd_t bcd;
   std::vector<device_t*> dynamic_devices;
 
-  const std::vector<std::string>& target_args() { return targs; }
-
   std::vector<char> read_buf;
   virtual packet_t read_packet(seqno_t expected_seqno);
   virtual void write_packet(const packet_t& packet);
+
+  void set_chroot(const char* where);
+  const std::vector<std::string>& target_args() { return targs; }
 
   friend class memif_t;
   friend class syscall_t;

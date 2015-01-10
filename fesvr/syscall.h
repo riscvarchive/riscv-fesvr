@@ -43,6 +43,8 @@ class syscall_t : public device_t
 
   void handle_syscall(command_t cmd);
   void dispatch(addr_t mm);
+  std::string do_chroot(const char* fn);
+  std::string undo_chroot(const char* fn);
 
   reg_t sys_exit(reg_t, reg_t, reg_t, reg_t, reg_t);
   reg_t sys_open(reg_t, reg_t, reg_t, reg_t, reg_t);

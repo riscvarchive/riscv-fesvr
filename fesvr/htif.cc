@@ -11,6 +11,7 @@
 #include <fstream>
 #include <iomanip>
 #include <stdio.h>
+#include <limits.h>
 #include <unistd.h>
 #include <signal.h>
 
@@ -35,6 +36,22 @@ static void handle_signal(int sig)
     exit(-1);
   signal_exit = true;
   signal(sig, &handle_signal);
+}
+
+void htif_t::set_chroot(const char* where)
+{
+  char buf1[PATH_MAX], buf2[PATH_MAX];
+
+  if (getcwd(buf1, sizeof(buf1)) == NULL
+      || chdir(where) != 0
+      || getcwd(buf2, sizeof(buf2)) == NULL
+      || chdir(buf1) != 0)
+  {
+    printf("could not chroot to %s\n", chroot.c_str());
+    exit(-1);
+  }
+
+  chroot = buf2;
 }
 
 htif_t::htif_t(const std::vector<std::string>& args)
@@ -64,6 +81,8 @@ htif_t::htif_t(const std::vector<std::string>& args)
       dynamic_devices.push_back(new disk_t(arg.c_str() + strlen("+disk=")));
     else if (arg.find("+signature=") == 0)
       sig_file = arg.c_str() + strlen("+signature=");
+    else if (arg.find("+chroot=") == 0)
+      set_chroot(arg.substr(strlen("+chroot=")).c_str());
   }
 
   device_list.register_device(&syscall_proxy);

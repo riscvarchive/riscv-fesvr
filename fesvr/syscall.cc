@@ -87,6 +87,23 @@ syscall_t::syscall_t(htif_t* htif)
   fds.alloc(stdout_fd1); // stderr -> stdout
 }
 
+std::string syscall_t::do_chroot(const char* fn)
+{
+  if (!htif->chroot.empty() && *fn == '/')
+    return htif->chroot + fn;
+  return fn;
+}
+
+std::string syscall_t::undo_chroot(const char* fn)
+{
+  if (htif->chroot.empty())
+    return fn;
+  if (strncmp(fn, htif->chroot.c_str(), htif->chroot.size()) == 0
+      && (htif->chroot.back() == '/' || fn[htif->chroot.size()] == '/'))
+    return fn + htif->chroot.size() - (htif->chroot.back() == '/');
+  return "/";
+}
+
 void syscall_t::handle_syscall(command_t cmd)
 {
   if (cmd.payload() & 1) // test pass/fail
@@ -116,7 +133,7 @@ reg_t syscall_t::sys_open(reg_t pname, reg_t len, reg_t flags, reg_t mode, reg_t
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  int fd = open(&name[0], flags, mode);
+  int fd = open(do_chroot(&name[0]).c_str(), flags, mode);
   if (fd < 0)
     return sysret_errno(-1);
   return fds.alloc(fd);
@@ -127,7 +144,7 @@ reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, re
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  int fd = openat(fds.lookup(dirfd), &name[0], flags, mode);
+  int fd = openat(fds.lookup(dirfd), do_chroot(&name[0]).c_str(), flags, mode);
   if (fd < 0)
     return sysret_errno(-1);
   return fds.alloc(fd);
@@ -206,7 +223,7 @@ reg_t syscall_t::sys_stat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a4
   memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  reg_t ret = sysret_errno(stat(&name[0], &buf));
+  reg_t ret = sysret_errno(stat(do_chroot(&name[0]).c_str(), &buf));
   if (ret != (reg_t)-1)
   {
     riscv_stat rbuf(buf);
@@ -221,7 +238,7 @@ reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a
   memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  reg_t ret = sysret_errno(lstat(&name[0], &buf));
+  reg_t ret = sysret_errno(lstat(do_chroot(&name[0]).c_str(), &buf));
   riscv_stat rbuf(buf);
   if (ret != (reg_t)-1)
   {
@@ -238,7 +255,8 @@ reg_t syscall_t::sys_fstatat(reg_t dirfd, reg_t pname, reg_t len, reg_t pbuf, re
   memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  reg_t ret = sysret_errno(fstatat(fds.lookup(dirfd), &name[0], &buf, flags));
+  reg_t ret = sysret_errno(fstatat(fds.lookup(dirfd),
+                                   do_chroot(&name[0]).c_str(), &buf, flags));
   if (ret != (reg_t)-1)
   {
     riscv_stat rbuf(buf);
@@ -252,7 +270,7 @@ reg_t syscall_t::sys_access(reg_t pname, reg_t len, reg_t mode, reg_t a3, reg_t 
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(access(&name[0], mode));
+  return sysret_errno(access(do_chroot(&name[0]).c_str(), mode));
 }
 
 #ifndef NO_POSIX_2008
@@ -260,7 +278,8 @@ reg_t syscall_t::sys_faccessat(reg_t dirfd, reg_t pname, reg_t len, reg_t mode, 
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(faccessat(fds.lookup(dirfd), &name[0], mode, flags));
+  return sysret_errno(faccessat(fds.lookup(dirfd),
+                                do_chroot(&name[0]).c_str(), mode, flags));
 }
 #endif
 
@@ -269,31 +288,35 @@ reg_t syscall_t::sys_link(reg_t poname, reg_t olen, reg_t pnname, reg_t nlen, re
   std::vector<char> oname(olen), nname(nlen);
   memif->read(poname, olen, &oname[0]);
   memif->read(pnname, nlen, &nname[0]);
-  return sysret_errno(link(&oname[0], &nname[0]));
+  return sysret_errno(link(do_chroot(&oname[0]).c_str(),
+                           do_chroot(&nname[0]).c_str()));
 }
 
 reg_t syscall_t::sys_unlink(reg_t pname, reg_t len, reg_t a2, reg_t a3, reg_t a4)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(unlink(&name[0]));
+  return sysret_errno(unlink(do_chroot(&name[0]).c_str()));
 }
 
 reg_t syscall_t::sys_mkdir(reg_t pname, reg_t len, reg_t mode, reg_t a3, reg_t a4)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(mkdir(&name[0], mode));
+  return sysret_errno(mkdir(do_chroot(&name[0]).c_str(), mode));
 }
 
 reg_t syscall_t::sys_getcwd(reg_t pbuf, reg_t size, reg_t a2, reg_t a3, reg_t a4)
 {
   std::vector<char> buf(size);
   char* ret = getcwd(&buf[0], size);
-  if(ret) {
-    memif->write(pbuf, size, &buf[0]);
-  }
-  return pbuf;
+  if (ret == NULL)
+    return sysret_errno(-1);
+  std::string tmp = undo_chroot(&buf[0]);
+  if (size <= tmp.size())
+    return -ENOMEM;
+  memif->write(pbuf, tmp.size() + 1, &tmp[0]);
+  return tmp.size() + 1;
 }
 
 reg_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3, reg_t a4)
