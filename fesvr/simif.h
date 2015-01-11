@@ -28,13 +28,13 @@ enum STEP_RESP {
 class simif_t
 {
   public:
-    simif_t(std::vector<std::string> args, uint64_t _max_cycles = -1, bool _trace = false);
+    simif_t(std::vector<std::string> args, bool _log = false);
     ~simif_t();
 
-    virtual void run();
+    virtual int run();
     void stop() { htif->stop(); }
     bool done() { return is_done; }
-    int exit_code() { return htif->exit_code(); }
+    int exit_code() { return exitcode; }
 
   private:
     // atomic operations
@@ -90,25 +90,27 @@ class simif_t
     FILE *snaps;
 
     // simulation information
-    bool trace; 
+    const bool log; 
     bool pass;
     bool is_done;
+    int exitcode;   
     uint64_t t;
     uint64_t fail_t;
-    const uint64_t max_cycles;
+    uint64_t max_cycles;
+    const char* loadmem;
 
     // htif information
     htif_pthread_t *htif;
-    
+ 
   protected:
     std::deque<char> from_htif;
     std::deque<char> to_htif;
+    size_t snaplen;
 
     // host's information
     size_t hostlen;
     size_t cmdlen;
     size_t tracelen;
-    size_t snaplen;
 
     // target's information
     size_t htiflen;
@@ -118,7 +120,7 @@ class simif_t
 
     void open_snap(std::string filename);
 
-    // deqbugging APIs
+    // Simulation APIs
     void step(size_t n, bool record = true);
     void poke(std::string path, uint64_t value);
     void pokeq(std::string path, uint64_t value);
@@ -129,7 +131,7 @@ class simif_t
     bool expect(std::string path, uint64_t expected);
     bool expect(bool ok, std::string s);
 
-    void load_mem(std::string filename);
+    void load_mem();
     void write_mem(uint64_t addr, uint64_t data);
     uint64_t read_mem(uint64_t addr);
 

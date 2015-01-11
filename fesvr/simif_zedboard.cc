@@ -7,8 +7,8 @@
 #define read_reg(r) (dev_vaddr[r])
 #define write_reg(r, v) (dev_vaddr[r] = v)
 
-simif_zedboard_t::simif_zedboard_t(std::vector<std::string> args, uint64_t _max_cycles, bool _trace)
-  : simif_t(args, _max_cycles, _trace)
+simif_zedboard_t::simif_zedboard_t(std::vector<std::string> args, bool log)
+  : simif_t(args, log)
 {
   int fd = open("/dev/mem", O_RDWR|O_SYNC);
   assert(fd != -1);
@@ -28,6 +28,9 @@ simif_zedboard_t::simif_zedboard_t(std::vector<std::string> args, uint64_t _max_
   while ((uint32_t) read_reg(0) > 0) {
     read_reg(1);
   }
+  while ((uint32_t) read_reg(2) > 0) {
+    read_reg(3);
+  }
 }
 
 void simif_zedboard_t::poke(uint32_t value) {
@@ -45,8 +48,12 @@ uint32_t simif_zedboard_t::peek() {
   return (uint32_t) read_reg(1);
 }
 
+bool simif_zedboard_t::poke_htif_ready() {
+  return (uint32_t) read_reg(4) < 32;
+}
+
 void simif_zedboard_t::poke_htif(uint32_t value) {
-  write_reg(2, value);
+  write_reg(1, value);
   __sync_synchronize();
 }
 
@@ -62,13 +69,20 @@ uint32_t simif_zedboard_t::peek_htif() {
 
 void simif_zedboard_t::step_htif() {
   size_t size = hostlen / 8;
-  while (from_htif.size() >= size) {
-    uint32_t value;
-    std::copy(from_htif.begin(), from_htif.begin() + size, &value);
-    poke_htif(value);
+  while (from_htif.size() >= size && poke_htif_ready()) {
+    char *buf = new char[size];
+    std::copy(from_htif.begin(), from_htif.begin() + size, buf);
+    uint32_t *value = (uint32_t*) buf;
+    poke_htif(*value);
+    from_htif.erase(from_htif.begin(), from_htif.begin() + size);
   }
   while (peek_htif_ready()) {
     uint32_t value = peek_htif();
     to_htif.insert(to_htif.end(), (const char*)&value, (const char*)&value + size);
   }
+}
+
+int simif_zedboard_t::run() {
+  // load_mem();
+  return simif_t::run();
 }

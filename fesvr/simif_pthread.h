@@ -8,7 +8,7 @@
 class simif_pthread_t : public simif_t
 {
   public:
-    simif_pthread_t(std::vector<std::string> args, uint64_t _max_cycles = -1, bool _trace = false);
+    simif_pthread_t(std::vector<std::string> args, bool _log = false);
     ~simif_pthread_t() { }
 
     // target interface

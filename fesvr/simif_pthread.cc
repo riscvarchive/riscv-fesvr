@@ -7,8 +7,8 @@ void simif_pthread_t::thread_main(void *arg) {
     simif->target->switch_to();
 }
 
-simif_pthread_t::simif_pthread_t(std::vector<std::string> args, uint64_t _max_cycles, bool _trace)
-  : simif_t(args, _max_cycles, _trace)
+simif_pthread_t::simif_pthread_t(std::vector<std::string> args, bool log) 
+  : simif_t(args, log)
 {
   target = context_t::current();
   host.init(thread_main, this);
@@ -28,10 +28,6 @@ uint32_t simif_pthread_t::peek() {
   uint32_t value = th_data.front();
   th_data.pop();
   return value;
-}
-
-void simif_pthread_t::step_htif() {
-  target->switch_to();
 }
 
 void simif_pthread_t::send(uint32_t value) {
@@ -54,6 +50,10 @@ bool simif_pthread_t::recv_nonblocking(uint32_t& value) {
   return true;
 }
 
+void simif_pthread_t::step_htif() {
+  target->switch_to();
+}
+
 void simif_pthread_t::send_to_htif(const void* buf, size_t size) {
   to_htif.insert(to_htif.end(), (const char*)buf, (const char*)buf + size);
 }
@@ -67,7 +67,7 @@ bool simif_pthread_t::recv_from_htif_nonblocking(void *buf, size_t size) {
     host.switch_to();
     return false;
   }
- 
+
   std::copy(from_htif.begin(), from_htif.begin() + size, (unsigned char*)buf);
   from_htif.erase(from_htif.begin(), from_htif.begin() + size);
   return true;
