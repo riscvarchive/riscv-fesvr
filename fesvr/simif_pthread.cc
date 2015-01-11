@@ -50,7 +50,7 @@ bool simif_pthread_t::recv_nonblocking(uint32_t& value) {
   return true;
 }
 
-void simif_pthread_t::step_htif() {
+void simif_pthread_t::serve_htif(size_t size) {
   target->switch_to();
 }
 

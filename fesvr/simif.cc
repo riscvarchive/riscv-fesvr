@@ -6,78 +6,62 @@
 #include <string.h>
 
 simif_t::simif_t(std::vector<std::string> args, bool _log): log(_log)
-//    hostlen(0), addrlen(0), memlen(0), taglen(0), tracelen(0),
 {
   // initialization
   pass = true;
   is_done = false;
   t = 0;
   fail_t = -1;
-  max_cycles = -1;
-  snaplen = 0;
+  max_cycles = -1; 
+  snap_len = 0;
+  sample_num = 200;
+  step_size = 2000;
+
   qin_num = 0;
   qout_num = 0;
   win_num = 0;
   wout_num = 0;
-  snaps = NULL;
-
-  // Read mapping files
-  read_params("TopShim.prm");
-  read_io_map("Top.io.map");
-  read_chain_map("Top.chain.map");
-
-  // Remove snapshot files before getting started
-  open_snap("Top.snap");
 
   srand(time(NULL));
+
+  // Read mapping files
+  read_io_map("Top.io.map");
+  read_chain_map("Top.chain.map");
 
   for (auto &arg: args) {
     if (arg.find("+max-cycles=") == 0) {
       max_cycles = atoi(arg.c_str()+12);
+    } else if (arg.find("+step-size=") == 0) {
+      step_size = atoi(arg.c_str()+11);
+    } else if (arg.find("+sample-num=") == 0) {
+      sample_num = atoi(arg.c_str()+12);
     } else if (arg.find("+loadmem=") == 0) {
       loadmem = arg.c_str()+9;
     }
   }
 
+  samples = new sample_t*[sample_num];
+  for (size_t i = 0 ; i < sample_num ; i++) {
+    samples[i] = NULL;
+  }
+
   // instantiate htif
-  htif = new htif_pthread_t(args);
+  htif = new htif_pthread_t(args);  
 }
 
 simif_t::~simif_t() {
-  fclose(snaps);
-  delete htif;
-}
-
-void simif_t::open_snap(std::string filename) {
-  if (snaps != NULL) fclose(snaps);
-  snaps = fopen(filename.c_str(), "w");
-}
-
-void simif_t::read_params(std::string filename) {
-  std::ifstream file(filename.c_str());
-  std::string line;
-  if (file) {
-    while(getline(file, line)) {
-      std::string pair = line.substr(1, line.length()-1);
-      size_t colon_idx = pair.find(",");
-      if (colon_idx < pair.length()) {
-        std::string param = pair.substr(0, colon_idx);
-        size_t value = std::stoi(pair.substr(colon_idx+1));
-        if (param == "HTIF_WIDTH") htiflen = value;
-        else if (param == "MIF_ADDR_BITS") addrlen = value;
-        else if (param == "MIF_DATA_BITS") memlen = value;
-        else if (param == "MIF_TAG_BITS") taglen = value;
-        else if (param == "HOST_LEN") hostlen = value; 
-        else if (param == "CMD_LEN") cmdlen = value;
-        else if (param == "TRACE_LEN") tracelen = value;
-      }
+  for (size_t i = 0 ; i < sample_num ; i++) {
+    if (samples[i] != NULL) {
+      std::string filename = "Top-" + std::to_string(i) + ".sample";
+      std::ofstream file(filename.c_str());
+      (samples[i])->dump(file);
+      // file << *(samples[i]);
+      file.close();
+      delete samples[i];
     }
-
-  } else {
-    fprintf(stderr, "Cannot open %s\n", filename.c_str());
-    exit(0);
   }
-  file.close();
+
+  delete htif;
 }
 
 void simif_t::read_io_map(std::string filename) {
@@ -97,7 +81,7 @@ void simif_t::read_io_map(std::string filename) {
       else {
         size_t width;
         iss >> width;
-        size_t n = (width-1)/hostlen + 1;
+        size_t n = (width-1)/hostlen() + 1;
         switch (iotype) {
           case QIN:
             qin_map[head] = std::vector<size_t>();
@@ -157,9 +141,10 @@ void simif_t::read_chain_map(std::string filename) {
       std::string path;
       size_t width;
       iss >> path >> width;
-      signals.push_back(path);
-      widths.push_back(width);
-      snaplen += width;
+      sample_t::add_mapping(path, width);
+      // signals.push_back(path);
+      // widths.push_back(width);
+      snap_len += width;
     }
   } else {
     fprintf(stderr, "Cannot open %s\n", filename.c_str());
@@ -169,7 +154,7 @@ void simif_t::read_chain_map(std::string filename) {
 }
 
 void simif_t::poke_steps(size_t n, bool record) {
-  poke(n << (cmdlen+1) | record << cmdlen | STEP_CMD);
+  poke(n << (cmdlen()+1) | record << cmdlen() | STEP_CMD);
 }
 
 void simif_t::poke_all() {
@@ -190,7 +175,7 @@ void simif_t::peek_all() {
 void simif_t::pokeq_all() {
   if (qin_num > 0) poke(POKEQ_CMD);
   for (size_t i = 0 ; i < qin_num ; i++) {
-    uint32_t count = (pokeq_map[i].size() < tracelen) ? pokeq_map[i].size() : tracelen;
+    uint32_t count = (pokeq_map[i].size() < tracelen()) ? pokeq_map[i].size() : tracelen();
     poke(count);
     for (size_t k = 0 ; k < count ; k++) {
       poke(pokeq_map[i].front());
@@ -214,7 +199,6 @@ void simif_t::trace_qout() {
 }
 
 void simif_t::peek_trace() {
-fprintf(stderr, "haak!!!\n");
   poke(TRACE_CMD);
   trace_mem();
 }
@@ -225,14 +209,14 @@ void simif_t::trace_mem() {
   uint32_t wcount = peek();
   for (size_t i = 0 ; i < wcount ; i++) {
     uint64_t addr = 0;
-    for (size_t k = 0 ; k < addrlen ; k += hostlen) {
+    for (size_t k = 0 ; k < addrlen() ; k += hostlen()) {
       addr |= peek() << k;
     }
     waddr.push_back(addr);
   }
   for (size_t i = 0 ; i < wcount ; i++) {
     uint64_t data = 0;
-    for (size_t k = 0 ; k < memlen ; k += hostlen) {
+    for (size_t k = 0 ; k < memlen() ; k += hostlen()) {
       data |= peek() << k;
     }
     wdata.push_back(data);
@@ -248,12 +232,12 @@ void simif_t::trace_mem() {
   uint32_t rcount = peek();
   for (size_t i = 0 ; i < rcount ; i++) {
     uint64_t addr = 0;
-    for (size_t k = 0 ; k < addrlen ; k += hostlen) {
-      addr = (addr << hostlen) | peek();
+    for (size_t k = 0 ; k < addrlen() ; k += hostlen()) {
+      addr = (addr << hostlen()) | peek();
     }
     uint64_t tag = 0;
-    for (size_t k = 0 ; k < taglen ; k += hostlen) {
-      tag = (tag << hostlen) | peek();
+    for (size_t k = 0 ; k < taglen() ; k += hostlen()) {
+      tag = (tag << hostlen()) | peek();
     }
     mem_reads[tag] = addr;
   }
@@ -267,12 +251,18 @@ static inline char* int_to_bin(uint32_t value, size_t size) {
   return bin;
 }
 
-void simif_t::read_snap(char *snap) {
-  for (size_t offset = 0 ; offset < snaplen ; offset += hostlen) {
-    char* value = int_to_bin(peek(), hostlen);
-    memcpy(snap+offset, value, (offset+hostlen < snaplen) ? hostlen : snaplen-offset);
+void simif_t::read_snap(uint64_t sample_idx) {
+  sample_t *sample = new sample_t(snap_len);
+  for (size_t offset = 0 ; offset < snap_len ; offset += hostlen()) {
+    char* value = int_to_bin(peek(), hostlen());
+    memcpy(sample->snap_pos(offset), value, 
+          (offset+hostlen() < snap_len) ? hostlen() : snap_len-offset);
     delete[] value; 
   }
+  if (samples[sample_idx] != NULL) {
+    delete samples[sample_idx];
+  } 
+  samples[sample_idx] = sample;
 }
 
 void simif_t::record_io() {
@@ -282,13 +272,14 @@ void simif_t::record_io() {
     uint32_t data = 0;
     for (size_t i = 0 ; i < ids.size() ; i++) {
       size_t id = ids[i];
-      data = (data << hostlen) | ((poke_map.find(id) != poke_map.end()) ? poke_map[id] : 0);
+      data = (data << hostlen()) | ((poke_map.find(id) != poke_map.end()) ? poke_map[id] : 0);
     } 
-    fprintf(snaps, "%d %s %x\n", SNAP_POKE, signal.c_str(), data);
+    // fprintf(snaps, "%d %s %x\n", SNAP_POKE, signal.c_str(), data);
   }
-  fprintf(snaps, "%d\n", SNAP_FIN);
+  // fprintf(snaps, "%d\n", SNAP_FIN);
 }
 
+/*
 void simif_t::record_snap(char *snap) {
   size_t offset = 0;
   for (size_t i = 0 ; i < signals.size() ; i++) {
@@ -307,35 +298,42 @@ void simif_t::record_snap(char *snap) {
     offset += width;
   }
 }
+*/
 
 void simif_t::record_mem() {
   for (map_t::iterator it = mem_writes.begin() ; it != mem_writes.end() ; it++) {
     uint32_t addr = it->first;
     uint32_t data = it->second;
-    fprintf(snaps, "%d %x %08x\n", SNAP_WRITE, addr, data);
+    // fprintf(snaps, "%d %x %08x\n", SNAP_WRITE, addr, data);
   }
 
   for (map_t::iterator it = mem_reads.begin() ; it != mem_reads.end(); it++) {
     uint32_t tag = it->first;
     uint32_t addr = it->second;
-    fprintf(snaps, "%d %x %08x\n", SNAP_READ, addr, tag);
+    // fprintf(snaps, "%d %x %08x\n", SNAP_READ, addr, tag);
   }
 
   mem_writes.clear();
   mem_reads.clear();
 }
 
-void simif_t::step(size_t n, bool record) {
+void simif_t::step(size_t n) {
+  static uint64_t r_idx = 0;
+  static bool record = false;
   uint64_t target_t = t + n;
-  if (record && t > 0) record_io();
-  if (log) fprintf(stderr, "* STEP %u -> %llu *\n", n, target_t);
+  if (record) record_io();
+  if (log) fprintf(stderr, "* STEP %u -> %lu *\n", n, target_t);
+
+  uint64_t sample_idx = r_idx < sample_num ? r_idx : rand_next(r_idx);
+  record = sample_idx < sample_num;
 
   // poke_all();
   // pokeq_all();
   poke_steps(n, record);
+  const size_t htif_size = hostlen() / 8; 
   bool fin = false;
   while (!fin) {
-    step_htif();
+    serve_htif(htif_size);
     if (peek_ready()) {
       uint32_t resp = peek();
       if (resp == RESP_FIN) fin = true;
@@ -343,30 +341,29 @@ void simif_t::step(size_t n, bool record) {
       else if (resp == RESP_PEEKQ) trace_qout();
     }
   }
-  char *snap = new char[snaplen];
-  if (record) read_snap(snap);
+  if (record) read_snap(sample_idx);
   // peek_all();
   // peekq_all();
   if (record) {
     // peek_trace();
-    record_snap(snap);
+    // record_snap(snap);
     // record_mem();
   }
-  delete[] snap;
   t += n;
+  r_idx++;
 }
 
 void simif_t::poke(std::string path, uint64_t value) {
   assert(win_map.find(path) != win_map.end());
   std::vector<size_t> ids = win_map[path];
-  uint64_t mask = (1 << hostlen) - 1;
+  uint64_t mask = (1 << hostlen()) - 1;
   for (size_t i = 0 ; i < ids.size() ; i++) {
     size_t id = ids[ids.size()-1-i];
-    size_t shift = hostlen * i;
+    size_t shift = hostlen() * i;
     uint32_t data = (value >> shift) & mask;
     poke_map[id] = data;
   }
-  if (log) fprintf(stderr, "* POKE %s %llu *\n", path.c_str(), value);
+  if (log) fprintf(stderr, "* POKE %s %lu *\n", path.c_str(), value);
 }
 
 uint64_t simif_t::peek(std::string path) {
@@ -376,24 +373,24 @@ uint64_t simif_t::peek(std::string path) {
   for (size_t i = 0 ; i < ids.size() ; i++) {
     size_t id = ids[ids.size()-1-i];
     assert(peek_map.find(id) != peek_map.end());
-    value = value << hostlen | peek_map[id];
+    value = value << hostlen() | peek_map[id];
   }
-  if (log) fprintf(stderr, "* PEEK %s -> %llu\n *", path.c_str(), value);
+  if (log) fprintf(stderr, "* PEEK %s -> %lu\n *", path.c_str(), value);
   return value;
 }
 
 void simif_t::pokeq(std::string path, uint64_t value) {
   assert(qin_map.find(path) != qin_map.end());
   std::vector<size_t> ids = qin_map[path];
-  uint64_t mask = (1 << hostlen) - 1;
+  uint64_t mask = (1 << hostlen()) - 1;
   for (size_t i = 0 ; i < ids.size() ; i++) {
     size_t id = ids[ids.size()-1-i];
-    size_t shift = hostlen * i;
+    size_t shift = hostlen() * i;
     uint32_t data = (value >> shift) & mask;
     assert(pokeq_map.find(id) != pokeq_map.end());
     pokeq_map[id].push(data);
   }
-  if (log) fprintf(stderr, "* POKEQ %s <- %llu *\n", path.c_str(), value);
+  if (log) fprintf(stderr, "* POKEQ %s <- %lu *\n", path.c_str(), value);
 }
 
 uint64_t simif_t::peekq(std::string path) {
@@ -403,10 +400,10 @@ uint64_t simif_t::peekq(std::string path) {
   for (size_t i = 0 ; i < ids.size() ; i++) {
     size_t id = ids[ids.size()-1-i];
     assert(peekq_map.find(id) != peekq_map.end());
-    value = value << hostlen | peekq_map[id].front();
+    value = value << hostlen() | peekq_map[id].front();
     peekq_map[id].pop();
   }
-  if (log) fprintf(stderr, "* PEEKQ %s <- %llu *\n", path.c_str(), value);
+  if (log) fprintf(stderr, "* PEEKQ %s <- %lu *\n", path.c_str(), value);
   return value;
 }
 
@@ -427,7 +424,7 @@ bool simif_t::expect(std::string path, uint64_t expected) {
   bool ok = value == expected;
   pass &= ok;
   if (!ok && t < fail_t) fail_t = t;
-  if (log) fprintf(stderr, "* EXPECT %s -> %llu === %llu %s *\n", 
+  if (log) fprintf(stderr, "* EXPECT %s -> %lu === %lu %s *\n", 
                      path.c_str(), value, expected, ok ? " PASS" : " FAIL");
   return ok;
 }
@@ -468,27 +465,27 @@ void simif_t::load_mem() {
 }
 
 void simif_t::write_mem(uint64_t addr, uint64_t data) {
-  poke((1 << cmdlen) | MEM_CMD);
-  uint64_t mask = (1<<hostlen)-1;
-  for (size_t i = (addrlen-1)/hostlen+1 ; i > 0 ; i--) {
-    poke((addr >> (hostlen * (i-1))) & mask);
+  poke((1 << cmdlen()) | MEM_CMD);
+  uint64_t mask = (1<<hostlen())-1;
+  for (size_t i = (addrlen()-1)/hostlen()+1 ; i > 0 ; i--) {
+    poke((addr >> (hostlen() * (i-1))) & mask);
   }
-  for (size_t i = (memlen-1)/hostlen+1 ; i > 0 ; i--) {
-    poke((data >> (hostlen * (i-1))) & mask);
+  for (size_t i = (memlen()-1)/hostlen()+1 ; i > 0 ; i--) {
+    poke((data >> (hostlen() * (i-1))) & mask);
   }
 
   mem_writes[addr] = data;
 }
 
 uint64_t simif_t::read_mem(uint64_t addr) {
-  poke((0 << cmdlen) | MEM_CMD);
-  uint64_t mask = (1<<hostlen)-1;
-  for (size_t i = (addrlen-1)/hostlen+1 ; i > 0 ; i--) {
-    poke((addr >> (hostlen * (i-1))) & mask);
+  poke((0 << cmdlen()) | MEM_CMD);
+  uint64_t mask = (1<<hostlen())-1;
+  for (size_t i = (addrlen()-1)/hostlen()+1 ; i > 0 ; i--) {
+    poke((addr >> (hostlen() * (i-1))) & mask);
   }
   uint64_t data = 0;
-  for (size_t i = 0 ; i < (memlen-1)/hostlen+1 ; i ++) {
-    data |= peek() << (hostlen * i);
+  for (size_t i = 0 ; i < (memlen()-1)/hostlen()+1 ; i ++) {
+    data |= peek() << (hostlen() * i);
   }
   return data;
 }
@@ -501,36 +498,32 @@ int simif_t::run() {
   poke("Top.io_in_mem_valid", 0);
   poke("Top.io_mem_backup_en", 0);
   poke("Top.io_out_mem_ready", 0);
-  const size_t size = htiflen / 8;
+  const size_t size = htiflen() / 8;
   while (!htif->done() && cycles() < max_cycles) {
-    step(100); // , false);
-    // step_htif();
+    step(step_size); 
     char* send_buf = new char[size];
     uint64_t recv_buf;
     // handle HTIF
     while (to_htif.size() >= size) {
-// fprintf(stderr, "HITF SEND size = %d\n", size);
       std::copy(to_htif.begin(), to_htif.begin() + size, send_buf);
       htif->send(send_buf, size);
       to_htif.erase(to_htif.begin(), to_htif.begin() + size);    
     }
     while (htif->recv_nonblocking(&recv_buf, size)) {
-fprintf(stderr, "HITF RECV size = %d\n", size);
       from_htif.insert(from_htif.end(), (const char*)&recv_buf, (const char*)&recv_buf + size);
-fprintf(stderr, "HITF RECV buf = %x, size = %d, buf size = %d\n", recv_buf, size, from_htif.size());
     }
     delete send_buf;
   }
 
   is_done = true;
-  exitcode = exit_code();
+  exitcode = htif->exit_code();
 
   if (exitcode) {
-    fprintf(stderr, "*** FAILED *** (code = %d) after %llu cycles\n", htif->exit_code(), cycles());
+    fprintf(stderr, "*** FAILED *** (code = %d) after %lu cycles\n", exit_code(), cycles());
   } else if (cycles() == max_cycles) {
-    fprintf(stderr, "*** FAILED *** (timeout) after %llu cycles\n", cycles());
+    fprintf(stderr, "*** FAILED *** (timeout) after %lu cycles\n", cycles());
   } else {
-    fprintf(stderr, "*** PASSED *** after %llu cycles\n", cycles());
+    fprintf(stderr, "*** PASSED *** after %lu cycles\n", cycles());
   }
 
   return exitcode;

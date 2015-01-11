@@ -15,6 +15,7 @@ fesvr_hdrs = \
 	term.h \
 	device.h \
 	rfb.h \
+        sample.h \
 	simif.h \
 	simif_pthread.h \
 	simif_zedboard.h \
@@ -36,6 +37,7 @@ fesvr_srcs = \
   dummy.cc \
 	option_parser.cc \
 	term.cc \
+        sample.cc \
 	simif.cc \
 	simif_pthread.cc \
 	simif_zedboard.cc \

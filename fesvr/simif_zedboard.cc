@@ -67,8 +67,7 @@ uint32_t simif_zedboard_t::peek_htif() {
   return (uint32_t) read_reg(3);
 }
 
-void simif_zedboard_t::step_htif() {
-  size_t size = hostlen / 8;
+void simif_zedboard_t::serve_htif(const size_t size) {
   while (from_htif.size() >= size && poke_htif_ready()) {
     char *buf = new char[size];
     std::copy(from_htif.begin(), from_htif.begin() + size, buf);

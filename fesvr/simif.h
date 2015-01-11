@@ -7,6 +7,7 @@
 #include <deque>
 #include <queue>
 #include "htif_pthread.h"
+#include "sample.h"
 
 typedef std::map< uint32_t, uint32_t > map_t;
 typedef std::map< uint32_t, std::queue<uint32_t> > qmap_t;
@@ -15,10 +16,6 @@ typedef std::map< std::string, std::vector<size_t> > iomap_t;
 // Constants
 enum DEBUG_CMD {
   STEP_CMD, POKE_CMD, PEEK_CMD, POKEQ_CMD, PEEKQ_CMD, TRACE_CMD, MEM_CMD,
-};
-
-enum SNAP_CMD {
-  SNAP_FIN, SNAP_STEP, SNAP_POKE, SNAP_EXPECT, SNAP_WRITE, SNAP_READ,
 };
 
 enum STEP_RESP {
@@ -33,16 +30,16 @@ class simif_t
 
     virtual int run();
     void stop() { htif->stop(); }
-    bool done() { return is_done; }
-    int exit_code() { return exitcode; }
+    bool done() const { return is_done; }
+    int exit_code() const { return exitcode; }
 
   private:
     // atomic operations
     virtual void poke(uint32_t value) = 0;
     virtual bool peek_ready() = 0;
     virtual uint32_t peek() = 0;
+
     // read the target's information
-    void read_params(std::string filename);
     void read_io_map(std::string filename);
     void read_chain_map(std::string filename);
 
@@ -56,14 +53,9 @@ class simif_t
     void trace_qout();
     void trace_mem();
     void record_io();
-    void read_snap(char* snap);
-    void record_snap(char *snap);
+    void read_snap(uint64_t sample_idx);
     void record_mem();
-    virtual void step_htif() { }
-
-    // snapshot information
-    std::vector<std::string> signals;
-    std::vector<size_t> widths;
+    virtual void serve_htif(const size_t size) { }
 
     // io information
     iomap_t qin_map;
@@ -87,7 +79,8 @@ class simif_t
 
     // snapshot contends
     // TODO: data structure for snapshots
-    FILE *snaps;
+    // FILE *snaps;
+    sample_t** samples;
 
     // simulation information
     const bool log; 
@@ -96,32 +89,29 @@ class simif_t
     int exitcode;   
     uint64_t t;
     uint64_t fail_t;
+    uint64_t snap_len;
     uint64_t max_cycles;
+    uint64_t step_size;
+    uint64_t sample_num;
     const char* loadmem;
 
-    // htif information
+    // constants
+    virtual size_t htiflen() const { return 16; }
+    virtual size_t hostlen() const { return 32; }
+    virtual size_t addrlen() const { return 26; } 
+    virtual size_t memlen() const { return 128; } 
+    virtual size_t taglen() const { return 5; }
+    virtual size_t cmdlen() const { return 4; }
+    virtual size_t tracelen() const { return 16; }
+
     htif_pthread_t *htif;
- 
+
   protected:
     std::deque<char> from_htif;
     std::deque<char> to_htif;
-    size_t snaplen;
-
-    // host's information
-    size_t hostlen;
-    size_t cmdlen;
-    size_t tracelen;
-
-    // target's information
-    size_t htiflen;
-    size_t addrlen;
-    size_t memlen;
-    size_t taglen;
-
-    void open_snap(std::string filename);
 
     // Simulation APIs
-    void step(size_t n, bool record = true);
+    void step(size_t n);
     void poke(std::string path, uint64_t value);
     void pokeq(std::string path, uint64_t value);
     uint64_t peek(std::string path);

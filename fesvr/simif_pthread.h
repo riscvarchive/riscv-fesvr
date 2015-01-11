@@ -26,7 +26,7 @@ class simif_pthread_t : public simif_t
     virtual bool peek_ready();
     virtual uint32_t peek();
 
-    virtual void step_htif();
+    virtual void serve_htif(size_t size);
 
     // threads for simulation
     context_t host;

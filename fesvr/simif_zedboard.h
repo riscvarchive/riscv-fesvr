@@ -20,7 +20,7 @@ class simif_zedboard_t : public simif_t
     bool peek_htif_ready();
     uint32_t peek_htif();
 
-    virtual void step_htif();
+    virtual void serve_htif(const size_t size);
 
     volatile uintptr_t* dev_vaddr;
     const static uintptr_t dev_paddr = 0x43C00000;
