@@ -78,8 +78,6 @@ class simif_t
     map_t mem_reads;
 
     // snapshot contends
-    // TODO: data structure for snapshots
-    // FILE *snaps;
     sample_t** samples;
 
     // simulation information
@@ -93,7 +91,6 @@ class simif_t
     uint64_t max_cycles;
     uint64_t step_size;
     uint64_t sample_num;
-    const char* loadmem;
 
     // constants
     virtual size_t htiflen() const { return 16; }
@@ -105,6 +102,11 @@ class simif_t
     virtual size_t tracelen() const { return 16; }
 
     htif_pthread_t *htif;
+    
+    std::vector<std::string> hargs;
+    std::vector<std::string> targs;
+    std::string loadmem;
+    std::string prefix;
 
   protected:
     std::deque<char> from_htif;

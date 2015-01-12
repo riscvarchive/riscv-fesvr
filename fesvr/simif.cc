@@ -4,6 +4,7 @@
 #include <sstream>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
 simif_t::simif_t(std::vector<std::string> args, bool _log): log(_log)
 {
@@ -16,6 +17,9 @@ simif_t::simif_t(std::vector<std::string> args, bool _log): log(_log)
   snap_len = 0;
   sample_num = 200;
   step_size = 2000;
+  prefix = "Top";
+  loadmem = "";
+  
 
   qin_num = 0;
   qout_num = 0;
@@ -24,11 +28,15 @@ simif_t::simif_t(std::vector<std::string> args, bool _log): log(_log)
 
   srand(time(NULL));
 
-  // Read mapping files
-  read_io_map("Top.io.map");
-  read_chain_map("Top.chain.map");
+  size_t i;
+  for (i = 0 ; i < args.size() ; i++) {
+    if (args[i].length() && args[i][0] != '-' && args[i][0] != '+')
+      break;
+  }
+  hargs.insert(hargs.begin(), args.begin(), args.begin() + i);
+  targs.insert(targs.begin(), args.begin() + i, args.end());
 
-  for (auto &arg: args) {
+  for (auto &arg: hargs) {
     if (arg.find("+max-cycles=") == 0) {
       max_cycles = atoi(arg.c_str()+12);
     } else if (arg.find("+step-size=") == 0) {
@@ -40,23 +48,42 @@ simif_t::simif_t(std::vector<std::string> args, bool _log): log(_log)
     }
   }
 
+  // Set the prefix of sample files
+  if (!targs.empty()) {
+    size_t pos = targs.back().rfind('/'); 
+    prefix = targs.back().substr(pos);
+  } else if (loadmem != "") {
+    size_t s_pos = loadmem.rfind("/"); 
+    size_t e_pos = loadmem.rfind(".");
+    prefix = loadmem.substr(s_pos, e_pos - s_pos);
+  }
+  prefix = prefix + "-"; 
+
+  // Read mapping files
+  read_io_map("Top.io.map");
+  read_chain_map("Top.chain.map");
+
+  // Initialize samples
   samples = new sample_t*[sample_num];
   for (size_t i = 0 ; i < sample_num ; i++) {
     samples[i] = NULL;
   }
 
-  // instantiate htif
+  // Instantiate htif
   htif = new htif_pthread_t(args);  
 }
 
 simif_t::~simif_t() {
+  // Dump samples
+  mkdir("samples", S_IRUSR | S_IWUSR | S_IXUSR);
   for (size_t i = 0 ; i < sample_num ; i++) {
     if (samples[i] != NULL) {
-      std::string filename = "Top-" + std::to_string(i) + ".sample";
+      std::string filename = "samples" + prefix + std::to_string(i) + ".sample";
       std::ofstream file(filename.c_str());
-      (samples[i])->dump(file);
-      // file << *(samples[i]);
-      file.close();
+      if (file) {
+        file << *samples[i];
+        file.close();
+      }
       delete samples[i];
     }
   }
@@ -142,8 +169,6 @@ void simif_t::read_chain_map(std::string filename) {
       size_t width;
       iss >> path >> width;
       sample_t::add_mapping(path, width);
-      // signals.push_back(path);
-      // widths.push_back(width);
       snap_len += width;
     }
   } else {
@@ -278,27 +303,6 @@ void simif_t::record_io() {
   }
   // fprintf(snaps, "%d\n", SNAP_FIN);
 }
-
-/*
-void simif_t::record_snap(char *snap) {
-  size_t offset = 0;
-  for (size_t i = 0 ; i < signals.size() ; i++) {
-    std::string signal = signals[i];
-    size_t width = widths[i];
-    if (signal != "null") {
-      char *bin = new char[width];
-      uint32_t value = 0; // TODO: more than 32 bits?
-      memcpy(bin, snap+offset, width);
-      for (size_t i = 0 ; i < width ; i++) {
-        value = (value << 1) | (bin[i] - '0'); // index?
-      }
-      fprintf(snaps, "%d %s %x\n", SNAP_POKE, signal.c_str(), value);
-      delete[] bin;
-    }
-    offset += width;
-  }
-}
-*/
 
 void simif_t::record_mem() {
   for (map_t::iterator it = mem_writes.begin() ; it != mem_writes.end() ; it++) {
@@ -437,7 +441,7 @@ bool simif_t::expect(bool ok, std::string s) {
 }
 
 void simif_t::load_mem() {
-  std::ifstream file(loadmem);
+  std::ifstream file(loadmem.c_str());
   if (file) { 
     std::string line;
     int i = 0;
@@ -458,7 +462,7 @@ void simif_t::load_mem() {
       i += 1;
     }
   } else {
-    fprintf(stderr, "Cannot open %s\n", loadmem);
+    fprintf(stderr, "Cannot open %s\n", loadmem.c_str());
     exit(1);
   }
   file.close();
