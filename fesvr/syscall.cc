@@ -13,6 +13,10 @@
 #include <iostream>
 using namespace std::placeholders;
 
+#ifndef AT_FDCWD
+# define AT_FDCWD -100
+#endif
+
 struct riscv_stat
 {
   uint64_t dev;
@@ -51,26 +55,17 @@ syscall_t::syscall_t(htif_t* htif)
   table[93] = &syscall_t::sys_exit;
   table[63] = &syscall_t::sys_read;
   table[64] = &syscall_t::sys_write;
-  table[1024] = &syscall_t::sys_open;
-  #ifndef NO_POSIX_2008
   table[56] = &syscall_t::sys_openat;
-  #endif
   table[57] = &syscall_t::sys_close;
   table[80] = &syscall_t::sys_fstat;
   table[62] = &syscall_t::sys_lseek;
-  table[1038] = &syscall_t::sys_stat;
   table[1039] = &syscall_t::sys_lstat;
-  #ifndef NO_POSIX_2008
   table[79] = &syscall_t::sys_fstatat;
-  #endif
-  table[1033] = &syscall_t::sys_access;
-  #ifndef NO_POSIX_2008
   table[48] = &syscall_t::sys_faccessat;
-  #endif
   table[25] = &syscall_t::sys_fcntl;
-  table[1025] = &syscall_t::sys_link;
-  table[1026] = &syscall_t::sys_unlink;
-  table[1030] = &syscall_t::sys_mkdir;
+  table[37] = &syscall_t::sys_linkat;
+  table[35] = &syscall_t::sys_unlinkat;
+  table[34] = &syscall_t::sys_mkdirat;
   table[17] = &syscall_t::sys_getcwd;
   table[67] = &syscall_t::sys_pread;
   table[68] = &syscall_t::sys_pwrite;
@@ -118,7 +113,7 @@ void syscall_t::handle_syscall(command_t cmd)
   cmd.respond(1);
 }
 
-reg_t syscall_t::sys_exit(reg_t code, reg_t a1, reg_t a2, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_exit(reg_t code, reg_t a1, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   htif->exitcode = code << 1 | 1;
   return 0;
@@ -129,29 +124,7 @@ static reg_t sysret_errno(sreg_t ret)
   return ret == -1 ? -errno : ret;
 }
 
-reg_t syscall_t::sys_open(reg_t pname, reg_t len, reg_t flags, reg_t mode, reg_t a4)
-{
-  std::vector<char> name(len);
-  memif->read(pname, len, &name[0]);
-  int fd = open(do_chroot(&name[0]).c_str(), flags, mode);
-  if (fd < 0)
-    return sysret_errno(-1);
-  return fds.alloc(fd);
-}
-
-#ifndef NO_POSIX_2008
-reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, reg_t mode)
-{
-  std::vector<char> name(len);
-  memif->read(pname, len, &name[0]);
-  int fd = openat(fds.lookup(dirfd), do_chroot(&name[0]).c_str(), flags, mode);
-  if (fd < 0)
-    return sysret_errno(-1);
-  return fds.alloc(fd);
-}
-#endif
-
-reg_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> buf(len);
   ssize_t ret = read(fds.lookup(fd), &buf[0], len);
@@ -161,7 +134,7 @@ reg_t syscall_t::sys_read(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
   return ret_errno;
 }
 
-reg_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4)
+reg_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> buf(len);
   ssize_t ret = pread(fds.lookup(fd), &buf[0], len, off);
@@ -171,7 +144,7 @@ reg_t syscall_t::sys_pread(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4)
   return ret_errno;
 }
 
-reg_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> buf(len);
   memif->read(pbuf, len, &buf[0]);
@@ -179,7 +152,7 @@ reg_t syscall_t::sys_write(reg_t fd, reg_t pbuf, reg_t len, reg_t a3, reg_t a4)
   return ret;
 }
 
-reg_t syscall_t::sys_pwrite(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4)
+reg_t syscall_t::sys_pwrite(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> buf(len);
   memif->read(pbuf, len, &buf[0]);
@@ -187,7 +160,7 @@ reg_t syscall_t::sys_pwrite(reg_t fd, reg_t pbuf, reg_t len, reg_t off, reg_t a4
   return ret;
 }
 
-reg_t syscall_t::sys_close(reg_t fd, reg_t a1, reg_t a2, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_close(reg_t fd, reg_t a1, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   if (close(fds.lookup(fd)) < 0)
     return sysret_errno(-1);
@@ -195,12 +168,12 @@ reg_t syscall_t::sys_close(reg_t fd, reg_t a1, reg_t a2, reg_t a3, reg_t a4)
   return 0;
 }
 
-reg_t syscall_t::sys_lseek(reg_t fd, reg_t ptr, reg_t dir, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_lseek(reg_t fd, reg_t ptr, reg_t dir, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   return sysret_errno(lseek(fds.lookup(fd), ptr, dir));
 }
 
-reg_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   struct stat buf;
   reg_t ret = sysret_errno(fstat(fds.lookup(fd), &buf));
@@ -212,27 +185,12 @@ reg_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3, reg_t a4)
   return ret;
 }
 
-reg_t syscall_t::sys_fcntl(reg_t fd, reg_t cmd, reg_t arg, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_fcntl(reg_t fd, reg_t cmd, reg_t arg, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   return sysret_errno(fcntl(fds.lookup(fd), cmd, arg));
 }
 
-reg_t syscall_t::sys_stat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a4)
-{
-  std::vector<char> name(len);
-  memif->read(pname, len, &name[0]);
-
-  struct stat buf;
-  reg_t ret = sysret_errno(stat(do_chroot(&name[0]).c_str(), &buf));
-  if (ret != (reg_t)-1)
-  {
-    riscv_stat rbuf(buf);
-    memif->write(pbuf, sizeof(rbuf), &rbuf);
-  }
-  return ret;
-}
-
-reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
@@ -248,15 +206,26 @@ reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a
   return ret;
 }
 
-#ifndef NO_POSIX_2008
-reg_t syscall_t::sys_fstatat(reg_t dirfd, reg_t pname, reg_t len, reg_t pbuf, reg_t flags)
+#define AT_SYSCALL(syscall, fd, name, ...) \
+  (syscall(fds.lookup(fd), int(fd) == AT_FDCWD ? do_chroot(name).c_str() : (name), __VA_ARGS__))
+
+reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, reg_t mode, reg_t a5, reg_t a6)
+{
+  std::vector<char> name(len);
+  memif->read(pname, len, &name[0]);
+  int fd = sysret_errno(AT_SYSCALL(openat, dirfd, &name[0], flags, mode));
+  if (fd < 0)
+    return sysret_errno(-1);
+  return fds.alloc(fd);
+}
+
+reg_t syscall_t::sys_fstatat(reg_t dirfd, reg_t pname, reg_t len, reg_t pbuf, reg_t flags, reg_t a5, reg_t a6)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
 
   struct stat buf;
-  reg_t ret = sysret_errno(fstatat(fds.lookup(dirfd),
-                                   do_chroot(&name[0]).c_str(), &buf, flags));
+  reg_t ret = sysret_errno(AT_SYSCALL(fstatat, dirfd, &name[0], &buf, flags));
   if (ret != (reg_t)-1)
   {
     riscv_stat rbuf(buf);
@@ -264,49 +233,39 @@ reg_t syscall_t::sys_fstatat(reg_t dirfd, reg_t pname, reg_t len, reg_t pbuf, re
   }
   return ret;
 }
-#endif
 
-reg_t syscall_t::sys_access(reg_t pname, reg_t len, reg_t mode, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_faccessat(reg_t dirfd, reg_t pname, reg_t len, reg_t mode, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(access(do_chroot(&name[0]).c_str(), mode));
+  return sysret_errno(AT_SYSCALL(faccessat, dirfd, &name[0], mode, 0));
 }
 
-#ifndef NO_POSIX_2008
-reg_t syscall_t::sys_faccessat(reg_t dirfd, reg_t pname, reg_t len, reg_t mode, reg_t flags)
-{
-  std::vector<char> name(len);
-  memif->read(pname, len, &name[0]);
-  return sysret_errno(faccessat(fds.lookup(dirfd),
-                                do_chroot(&name[0]).c_str(), mode, flags));
-}
-#endif
-
-reg_t syscall_t::sys_link(reg_t poname, reg_t olen, reg_t pnname, reg_t nlen, reg_t a4)
+reg_t syscall_t::sys_linkat(reg_t odirfd, reg_t poname, reg_t olen, reg_t ndirfd, reg_t pnname, reg_t nlen, reg_t flags)
 {
   std::vector<char> oname(olen), nname(nlen);
   memif->read(poname, olen, &oname[0]);
   memif->read(pnname, nlen, &nname[0]);
-  return sysret_errno(link(do_chroot(&oname[0]).c_str(),
-                           do_chroot(&nname[0]).c_str()));
+  return sysret_errno(linkat(fds.lookup(odirfd), int(odirfd) == AT_FDCWD ? do_chroot(&oname[0]).c_str() : &oname[0],
+                             fds.lookup(ndirfd), int(ndirfd) == AT_FDCWD ? do_chroot(&nname[0]).c_str() : &nname[0],
+                             flags));
 }
 
-reg_t syscall_t::sys_unlink(reg_t pname, reg_t len, reg_t a2, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_unlinkat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(unlink(do_chroot(&name[0]).c_str()));
+  return sysret_errno(AT_SYSCALL(unlinkat, dirfd, &name[0], flags));
 }
 
-reg_t syscall_t::sys_mkdir(reg_t pname, reg_t len, reg_t mode, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_mkdirat(reg_t dirfd, reg_t pname, reg_t len, reg_t mode, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
-  return sysret_errno(mkdir(do_chroot(&name[0]).c_str(), mode));
+  return sysret_errno(AT_SYSCALL(mkdirat, dirfd, &name[0], mode));
 }
 
-reg_t syscall_t::sys_getcwd(reg_t pbuf, reg_t size, reg_t a2, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_getcwd(reg_t pbuf, reg_t size, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<char> buf(size);
   char* ret = getcwd(&buf[0], size);
@@ -319,7 +278,7 @@ reg_t syscall_t::sys_getcwd(reg_t pbuf, reg_t size, reg_t a2, reg_t a3, reg_t a4
   return tmp.size() + 1;
 }
 
-reg_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3, reg_t a4)
+reg_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   std::vector<std::string> args = htif->target_args();
   std::vector<uint64_t> words(args.size() + 3);
@@ -355,7 +314,7 @@ void syscall_t::dispatch(reg_t mm)
   if (n >= table.size() || !table[n])
     throw std::runtime_error("bad syscall #" + std::to_string(n));
 
-  magicmem[0] = (this->*table[n])(magicmem[1], magicmem[2], magicmem[3], magicmem[4], magicmem[5]);
+  magicmem[0] = (this->*table[n])(magicmem[1], magicmem[2], magicmem[3], magicmem[4], magicmem[5], magicmem[6], magicmem[7]);
 
   memif->write(mm, sizeof(magicmem), magicmem);
 }
@@ -381,5 +340,7 @@ void fds_t::dealloc(reg_t fd)
 
 int fds_t::lookup(reg_t fd)
 {
+  if (int(fd) == AT_FDCWD)
+    return AT_FDCWD;
   return fd >= fds.size() ? -1 : fds[fd];
 }
