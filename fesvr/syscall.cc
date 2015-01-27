@@ -13,9 +13,7 @@
 #include <iostream>
 using namespace std::placeholders;
 
-#ifndef AT_FDCWD
-# define AT_FDCWD -100
-#endif
+#define RISCV_AT_FDCWD -100
 
 struct riscv_stat
 {
@@ -207,7 +205,7 @@ reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a
 }
 
 #define AT_SYSCALL(syscall, fd, name, ...) \
-  (syscall(fds.lookup(fd), int(fd) == AT_FDCWD ? do_chroot(name).c_str() : (name), __VA_ARGS__))
+  (syscall(fds.lookup(fd), int(fd) == RISCV_AT_FDCWD ? do_chroot(name).c_str() : (name), __VA_ARGS__))
 
 reg_t syscall_t::sys_openat(reg_t dirfd, reg_t pname, reg_t len, reg_t flags, reg_t mode, reg_t a5, reg_t a6)
 {
@@ -246,8 +244,8 @@ reg_t syscall_t::sys_linkat(reg_t odirfd, reg_t poname, reg_t olen, reg_t ndirfd
   std::vector<char> oname(olen), nname(nlen);
   memif->read(poname, olen, &oname[0]);
   memif->read(pnname, nlen, &nname[0]);
-  return sysret_errno(linkat(fds.lookup(odirfd), int(odirfd) == AT_FDCWD ? do_chroot(&oname[0]).c_str() : &oname[0],
-                             fds.lookup(ndirfd), int(ndirfd) == AT_FDCWD ? do_chroot(&nname[0]).c_str() : &nname[0],
+  return sysret_errno(linkat(fds.lookup(odirfd), int(odirfd) == RISCV_AT_FDCWD ? do_chroot(&oname[0]).c_str() : &oname[0],
+                             fds.lookup(ndirfd), int(ndirfd) == RISCV_AT_FDCWD ? do_chroot(&nname[0]).c_str() : &nname[0],
                              flags));
 }
 
@@ -340,7 +338,7 @@ void fds_t::dealloc(reg_t fd)
 
 int fds_t::lookup(reg_t fd)
 {
-  if (int(fd) == AT_FDCWD)
+  if (int(fd) == RISCV_AT_FDCWD)
     return AT_FDCWD;
   return fd >= fds.size() ? -1 : fds[fd];
 }
