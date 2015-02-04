@@ -48,11 +48,9 @@ else
   project_ver:=@PACKAGE_VERSION@
 endif
 
-#-------------------------------------------------------------------------
-# Installation directory setup
-#-------------------------------------------------------------------------
+# Installation directories
 
-prefix       := @prefix@
+prefix       ?= @prefix@
 enable_stow  := @enable_stow@
 
 ifeq ($(enable_stow),yes)
@@ -62,49 +60,56 @@ else
   DESTDIR ?= $(prefix)
 endif
 
-install_hdrs_dir := $(DESTDIR)/include
+install_hdrs_dir := $(DESTDIR)/include/$(project_name)
 install_libs_dir := $(DESTDIR)/lib
-install_pkcs_dir := $(DESTDIR)/share/pkgconfig
 install_exes_dir := $(DESTDIR)/bin
+
+#-------------------------------------------------------------------------
+# List of subprojects
+#-------------------------------------------------------------------------
+
+sprojs         := @subprojects@
+sprojs_enabled := @subprojects_enabled@
+
+sprojs_include := -I. $(addprefix -I$(src_dir)/, $(sprojs_enabled))
+VPATH := $(addprefix $(src_dir)/, $(sprojs_enabled))
 
 #-------------------------------------------------------------------------
 # Programs and flags 
 #-------------------------------------------------------------------------
 
-# Standard flags
+# C++ compiler
 #  - CPPFLAGS : flags for the preprocessor (eg. -I,-D)
-#  - CFLAGS   : flags for C compiler (eg. -Wall,-g,-O3)
 #  - CXXFLAGS : flags for C++ compiler (eg. -Wall,-g,-O3)
-#  - LDFLAGS  : flags for the linker (eg. -L)
 
-CPPFLAGS    := @CPPFLAGS@
-CFLAGS      := @CFLAGS@
-CXXFLAGS    := @CXXFLAGS@
-LDFLAGS     := @LDFLAGS@
+CC            := @CC@
+CXX           := @CXX@
+CFLAGS        += @CFLAGS@ -DPREFIX=\"$(prefix)\"
+CPPFLAGS      += @CPPFLAGS@
+CXXFLAGS      += @CXXFLAGS@ -DPREFIX=\"$(prefix)\"
+COMPILE       := $(CXX) -fPIC -MMD -MP $(CPPFLAGS) $(CXXFLAGS) \
+                 $(sprojs_include)
+COMPILE_C     := $(CC) -fPIC -MMD -MP $(CPPFLAGS) $(CFLAGS) \
+                 $(sprojs_include)
+# Linker
+#  - LDFLAGS : Flags for the linker (eg. -L)
+#  - LIBS    : Library flags (eg. -l)
 
-# C compiler and linker
-
-CC          := @CC@
-COMPILE_C   := $(CC) $(CFLAGS) -MMD -MP -I. -fPIC $(CPPFLAGS)
-LD_C        := $(CC)
-LINK_C      := $(LD_C) -L. $(LDFLAGS)
-
-# C++ compiler and linker
-
-CXX         := @CXX@
-COMPILE_CXX := $(CXX) $(CXXFLAGS) -MMD -MP -I. -fPIC $(CPPFLAGS)
-LD_CXX      := $(CXX)
-LINK_CXX    := $(LD_CXX) -L. $(LDFLAGS)
+comma := ,
+LD            := $(CXX)
+LDFLAGS       := @LDFLAGS@
+LIBS          := @LIBS@
+LINK          := $(LD) -L. $(LDFLAGS) -Wl,-rpath,$(install_libs_dir) $(patsubst -L%,-Wl$(comma)-rpath$(comma)%,$(filter -L%,$(LDFLAGS)))
 
 # Library creation
 
-AR          := @AR@
-RANLIB      := @RANLIB@
+AR            := @AR@
+RANLIB        := @RANLIB@
 
 # Host simulator
 
-RUN         := @RUN@
-RUNFLAGS    := @RUNFLAGS@
+RUN           := @RUN@
+RUNFLAGS      := @RUNFLAGS@
 
 # Installation
 
@@ -116,27 +121,34 @@ INSTALL_EXE   := $(INSTALL) -m 555
 STOW          := @stow@
 
 #-------------------------------------------------------------------------
-# Setup subproject lists and include makefile fragments
+# Include subproject makefile fragments
 #-------------------------------------------------------------------------
 
-sprojs_internal    := @mcppbs_include_internal@
-sprojs_internal_en := @mcppbs_include_internal_en@
-sprojs_install     := @mcppbs_install@
-
-sprojs_mk := $(addsuffix .mk, $(sprojs_internal_en))
+sprojs_mk = $(addsuffix .mk, $(sprojs_enabled))
 
 -include $(sprojs_mk)
-VPATH := $(addprefix $(src_dir)/, $(sprojs_internal_en))
 
-# The utst subproject is special since the makefile explicitly uses the
-# utst compiler and linking flags when building unit tests. If we are
-# using a globally installed utst library then the utst make variables
-# will not have been set in the utst make fragment. So we set them here
-# (from the configure script) if they were not set in the make fragment.
+dist_junk += $(sprojs_mk)
 
-utst_cppflags ?= @utst_cppflags@
-utst_ldflags  ?= @utst_ldflags@
-utst_libs     ?= @utst_libs@
+#-------------------------------------------------------------------------
+# Reverse list helper function
+#-------------------------------------------------------------------------
+# This function is used by the subproject template to reverse the list
+# of dependencies. It uses recursion to perform the reversal.
+# 
+# Arguments:
+#  $(1)   : space separated input list
+#  retval : input list in reverse order
+#
+
+reverse_list = $(call reverse_list_h,$(1),)
+define reverse_list_h
+  $(if $(strip $(1)),                        \
+    $(call reverse_list_h,                   \
+           $(wordlist 2,$(words $(1)),$(1)), \
+           $(firstword $(1)) $(2)),          \
+    $(2))
+endef
 
 #-------------------------------------------------------------------------
 # Template for per subproject rules
@@ -162,210 +174,139 @@ define subproject_template
 # system will create a library for this subproject with just the
 # corresponding dummy object file.
 
-ifeq ($$(strip $$($(2)_srcs)),)
-$(2)_srcs += $(1)_.cc
-$(2)_junk += $(1)_.cc
+ifeq ($$(strip $$($(2)_srcs) $$($(2)_c_srcs)),)
+$(2)_srcs += _$(1).cc
+$(2)_junk += _$(1).cc
 endif
 
-$(1)_.cc :
-	echo "int $(2)_( int arg ) { return arg; }" > $$@
+_$(1).cc :
+	echo "int _$(2)( int arg ) { return arg; }" > $$@
 
-# Build the object files from assembly sources for this subproject
+# Build the object files for this subproject
 
-$(2)_asm_srcs := $$(filter %.S, $$($(2)_srcs))
-$(2)_asm_objs := $$(patsubst %.S, %.o, $$($(2)_asm_srcs))
-$(2)_asm_deps := $$(patsubst %.S, %.d, $$($(2)_asm_srcs))
-
-$$($(2)_asm_objs) : %.o : %.S
-	$(COMPILE_C) $$($(2)_cppflags) -c $$<
-
-$(2)_objs += $$($(2)_asm_objs)
-$(2)_deps += $$($(2)_asm_deps)
-$(2)_junk += $$($(2)_asm_deps) $$($(2)_asm_objs)
-
-# Build the object files from C sources for this subproject
-
-$(2)_c_srcs := $$(filter %.c, $$($(2)_srcs))
+$(2)_objs := $$(patsubst %.cc, %.o, $$($(2)_srcs))
 $(2)_c_objs := $$(patsubst %.c, %.o, $$($(2)_c_srcs))
-$(2)_c_deps := $$(patsubst %.c, %.d, $$($(2)_c_srcs))
+$(2)_deps := $$(patsubst %.o, %.d, $$($(2)_objs))
+$(2)_c_deps := $$(patsubst %.o, %.d, $$($(2)_c_objs))
+$$($(2)_objs) : %.o : %.cc $$($(2)_gen_hdrs)
+	$(COMPILE) -c $$<
+$$($(2)_c_objs) : %.o : %.c $$($(2)_gen_hdrs)
+	$(COMPILE_C) -c $$<
 
-$$($(2)_c_objs) : %.o : %.c
-	$(COMPILE_C) $$($(2)_cppflags) -c $$<
+$(2)_junk += $$($(2)_objs) $$($(2)_c_objs) $$($(2)_deps) $$($(2)_c_deps) $$($(2)_gen_hdrs)
 
-$(2)_objs += $$($(2)_c_objs)
-$(2)_deps += $$($(2)_c_deps)
-$(2)_junk += $$($(2)_c_deps) $$($(2)_c_objs)
+# Reverse the dependency list so that a given subproject only depends on
+# subprojects listed to its right. This is the correct order for linking
+# the list of subproject libraries.
 
-# Build the object files from C++ sources for this subproject
-
-$(2)_cxx_srcs := $$(filter %.cc, $$($(2)_srcs))
-$(2)_cxx_objs := $$(patsubst %.cc, %.o, $$($(2)_cxx_srcs))
-$(2)_cxx_deps := $$(patsubst %.cc, %.d, $$($(2)_cxx_srcs))
-
-$$($(2)_cxx_objs) : %.o : %.cc
-	$(COMPILE_CXX) $$($(2)_cppflags) -c $$<
-
-$(2)_objs += $$($(2)_cxx_objs)
-$(2)_deps += $$($(2)_cxx_deps)
-$(2)_junk += $$($(2)_cxx_deps) $$($(2)_cxx_objs)
-
-# Build so library for this subproject
-
-$(2)_dylibname = lib$(1).so
-$$($(2)_dylibname) : $$($(2)_objs)
-	$(CXX) -shared -o $$@ $$^
-
-$(2)_junk += $$($(2)_dylibname)
+$(2)_reverse_deps   := $$(call reverse_list,$$($(2)_subproject_deps))
 
 # Build a library for this subproject
 
-$(2)_libname = lib$(1).a
-$$($(2)_libname) : $$($(2)_objs)
-	$(AR) rcv $$@ $$^
-	$(RANLIB) $$@
+$(2)_lib_libs       := $$($(2)_reverse_deps)
+$(2)_lib_libnames   := $$(patsubst %, lib%.so, $$($(2)_lib_libs))
+$(2)_lib_libarg     := $$(patsubst %, -l%, $$($(2)_lib_libs))
 
-$(2)_junk += $$($(2)_libname)
+lib$(1).so : $$($(2)_objs) $$($(2)_c_objs) $$($(2)_lib_libnames)
+	$(LINK) -shared -o $$@ $(if $(filter Darwin,$(shell uname -s)),-install_name $(install_libs_dir)/$$@) $$^ $$($(2)_lib_libarg) $(LIBS)
 
-# Use the list of internal subprojects which this subproject depends on
-# to create a list of prerequisite libraries (including this
-# subproject's library).
-
-$(2)_intdeps_libnames := $$(patsubst %, lib%.a, $$($(2)_intdeps))
-$(2)_link_prereqs     := $$($(2)_libname) $$($(2)_intdeps_libnames)
+$(2)_junk += lib$(1).so
 
 # Build unit tests
 
-$(2)_test_objs := $$(patsubst %.cc,   %.o,    $$($(2)_test_srcs))
-$(2)_test_deps := $$(patsubst %.cc,   %.d,    $$($(2)_test_srcs))
-$(2)_test_exes := $$(patsubst %.t.cc, %-utst, $$($(2)_test_srcs))
-$(2)_test_outs := $$(patsubst %,      %.out,  $$($(2)_test_exes))
+$(2)_test_objs      := $$(patsubst %.cc, %.o, $$($(2)_test_srcs))
+$(2)_test_deps      := $$(patsubst %.o, %.d, $$($(2)_test_objs))
+$(2)_test_exes      := $$(patsubst %.t.cc, %-utst, $$($(2)_test_srcs))
+$(2)_test_outs      := $$(patsubst %, %.out, $$($(2)_test_exes))
+$(2)_test_libs      := $(1) $$($(2)_reverse_deps) utst
+$(2)_test_libnames  := $$(patsubst %, lib%.so, $$($(2)_test_libs))
+$(2)_test_libarg    := $$(patsubst %, -l%, $$($(2)_test_libs))
 
 $$($(2)_test_objs) : %.o : %.cc
-	$(COMPILE_CXX) $$($(2)_cppflags) $(utst_cppflags) -c $$<
+	$(COMPILE) -c $$<
 
-$$($(2)_test_exes) : %-utst : %.t.o $$($(2)_link_prereqs) $(utst_libname) 
-	$(LINK_CXX) $$($(2)_ldflags) $(utst_ldflags) -o $$@ $$< \
-    $$($(2)_libs) $(utst_libs)
+$$($(2)_test_exes) : %-utst : %.t.o $$($(2)_test_libnames)
+	$(LINK) -o $$@ $$< $$($(2)_test_libarg) $(LIBS)
 
 $(2)_deps += $$($(2)_test_deps)
 $(2)_junk += \
-	$$($(2)_test_deps) $$($(2)_test_objs) \
+	$$($(2)_test_objs) $$($(2)_test_deps) \
   $$($(2)_test_exes) *.junk-dat
 
 # Run unit tests
 
 $$($(2)_test_outs) : %.out : %
-	$(RUN) $(RUNFLAGS) ./$$< default 2>&1 | tee $$@
+	$(RUN) $(RUNFLAGS) ./$$< default | tee $$@
 
 $(2)_junk += $$($(2)_test_outs)
 
-# Build C programs
+# Build programs
 
-$(2)_prog_c_srcs := $$(filter %.c, $$($(2)_prog_srcs))
-$(2)_prog_c_srcs += $$(filter %.c, $$($(2)_install_prog_srcs))
-$(2)_prog_c_objs := $$(patsubst %.c, %.o, $$($(2)_prog_c_srcs))
-$(2)_prog_c_deps := $$(patsubst %.c, %.d, $$($(2)_prog_c_srcs))
-$(2)_prog_c_exes := $$(patsubst %.c, %,   $$($(2)_prog_c_srcs))
+$(2)_prog_objs      := $$(patsubst %.cc, %.o, $$($(2)_prog_srcs))
+$(2)_prog_deps      := $$(patsubst %.o, %.d, $$($(2)_prog_objs))
+$(2)_prog_exes      := $$(patsubst %.cc, %, $$($(2)_prog_srcs))
+$(2)_prog_libs      := $(1) $$($(2)_reverse_deps)
+$(2)_prog_libnames  := $$(patsubst %, lib%.so, $$($(2)_prog_libs))
+$(2)_prog_libarg    := $$(patsubst %, -l%, $$($(2)_prog_libs))
 
-$$($(2)_prog_c_objs) : %.o : %.c
-	$(COMPILE_C) $$($(2)_cppflags) -c $$<
+$$($(2)_prog_objs) : %.o : %.cc
+	$(COMPILE) -c $$<
 
-$$($(2)_prog_c_exes) : % : %.o $$($(2)_link_prereqs)
-	$(LINK_C) $$($(2)_ldflags) -o $$@ $$< $$($(2)_libs) 
+$$($(2)_prog_exes) : % : %.o $$($(2)_prog_libnames)
+	$(LINK) -o $$@ $$< $$($(2)_prog_libarg) $(LIBS)
 
-$(2)_exes += $$($(2)_prog_c_exes) 
-$(2)_deps += $$($(2)_prog_c_deps)
+$(2)_deps += $$($(2)_prog_deps)
+$(2)_junk += $$($(2)_prog_objs) $$($(2)_prog_deps) $$($(2)_prog_exes)
+
+# Build programs which will be installed
+
+$(2)_install_prog_objs := $$(patsubst %.cc, %.o, $$($(2)_install_prog_srcs))
+$(2)_install_prog_deps := $$(patsubst %.o, %.d, $$($(2)_install_prog_objs))
+$(2)_install_prog_exes := $$(patsubst %.cc, %, $$($(2)_install_prog_srcs))
+
+$$($(2)_install_prog_objs) : %.o : %.cc $$($(2)_gen_hdrs)
+	$(COMPILE) -c $$<
+
+$$($(2)_install_prog_exes) : % : %.o $$($(2)_prog_libnames)
+	$(LINK) -o $$@ $$< $$($(2)_prog_libarg) $(LIBS)
+
+$(2)_deps += $$($(2)_install_prog_deps)
 $(2)_junk += \
-  $$($(2)_prog_c_objs) $$($(2)_prog_c_deps) $$($(2)_prog_c_exes)
+  $$($(2)_install_prog_objs) $$($(2)_install_prog_deps) \
+  $$($(2)_install_prog_exes)
 
-# Build C++ programs
+# Subproject specific targets
 
-$(2)_prog_cxx_srcs := $$(filter %.cc, $$($(2)_prog_srcs))
-$(2)_prog_cxx_srcs += $$(filter %.cc, $$($(2)_install_prog_srcs))
-$(2)_prog_cxx_objs := $$(patsubst %.cc, %.o, $$($(2)_prog_cxx_srcs))
-$(2)_prog_cxx_deps := $$(patsubst %.cc, %.d, $$($(2)_prog_cxx_srcs))
-$(2)_prog_cxx_exes := $$(patsubst %.cc, %,   $$($(2)_prog_cxx_srcs))
-
-$$($(2)_prog_cxx_objs) : %.o : %.cc
-	$(COMPILE_CXX) $$($(2)_cppflags) -c $$<
-
-$$($(2)_prog_cxx_exes) : % : %.o $$($(2)_link_prereqs)
-	$(LINK_CXX) $$($(2)_ldflags) -o $$@ $$< $$($(2)_libs) 
-
-$(2)_exes += $$($(2)_prog_cxx_exes) 
-$(2)_deps += $$($(2)_prog_cxx_deps)
-$(2)_junk += \
-  $$($(2)_prog_cxx_objs) $$($(2)_prog_cxx_deps) $$($(2)_prog_cxx_exes)
-
-# Install subproject's header (.h), inline (.inl), source (.cc), and
-# package config (.pc) files if this subproject is on the sproj_install
-# list.
-
-ifneq ($$(filter $(1),$(sprojs_install)),)
-
-$(2)_install_hdrs_wdir := \
-  $$(addprefix $$(src_dir)/$(1)/, $$($(2)_hdrs)) \
-  $$(addprefix $$(src_dir)/$(1)/, $$($(2)_inls)) \
-  $(2)-config.h \
-
-install-libs-$(1) : $$($(2)_install_hdrs_wdir) $$($(2)_libname) $(1).pc
-	$(MKINSTALLDIRS) $(install_hdrs_dir)/$(1) \
-    $(install_libs_dir) $(install_pkcs_dir)
-	for file in $$($(2)_install_hdrs_wdir); do \
-    $(INSTALL_HDR) $$$$file $(install_hdrs_dir)/$(1); \
-  done
-	$(INSTALL_LIB) $$($(2)_libname) $(install_libs_dir)
-	$(INSTALL_LIB) $(1).pc $(install_pkcs_dir)/$(1).pc
-
-install-libs : install-libs-$(1)
-.PHONY : install-libs-$(1)
-
-endif
-
-# We always install executables which have been placed in
-# sproj_install_prog_exes regardless of whether or not subproject is on
-# the sprojs_install list.
-
-$(2)_install_prog_exes = $$(basename $$($(2)_install_prog_srcs))
-
-install-exes-$(1) : $$($(2)_install_prog_exes)
-	$(MKINSTALLDIRS) $(install_exes_dir)
-	for file in $$($(2)_install_prog_exes); do \
-    $(INSTALL_EXE) $$$$file $(install_exes_dir); \
-  done
-
-install-exes : install-exes-$(1)
-.PHONY : install-exes-$(1)
-
-# Other subproject specific targets
-
-all-$(1) : $$($(2)_libname) $$($(2)_prog_exes) $$($(2)_install_prog_exes)
+all-$(1) : lib$(1).so $$($(2)_install_prog_exes)
 
 check-$(1) : $$($(2)_test_outs)
-	echo; grep -h -e'Unit Tests' -e'FAILED' \
-    -e'Segementation' -e'ERROR' $$^; echo
-
-install-$(1) : install-libs-$(1) install-exes-$(1)
+	echo; grep -h -e'Unit Tests' -e'FAILED' -e'Segementation' $$^; echo
 
 clean-$(1) :
 	rm -rf $$($(2)_junk)
 
-.PHONY : all-$(1) check-$(1) install-$(1) clean-$(1)
+.PHONY : all-$(1) check-$(1) clean-$(1)
 
 # Update running variables
 
-libs += $$($(2)_libname)
+libs += lib$(1).so
 objs += $$($(2)_objs)
-exes += $$($(2)_exes)
-outs += $$($(2)_test_outs)
+srcs += $$(addprefix $(src_dir)/$(1)/, $$($(2)_srcs)) 
+hdrs += $$(addprefix $(src_dir)/$(1)/, $$($(2)_hdrs)) $$($(2)_gen_hdrs)
 junk += $$($(2)_junk)
 deps += $$($(2)_deps)
 
+test_outs += $$($(2)_test_outs)
+
+install_hdrs += $$(addprefix $(src_dir)/$(1)/, $$($(2)_hdrs)) $$($(2)_gen_hdrs)
+install_libs += lib$(1).so
+install_exes += $$($(2)_install_prog_exes)
+
 endef
 
-# Call template for each enabled internal subproject
+# Iterate over the subprojects and call the template for each one
 
-$(foreach sproj,$(sprojs_internal_en), \
+$(foreach sproj,$(sprojs_enabled), \
   $(eval $(call subproject_template,$(sproj),$(subst -,_,$(sproj)))))
 
 #-------------------------------------------------------------------------
@@ -381,9 +322,8 @@ deps : $(deps)
 # Check
 #-------------------------------------------------------------------------
 
-check : $(outs)
-	echo; grep -h -e'Unit Tests' -e'FAILED' \
-    -e'Segementation' -e'ERROR' $^; echo
+check : $(test_outs)
+	echo; grep -h -e'Unit Tests' -e'FAILED' -e'Segementation' $^; echo
 
 .PHONY : check
 
@@ -391,14 +331,28 @@ check : $(outs)
 # Installation
 #-------------------------------------------------------------------------
 
+install-hdrs : $(install_hdrs)
+	$(MKINSTALLDIRS) $(install_hdrs_dir)
+	for file in $^; \
+  do \
+    $(INSTALL_HDR) $$file $(install_hdrs_dir); \
+  done
+
+install-libs : $(install_libs)
+	$(MKINSTALLDIRS) $(install_libs_dir)
+	for file in $^; \
+  do \
+    $(INSTALL_LIB) $$file $(install_libs_dir); \
+  done
+
 install-exes : $(install_exes)
 	$(MKINSTALLDIRS) $(install_exes_dir)
-	for file in $(install_exes); \
-	do \
-		$(INSTALL_EXE) $$file $(install_exes_dir); \
-	done
+	for file in $^; \
+  do \
+    $(INSTALL_EXE) $$file $(install_exes_dir); \
+  done
 
-install : install-libs install-exes
+install : install-hdrs install-libs install-exes
 ifeq ($(enable_stow),yes)
 	$(MKINSTALLDIRS) $(stow_pkg_dir)
 	cd $(stow_pkg_dir) && \
@@ -406,7 +360,7 @@ ifeq ($(enable_stow),yes)
     $(STOW) $(project_name)-$(project_ver)
 endif
 
-.PHONY : install install-libs install-exes
+.PHONY : install install-hdrs install-libs install-exes
 
 #-------------------------------------------------------------------------
 # Regenerate configure information
@@ -415,8 +369,8 @@ endif
 configure_prereq = \
   $(src_dir)/configure.ac \
   $(src_dir)/aclocal.m4 \
-  $(join $(addprefix $(src_dir)/, $(sprojs_internal_en)), \
-         $(patsubst  %, /%.ac, $(sprojs_internal_en)))
+  $(join $(addprefix $(src_dir)/, $(sprojs_enabled)), \
+         $(patsubst  %, /%.ac, $(sprojs_enabled)))
 
 $(src_dir)/configure : $(configure_prereq)
 	cd $(src_dir) && autoconf && autoheader
@@ -424,22 +378,14 @@ $(src_dir)/configure : $(configure_prereq)
 config.status : $(src_dir)/configure
 	./config.status --recheck
 
-makefile_prereq = \
-  config.status \
-  $(src_dir)/Makefile.in \
-  $(join $(addprefix $(src_dir)/, $(sprojs_internal_en)), \
-         $(patsubst  %, /%.mk.in, $(sprojs_internal_en))) \
-  $(join $(addprefix $(src_dir)/, $(sprojs_install)), \
-         $(patsubst  %, /%.pc.in, $(sprojs_install))) \
+sprojs_mk_in = \
+  $(join $(addprefix $(src_dir)/, $(sprojs_enabled)), \
+         $(patsubst  %, /%.mk.in, $(sprojs_enabled)))
 
-Makefile : $(makefile_prereq)
+Makefile : $(src_dir)/Makefile.in $(sprojs_mk_in) config.status
 	./config.status
 
-dist_junk += \
-  config.status Makefile config.log \
-  $(addsuffix -config.h, $(sprojs_internal_en)) \
-  $(addsuffix .mk, $(sprojs_internal_en)) \
-  $(addsuffix .pc, $(sprojs_install)) \
+dist_junk += config.status config.h Makefile config.log
 
 #-------------------------------------------------------------------------
 # Distribution
@@ -448,7 +394,7 @@ dist_junk += \
 # both enabled and disabled subprojects. 
 
 dist_files = \
-  $(sprojs_internal) \
+  $(sprojs) \
   README \
   style-guide.txt \
   mcppbs-uguide.txt \
@@ -499,7 +445,7 @@ junk += $(project_name)-*.tar.gz
 # Default
 #-------------------------------------------------------------------------
 
-all : $(libs) $(exes)
+all : $(install_hdrs) $(install_libs) $(install_exes)
 .PHONY : all
 
 #-------------------------------------------------------------------------

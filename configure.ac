@@ -3,19 +3,21 @@
 #=========================================================================
 # Please read the documenation in 'mcppbs-doc.txt' for more details on
 # how the Modular C++ Build System works. For most new projects, a
-# developer will only need to change the project metadata listed right
-# below, and update which subprojects to include as part of this
-# project. Do not place any configure checks here which will be used by
-# a subproject - instead place such checks in the subproject's autoconf
-# fragment.
+# developer will only need to make the following changes:
+#
+#  - change the project metadata listed right below
+#  - update the list of subprojects via the 'MCPPBS_SUBPROJECTS' macro
+#  - possibly add subproject groups if needed to ease configuration
+#  - add more configure checks for platform specific configuration
+#
 
 #-------------------------------------------------------------------------
 # Project metadata
 #-------------------------------------------------------------------------
 
-m4_define( proj_name,         [Frontend Server])
-m4_define( proj_maintainer,   [Yunsup Lee])
-m4_define( proj_abbreviation, [riscv-fesvr])
+m4_define( proj_name,         [RISC-V Frontend Server])
+m4_define( proj_maintainer,   [Andrew Waterman])
+m4_define( proj_abbreviation, [fesvr])
 
 #-------------------------------------------------------------------------
 # Project version information
@@ -41,75 +43,58 @@ AC_CANONICAL_BUILD
 AC_CANONICAL_HOST
 
 #-------------------------------------------------------------------------
-# Basic checks
+# Checks for programs
 #-------------------------------------------------------------------------
 
-# Check for C compiler and set default C compiler flags
 AC_PROG_CC
-AC_SUBST([CFLAGS],["-Wall -g -O3"])
-AC_SUBST([LDFLAGS],["-pthread"])
-
-# Check for C++ compiler and set default C++ compiler flags
 AC_PROG_CXX
-AC_SUBST([CXXFLAGS],["-std=c++0x -Wall -g -O3"])
-
-# Check for tools to build libraries
 AC_CHECK_TOOL([AR],[ar])
 AC_CHECK_TOOL([RANLIB],[ranlib])
 
 #-------------------------------------------------------------------------
-# MCPPBS specific setup
+# MCPPBS specific program check
 #-------------------------------------------------------------------------
-
-# Initialize the modular C++ build system
-
-MCPPBS_INIT
-
-# Checks for install script and the stow program. Setup --enable-stow
-# command line flag for stow-based installs.
+# This macro check to see if we can do a stow-based install.
 
 MCPPBS_PROG_INSTALL
 
 #-------------------------------------------------------------------------
-# MCPPBS subproject includes
+# Checks for header files
 #-------------------------------------------------------------------------
-# Specify which subprojects make up this project. Subprojects can either
-# be internal (ie. a subdirectory in the source directory) or external
-# (ie. as an installed library). For external subprojects we use
-# pkg-config to link against the appropriate library. Optional
-# subprojects are denoted with an asterisk and are enabled with a
-# --with-<subproject> configure command line option. Order the list so
-# that subprojects only depend on those listed earlier. Here is an
-# example project which includes four subprojects: the first is the
-# standard utst subproject which has been installed and thus is being
-# included as an external subproject. The second is an additional
-# external subproject and the last is an optional internal subproject.
-#
-#  MCPPBS_INCLUDE_EXTERNAL([utst])
-#  MCPPBS_INCLUDE_EXTERNAL([sproj-a])
-#  MCPPBS_INCLUDE_INTERNAL([sproj-b])
-#  MCPPBS_INCLUDE_INTERNAL([sproj-c*])
-#
 
-MCPPBS_INCLUDE_INTERNAL([fesvr])
+AC_HEADER_STDC
 
 #-------------------------------------------------------------------------
-# MCPPBS subproject libraries to install
+# Default compiler flags
 #-------------------------------------------------------------------------
-# The libraries and headers for these subprojects will be installed. The
-# subprojects must have a pkg-config file named sproj/sproj.pc.in which
-# is setup to allow other projects to use the installed subproject. Here
-# is an example which installs the sproj-b subproject and sproj-c
-# subproject (see above).
-#
-#  MCPPBS_INSTALL_LIBS([sproj-b,sproj-c])
-#
 
-MCPPBS_INSTALL_LIBS([fesvr])
+AC_SUBST([CFLAGS],  ["-Wall -O2"])
+AC_SUBST([CXXFLAGS],["-Wall -O2 -std=c++11"])
+
+#-------------------------------------------------------------------------
+# MCPPBS subproject list
+#-------------------------------------------------------------------------
+# Order list so that subprojects only depend on those listed earlier.
+# The '*' suffix indicates an optional subproject. The '**' suffix
+# indicates an optional subproject which is also the name of a group.
+
+MCPPBS_SUBPROJECTS([fesvr])
+
+#-------------------------------------------------------------------------
+# MCPPBS subproject groups
+#-------------------------------------------------------------------------
+# If a group has the same name as a subproject then you must add the
+# '**' suffix in the subproject list above. The list of subprojects in a
+# group should be ordered so that subprojets only depend on those listed
+# earlier. Here is an example:
+#
+#  MCPPBS_GROUP( [group-name], [sproja,sprojb,...] )
+#
 
 #-------------------------------------------------------------------------
 # Output
 #-------------------------------------------------------------------------
 
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT

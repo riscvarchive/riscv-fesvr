@@ -45,18 +45,19 @@ class htif_t
 
   virtual void load_program();
   virtual void reset();
-  virtual uint32_t coremap(uint32_t);
 
  private:
   memif_t mem;
   bool writezeros;
   seqno_t seqno;
   bool started;
+  bool stopped;
   uint32_t _mem_mb;
   uint32_t _num_cores;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
-  std::vector<uint32_t> coremap_pool;
+  std::string sig_file;
+  std::string chroot;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
 
@@ -65,11 +66,12 @@ class htif_t
   bcd_t bcd;
   std::vector<device_t*> dynamic_devices;
 
-  const std::vector<std::string>& target_args() { return targs; }
-
   std::vector<char> read_buf;
   virtual packet_t read_packet(seqno_t expected_seqno);
   virtual void write_packet(const packet_t& packet);
+
+  void set_chroot(const char* where);
+  const std::vector<std::string>& target_args() { return targs; }
 
   friend class memif_t;
   friend class syscall_t;

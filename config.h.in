@@ -3,6 +3,9 @@
 /* Define if we should include subproject fesvr */
 #undef HAVE_FESVR
 
+/* Define to 1 if you have the `pthread' library (-lpthread). */
+#undef HAVE_LIBPTHREAD
+
 /* Define to the address where bug reports for this package should be sent. */
 #undef PACKAGE_BUGREPORT
 

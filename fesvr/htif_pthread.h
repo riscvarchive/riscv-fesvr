@@ -4,7 +4,7 @@
 #define _HTIF_PTHREAD_H
 
 #include "htif.h"
-#include <pthread.h>
+#include "context.h"
 #include <deque>
 
 class htif_pthread_t : public htif_t
@@ -27,14 +27,12 @@ class htif_pthread_t : public htif_t
   virtual size_t chunk_max_size() { return 1024; }
 
  private:
-  bool kill;
-  pthread_t host;
-  pthread_mutex_t th_lock;
-  pthread_cond_t th_cond;
+  context_t host;
+  context_t* target;
   std::deque<char> th_data;
-  pthread_mutex_t ht_lock;
-  pthread_cond_t ht_cond;
   std::deque<char> ht_data;
+
+  static void thread_main(void* htif);
 };
 
 #endif
