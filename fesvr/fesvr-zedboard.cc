@@ -17,7 +17,7 @@ int main(int argc, char** argv)
   htif_zedboard_t htif(args);
 
   bool memtest = false;
-  int memtest_mb;
+  int memtest_mb = 0;
 
   int divisor = 31;
   int hold = 2;
@@ -56,7 +56,7 @@ int main(int argc, char** argv)
     uint64_t* target_memory = new uint64_t[nwords]; // 1MB
     srand(time(NULL));
     for (uint64_t a=0; a<nwords; a++)
-      target_memory[a] = random() << 32 | random();
+      target_memory[a] = (uint64_t)random() << 32 | random();
     for (uint64_t a=0; a<nwords/8; a++) {
       htif.memif().write(a*64, 64, (uint8_t*)&target_memory[a*8]);
       fprintf(stderr, "\rwrote %016llx %016llx %016llx %016llx %016llx %016llx %016llx %016llx at 0x%08x",
