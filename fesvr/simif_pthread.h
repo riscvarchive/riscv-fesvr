@@ -8,7 +8,12 @@
 class simif_pthread_t : public simif_t
 {
   public:
-    simif_pthread_t(std::vector<std::string> args, bool _log = false);
+    simif_pthread_t(
+      std::vector<std::string> args, 
+      std::string prefix = "Top", 
+      bool log = false,
+      bool check_sample = false,
+      bool has_htif = true);
     ~simif_pthread_t() { }
 
     // target interface
@@ -22,9 +27,9 @@ class simif_pthread_t : public simif_t
     bool recv_from_htif_nonblocking(void *buf, size_t size);
 
   private:
-    virtual void poke(uint32_t value);
-    virtual bool peek_ready();
-    virtual uint32_t peek();
+    virtual void poke_host(uint32_t value);
+    virtual bool peek_host_ready();
+    virtual uint32_t peek_host();
 
     virtual void serve_htif(size_t size);
 

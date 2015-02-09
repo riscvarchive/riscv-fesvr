@@ -7,8 +7,13 @@
 #define read_reg(r) (dev_vaddr[r])
 #define write_reg(r, v) (dev_vaddr[r] = v)
 
-simif_zedboard_t::simif_zedboard_t(std::vector<std::string> args, bool log)
-  : simif_t(args, log)
+simif_zedboard_t::simif_zedboard_t(
+  std::vector<std::string> args, 
+  std::string prefix, 
+  bool log, 
+  bool check_sample, 
+  bool has_htif)
+  : simif_t(args, prefix, log, check_sample, has_htif)
 {
   int fd = open("/dev/mem", O_RDWR|O_SYNC);
   assert(fd != -1);
@@ -28,23 +33,25 @@ simif_zedboard_t::simif_zedboard_t(std::vector<std::string> args, bool log)
   while ((uint32_t) read_reg(0) > 0) {
     read_reg(1);
   }
-  while ((uint32_t) read_reg(2) > 0) {
-    read_reg(3);
+  if (has_htif) {
+    while ((uint32_t) read_reg(2) > 0) {
+      read_reg(3);
+    }
   }
 }
 
-void simif_zedboard_t::poke(uint32_t value) {
+void simif_zedboard_t::poke_host(uint32_t value) {
   write_reg(0, value);
   __sync_synchronize();
 }
 
-bool simif_zedboard_t::peek_ready() {
+bool simif_zedboard_t::peek_host_ready() {
   return (uint32_t) read_reg(0) != 0;
 }
 
-uint32_t simif_zedboard_t::peek() {
+uint32_t simif_zedboard_t::peek_host() {
   __sync_synchronize();
-  while (!peek_ready()) ;
+  while (!peek_host_ready()) ;
   return (uint32_t) read_reg(1);
 }
 
@@ -63,7 +70,7 @@ bool simif_zedboard_t::peek_htif_ready() {
 
 uint32_t simif_zedboard_t::peek_htif() {
   __sync_synchronize();
-  while (!peek_ready()) ;
+  while (!peek_htif_ready()) ;
   return (uint32_t) read_reg(3);
 }
 
@@ -82,6 +89,6 @@ void simif_zedboard_t::serve_htif(const size_t size) {
 }
 
 int simif_zedboard_t::run() {
-  // load_mem();
+  load_mem();
   return simif_t::run();
 }

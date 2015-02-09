@@ -25,7 +25,12 @@ enum STEP_RESP {
 class simif_t
 {
   public:
-    simif_t(std::vector<std::string> args, bool _log = false);
+    simif_t(
+      std::vector<std::string> args, 
+      std::string prefix = "Top", 
+      bool _log = false,
+      bool _sample_check = false,
+      bool has_htif = false);
     ~simif_t();
 
     virtual int run();
@@ -35,9 +40,9 @@ class simif_t
 
   private:
     // atomic operations
-    virtual void poke(uint32_t value) = 0;
-    virtual bool peek_ready() = 0;
-    virtual uint32_t peek() = 0;
+    virtual void poke_host(uint32_t value) = 0;
+    virtual bool peek_host_ready() = 0;
+    virtual uint32_t peek_host() = 0;
 
     // read the target's information
     void read_io_map(std::string filename);
@@ -52,9 +57,9 @@ class simif_t
     void peek_trace();
     void trace_qout();
     void trace_mem();
-    void record_io();
-    void read_snap(uint64_t sample_idx);
-    void record_mem();
+    void record_io(size_t idx, size_t n);
+    void do_sampling(size_t, size_t, size_t);
+    std::string read_snap();
     virtual void serve_htif(const size_t size) { }
 
     // io information
@@ -74,14 +79,12 @@ class simif_t
     qmap_t peekq_map;
 
     // memory trace
-    map_t mem_writes;
-    map_t mem_reads;
-
-    // snapshot contends
-    sample_t** samples;
+    mem_t mem_writes;
+    mem_t mem_reads;
 
     // simulation information
     const bool log; 
+    const bool sample_check;
     bool pass;
     bool is_done;
     int exitcode;   
@@ -89,8 +92,6 @@ class simif_t
     uint64_t fail_t;
     uint64_t snap_len;
     uint64_t max_cycles;
-    uint64_t step_size;
-    uint64_t sample_num;
 
     // constants
     virtual size_t htiflen() const { return 16; }
@@ -102,13 +103,17 @@ class simif_t
     virtual size_t tracelen() const { return 16; }
 
     htif_pthread_t *htif;
-    
+
+    std::vector<sample_t*> samples;
+
     std::vector<std::string> hargs;
     std::vector<std::string> targs;
-    std::string loadmem;
-    std::string prefix;
 
   protected:
+    std::string prefix;
+    std::string loadmem;
+    size_t sample_num;
+    size_t step_size;
     std::deque<char> from_htif;
     std::deque<char> to_htif;
 
@@ -123,12 +128,14 @@ class simif_t
     bool expect(std::string path, uint64_t expected);
     bool expect(bool ok, std::string s);
 
-    void load_mem();
-    void write_mem(uint64_t addr, uint64_t data);
-    uint64_t read_mem(uint64_t addr);
+    virtual void load_mem();
+    virtual void write_mem(uint64_t addr, uint64_t data);
+    virtual uint64_t read_mem(uint64_t addr);
 
     uint64_t cycles() { return t; }
-    uint64_t rand_next(size_t limit); 
+    bool timeout() { return t >= max_cycles; }
+
+    uint64_t rand_next(uint64_t limit) { return rand() % limit; } 
 };
 
 #endif // __SIMIF_H

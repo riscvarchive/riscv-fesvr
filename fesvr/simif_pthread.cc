@@ -7,23 +7,28 @@ void simif_pthread_t::thread_main(void *arg) {
     simif->target->switch_to();
 }
 
-simif_pthread_t::simif_pthread_t(std::vector<std::string> args, bool log) 
-  : simif_t(args, log)
+simif_pthread_t::simif_pthread_t(
+  std::vector<std::string> args, 
+  std::string prefix, 
+  bool log, 
+  bool check_sample,
+  bool has_htif) 
+  : simif_t(args, prefix, log, check_sample, has_htif)
 {
   target = context_t::current();
   host.init(thread_main, this);
 }
 
-void simif_pthread_t::poke(uint32_t value) {
+void simif_pthread_t::poke_host(uint32_t value) {
   ht_data.push(value);
 }
 
-bool simif_pthread_t::peek_ready() {
+bool simif_pthread_t::peek_host_ready() {
   return th_data.size() > 0;
 }
 
-uint32_t simif_pthread_t::peek() {
-  while (!peek_ready())
+uint32_t simif_pthread_t::peek_host() {
+  while (!peek_host_ready())
     target->switch_to();
   uint32_t value = th_data.front();
   th_data.pop();

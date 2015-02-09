@@ -6,14 +6,19 @@
 class simif_zedboard_t : public simif_t
 {
   public:
-    simif_zedboard_t(std::vector<std::string> args, bool log = false);
+    simif_zedboard_t(
+      std::vector<std::string> args, 
+      std::string prefix = "Top", 
+      bool log = false,
+      bool check_sample = false,
+      bool has_htif = true);
     ~simif_zedboard_t() { }
     virtual int run();
 
   private:
-    virtual void poke(uint32_t value);
-    virtual bool peek_ready();
-    virtual uint32_t peek();
+    virtual void poke_host(uint32_t value);
+    virtual bool peek_host_ready();
+    virtual uint32_t peek_host();
 
     bool poke_htif_ready();
     void poke_htif(uint32_t value);
