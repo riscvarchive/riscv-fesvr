@@ -70,6 +70,7 @@ void bcd_t::handle_read(command_t cmd)
 void bcd_t::handle_write(command_t cmd)
 {
   canonical_terminal_t::write(cmd.payload());
+  cmd.respond(0x100 | (uint8_t)cmd.payload());
 }
 
 void bcd_t::tick()
