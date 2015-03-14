@@ -147,18 +147,19 @@ void htif_t::start()
   assert(!started);
   started = true;
 
-  targs.insert(targs.begin() + 1, "-m" + std::to_string(mem_mb()));
-  targs.insert(targs.begin() + 1, "-p" + std::to_string(num_cores()));
+  if (!targs.empty()) {
+    targs.insert(targs.begin() + 1, "-m" + std::to_string(mem_mb()));
+    targs.insert(targs.begin() + 1, "-p" + std::to_string(num_cores()));
 
-  load_program();
+    if (targs[0] != "none")
+      load_program();
+  }
+
   reset();
 }
 
 void htif_t::load_program()
 {
-  if (targs.size() == 0 || targs[0] == "none")
-    return;
-
   std::string path;
   if (access(targs[0].c_str(), F_OK) == 0)
     path = targs[0];
