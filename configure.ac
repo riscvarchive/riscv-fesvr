@@ -97,4 +97,5 @@ MCPPBS_SUBPROJECTS([fesvr])
 
 AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
+AC_CONFIG_FILES([riscv-fesvr.pc])
 AC_OUTPUT
