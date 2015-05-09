@@ -187,8 +187,8 @@ void htif_t::reset()
 {
   for (uint32_t i = 0; i < num_cores(); i++)
   {
-    write_cr(i, CSR_RESET, 1);
-    write_cr(i, CSR_RESET, 0);
+    write_cr(i, CSR_MRESET, 1);
+    write_cr(i, CSR_MRESET, 0);
   }
 }
 
@@ -216,7 +216,7 @@ void htif_t::stop()
   }
 
   for (uint32_t i = 0, nc = num_cores(); i < nc; i++)
-    write_cr(i, CSR_RESET, 1);
+    write_cr(i, CSR_MRESET, 1);
 
   stopped = true;
 }
@@ -297,7 +297,7 @@ int htif_t::run()
   {
     for (uint32_t coreid = 0; coreid < num_cores(); coreid++)
     {
-      if (auto tohost = write_cr(coreid, CSR_TOHOST, 0))
+      if (auto tohost = write_cr(coreid, CSR_MTOHOST, 0))
       {
         command_t cmd(this, tohost, fromhost_callbacks[coreid]);
         device_list.handle_command(cmd);
@@ -306,7 +306,7 @@ int htif_t::run()
       device_list.tick();
 
       if (!fromhost[coreid].empty())
-        if (write_cr(coreid, CSR_FROMHOST, fromhost[coreid].front()) == 0)
+        if (write_cr(coreid, CSR_MFROMHOST, fromhost[coreid].front()) == 0)
           fromhost[coreid].pop();
     }
   }
