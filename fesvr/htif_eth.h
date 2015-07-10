@@ -10,12 +10,14 @@
 #ifdef __linux__
 #include <netpacket/packet.h>
 typedef struct sockaddr_ll sockaddr_ll_t;
-#elif __APPLE__
+#elif __APPLE__ || __FreeBSD__
 #include <sys/types.h>
 #include <net/if.h>
 #include <net/if_dl.h>
 #include <net/if_types.h>
+#if __APPLE__
 #include <net/ndrv.h>
+#endif
 typedef struct sockaddr sockaddr_ll_t;
 #else
 # error unsupported OS
