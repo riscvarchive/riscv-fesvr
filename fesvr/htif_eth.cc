@@ -42,6 +42,8 @@ htif_eth_t::htif_eth_t(const std::vector<std::string>& args)
   std::string interface = "eth0";
 #elif __APPLE__
   std::string interface = "en0";
+#elif __FreeBSD__
+  std::string interface = "em0";
 #endif
   for (std::vector<std::string>::const_iterator a = host_args().begin(); a != host_args().end(); ++a)
   {
