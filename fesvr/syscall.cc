@@ -61,6 +61,7 @@ syscall_t::syscall_t(htif_t* htif)
   table[79] = &syscall_t::sys_fstatat;
   table[48] = &syscall_t::sys_faccessat;
   table[25] = &syscall_t::sys_fcntl;
+  table[46] = &syscall_t::sys_ftruncate;
   table[37] = &syscall_t::sys_linkat;
   table[35] = &syscall_t::sys_unlinkat;
   table[34] = &syscall_t::sys_mkdirat;
@@ -186,6 +187,11 @@ reg_t syscall_t::sys_fstat(reg_t fd, reg_t pbuf, reg_t a2, reg_t a3, reg_t a4, r
 reg_t syscall_t::sys_fcntl(reg_t fd, reg_t cmd, reg_t arg, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
   return sysret_errno(fcntl(fds.lookup(fd), cmd, arg));
+}
+
+reg_t syscall_t::sys_ftruncate(reg_t fd, reg_t len, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
+{
+  return sysret_errno(ftruncate(fds.lookup(fd), len));
 }
 
 reg_t syscall_t::sys_lstat(reg_t pname, reg_t len, reg_t pbuf, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
