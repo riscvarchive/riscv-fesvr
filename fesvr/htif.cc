@@ -147,13 +147,8 @@ void htif_t::start()
   assert(!started);
   started = true;
 
-  if (!targs.empty()) {
-    targs.insert(targs.begin() + 1, "-m" + std::to_string(mem_mb()));
-    targs.insert(targs.begin() + 1, "-p" + std::to_string(num_cores()));
-
-    if (targs[0] != "none")
+  if (!targs.empty() && targs[0] != "none")
       load_program();
-  }
 
   reset();
 }
