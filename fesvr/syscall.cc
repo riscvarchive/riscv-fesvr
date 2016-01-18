@@ -62,6 +62,7 @@ syscall_t::syscall_t(htif_t* htif)
   table[48] = &syscall_t::sys_faccessat;
   table[25] = &syscall_t::sys_fcntl;
   table[46] = &syscall_t::sys_ftruncate;
+  table[38] = &syscall_t::sys_renameat;
   table[37] = &syscall_t::sys_linkat;
   table[35] = &syscall_t::sys_unlinkat;
   table[34] = &syscall_t::sys_mkdirat;
@@ -243,6 +244,15 @@ reg_t syscall_t::sys_faccessat(reg_t dirfd, reg_t pname, reg_t len, reg_t mode, 
   std::vector<char> name(len);
   memif->read(pname, len, &name[0]);
   return sysret_errno(AT_SYSCALL(faccessat, dirfd, &name[0], mode, 0));
+}
+
+reg_t syscall_t::sys_renameat(reg_t odirfd, reg_t popath, reg_t olen, reg_t ndirfd, reg_t pnpath, reg_t nlen, reg_t a6)
+{
+  std::vector<char> opath(olen), npath(nlen);
+  memif->read(popath, olen, &opath[0]);
+  memif->read(pnpath, nlen, &npath[0]);
+  return sysret_errno(renameat(fds.lookup(odirfd), int(odirfd) == RISCV_AT_FDCWD ? do_chroot(&opath[0]).c_str() : &opath[0],
+                             fds.lookup(ndirfd), int(ndirfd) == RISCV_AT_FDCWD ? do_chroot(&npath[0]).c_str() : &npath[0]));
 }
 
 reg_t syscall_t::sys_linkat(reg_t odirfd, reg_t poname, reg_t olen, reg_t ndirfd, reg_t pnname, reg_t nlen, reg_t flags)
