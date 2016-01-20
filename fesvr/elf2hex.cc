@@ -14,9 +14,9 @@ int main(int argc, char** argv)
   }
 
   unsigned width = atoi(argv[1]);
-  if(width < 8 || (width & (width-1)))
+  if(width < 4 || (width & (width-1)))
   {
-    std::cerr << "width must be at least 8 and a power of 2" << std::endl;
+    std::cerr << "width must be at least 4 and a power of 2" << std::endl;
     return 1;
   }
 
