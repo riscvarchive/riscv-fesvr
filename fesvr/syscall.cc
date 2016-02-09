@@ -106,6 +106,7 @@ void syscall_t::handle_syscall(command_t cmd)
     htif->exitcode = cmd.payload();
     if (htif->exit_code())
       std::cerr << "*** FAILED *** (tohost = " << htif->exit_code() << ")" << std::endl;
+    return;
   }
   else // proxied system call
     dispatch(cmd.payload());
