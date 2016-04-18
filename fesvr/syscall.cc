@@ -50,25 +50,25 @@ struct riscv_stat
 syscall_t::syscall_t(htif_t* htif)
   : htif(htif), memif(&htif->memif()), table(2048)
 {
-  table[93] = &syscall_t::sys_exit;
-  table[63] = &syscall_t::sys_read;
-  table[64] = &syscall_t::sys_write;
+  table[17] = &syscall_t::sys_getcwd;
+  table[25] = &syscall_t::sys_fcntl;
+  table[34] = &syscall_t::sys_mkdirat;
+  table[35] = &syscall_t::sys_unlinkat;
+  table[37] = &syscall_t::sys_linkat;
+  table[38] = &syscall_t::sys_renameat;
+  table[46] = &syscall_t::sys_ftruncate;
+  table[48] = &syscall_t::sys_faccessat;
   table[56] = &syscall_t::sys_openat;
   table[57] = &syscall_t::sys_close;
-  table[80] = &syscall_t::sys_fstat;
   table[62] = &syscall_t::sys_lseek;
-  table[1039] = &syscall_t::sys_lstat;
-  table[79] = &syscall_t::sys_fstatat;
-  table[48] = &syscall_t::sys_faccessat;
-  table[25] = &syscall_t::sys_fcntl;
-  table[46] = &syscall_t::sys_ftruncate;
-  table[38] = &syscall_t::sys_renameat;
-  table[37] = &syscall_t::sys_linkat;
-  table[35] = &syscall_t::sys_unlinkat;
-  table[34] = &syscall_t::sys_mkdirat;
-  table[17] = &syscall_t::sys_getcwd;
+  table[63] = &syscall_t::sys_read;
+  table[64] = &syscall_t::sys_write;
   table[67] = &syscall_t::sys_pread;
   table[68] = &syscall_t::sys_pwrite;
+  table[79] = &syscall_t::sys_fstatat;
+  table[80] = &syscall_t::sys_fstat;
+  table[93] = &syscall_t::sys_exit;
+  table[1039] = &syscall_t::sys_lstat;
   table[2011] = &syscall_t::sys_getmainvars;
 
   register_command(0, std::bind(&syscall_t::handle_syscall, this, _1), "syscall");
