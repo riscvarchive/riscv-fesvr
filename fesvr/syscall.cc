@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <termios.h>
+#include <linux/limits.h>
 #include <sstream>
 #include <iostream>
 using namespace std::placeholders;
@@ -58,6 +59,7 @@ syscall_t::syscall_t(htif_t* htif)
   table[38] = &syscall_t::sys_renameat;
   table[46] = &syscall_t::sys_ftruncate;
   table[48] = &syscall_t::sys_faccessat;
+  table[49] = &syscall_t::sys_chdir;
   table[56] = &syscall_t::sys_openat;
   table[57] = &syscall_t::sys_close;
   table[62] = &syscall_t::sys_lseek;
@@ -318,6 +320,18 @@ reg_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3, re
 
   memif->write(pbuf, bytes.size(), &bytes[0]);
   return 0;
+}
+
+reg_t syscall_t::sys_chdir(reg_t path, reg_t a1, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
+{
+  std::vector<char> buf(PATH_MAX);
+  for (size_t offset = 0; offset < buf.size(); offset++)
+  {
+    buf[offset] = memif->read_uint8(path + offset);
+    if (!buf[offset])
+      break;
+  }
+  return sysret_errno(chdir(buf.data()));
 }
 
 void syscall_t::dispatch(reg_t mm)
