@@ -25,14 +25,13 @@ const char* const* option_parser_t::parse(const char* const* argv0)
       bool str_match = opt[1] == '-' && slen && strncmp(opt+2, it->str, slen) == 0;
       if (chr_match || (str_match && (opt[2+slen] == '=' || opt[2+slen] == '\0')))
       {
-        const char* optarg = &opt[2];
-        if (str_match)
-          optarg = opt[2+slen] ? &opt[3+slen] : *(++argv);
-        if (optarg && !*optarg)
-          optarg = 0;
-        if (optarg && it->arg == 0)
+        const char* optarg =
+          chr_match ? &opt[2] :
+          opt[2+slen] ? &opt[3+slen] :
+          it->arg ? *(++argv) : NULL;
+        if (optarg && !it->arg)
           error("no argument allowed for option", *argv0, opt);
-        if (!optarg && it->arg == 1)
+        if (!optarg && it->arg)
           error("argument required for option", *argv0, opt);
         it->func(optarg);
         found = true;
