@@ -26,7 +26,7 @@ const char* const* option_parser_t::parse(const char* const* argv0)
       if (chr_match || (str_match && (opt[2+slen] == '=' || opt[2+slen] == '\0')))
       {
         const char* optarg =
-          chr_match ? &opt[2] :
+          chr_match ? (opt[2] ? &opt[2] : NULL) :
           opt[2+slen] ? &opt[3+slen] :
           it->arg ? *(++argv) : NULL;
         if (optarg && !it->arg)
