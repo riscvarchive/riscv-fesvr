@@ -27,7 +27,6 @@ class htif_t
 
   virtual memif_t& memif() { return mem; }
   virtual uint32_t num_cores();
-  virtual uint32_t mem_mb();
 
  protected:
   virtual void read_chunk(addr_t taddr, size_t len, void* dst);
@@ -46,13 +45,15 @@ class htif_t
   virtual void load_program();
   virtual void reset();
 
+  std::string read_config_string(reg_t addr);
+  std::string config_string;
+
  private:
   memif_t mem;
   bool writezeros;
   seqno_t seqno;
   bool started;
   bool stopped;
-  uint32_t _mem_mb;
   uint32_t _num_cores;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;

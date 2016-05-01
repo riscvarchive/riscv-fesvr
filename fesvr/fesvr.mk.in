@@ -1,38 +1,39 @@
 fesvr_hdrs = \
-	elf.h \
-	elfloader.h \
-	htif.h \
-	memif.h \
-	syscall.h \
-	packet.h \
+  configstring.h \
+  elf.h \
+  elfloader.h \
+  htif.h \
+  memif.h \
+  syscall.h \
+  packet.h \
   context.h \
-	htif_pthread.h \
-	htif_rs232.h \
-	htif_hexwriter.h \
-	htif_eth.h \
-	htif_zedboard.h \
-	option_parser.h \
-	term.h \
-	device.h \
-	rfb.h \
+  htif_pthread.h \
+  htif_rs232.h \
+  htif_hexwriter.h \
+  htif_eth.h \
+  htif_zedboard.h \
+  option_parser.h \
+  term.h \
+  device.h \
+  rfb.h \
 
 fesvr_srcs = \
-	elfloader.cc \
+  elfloader.cc \
   htif.cc \
   packet.cc \
-	memif.cc \
-	syscall.cc \
-	device.cc \
-	rfb.cc \
+  memif.cc \
+  syscall.cc \
+  device.cc \
+  rfb.cc \
   context.cc \
-	htif_pthread.cc \
-	htif_rs232.cc \
-	htif_hexwriter.cc \
-	htif_eth.cc \
-	htif_zedboard.cc \
+  htif_pthread.cc \
+  htif_rs232.cc \
+  htif_hexwriter.cc \
+  htif_eth.cc \
+  htif_zedboard.cc \
   dummy.cc \
-	option_parser.cc \
-	term.cc \
+  option_parser.cc \
+  term.cc \
 
 fesvr_install_prog_srcs = \
   elf2hex.cc \

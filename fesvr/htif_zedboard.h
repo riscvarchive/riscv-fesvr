@@ -18,7 +18,6 @@ class htif_zedboard_t : public htif_t
 
   size_t chunk_max_size() { return 64; }
   size_t chunk_align() { return 64; }
-  uint32_t mem_mb() { return 256; }
 
  private:
   volatile uintptr_t* dev_vaddr;

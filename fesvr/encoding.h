@@ -67,9 +67,12 @@
 #define IRQ_COP      12
 #define IRQ_HOST     13
 
-#define DEFAULT_RSTVEC 0x0
-#define DEFAULT_NMIVEC 0x4
-#define DEFAULT_MTVEC  0x8
+#define DEFAULT_RSTVEC     0x00001000
+#define DEFAULT_NMIVEC     0x00001004
+#define DEFAULT_MTVEC      0x00001010
+#define CONFIG_STRING_ADDR 0x0000100C
+#define EXT_IO_BASE        0x40000000
+#define DRAM_BASE          0x80000000
 
 // page table entry (PTE) fields
 #define PTE_V     0x001 // Valid
@@ -132,22 +135,28 @@
   asm volatile ("csrr %0, " #reg : "=r"(__tmp)); \
   __tmp; })
 
-#define write_csr(reg, val) \
-  asm volatile ("csrw " #reg ", %0" :: "r"(val))
+#define write_csr(reg, val) ({ \
+  if (__builtin_constant_p(val) && (unsigned long)(val) < 32) \
+    asm volatile ("csrw " #reg ", %0" :: "i"(val)); \
+  else \
+    asm volatile ("csrw " #reg ", %0" :: "r"(val)); })
 
-#define swap_csr(reg, val) ({ long __tmp; \
-  asm volatile ("csrrw %0, " #reg ", %1" : "=r"(__tmp) : "r"(val)); \
+#define swap_csr(reg, val) ({ unsigned long __tmp; \
+  if (__builtin_constant_p(val) && (unsigned long)(val) < 32) \
+    asm volatile ("csrrw %0, " #reg ", %1" : "=r"(__tmp) : "i"(val)); \
+  else \
+    asm volatile ("csrrw %0, " #reg ", %1" : "=r"(__tmp) : "r"(val)); \
   __tmp; })
 
 #define set_csr(reg, bit) ({ unsigned long __tmp; \
-  if (__builtin_constant_p(bit) && (bit) < 32) \
+  if (__builtin_constant_p(bit) && (unsigned long)(bit) < 32) \
     asm volatile ("csrrs %0, " #reg ", %1" : "=r"(__tmp) : "i"(bit)); \
   else \
     asm volatile ("csrrs %0, " #reg ", %1" : "=r"(__tmp) : "r"(bit)); \
   __tmp; })
 
 #define clear_csr(reg, bit) ({ unsigned long __tmp; \
-  if (__builtin_constant_p(bit) && (bit) < 32) \
+  if (__builtin_constant_p(bit) && (unsigned long)(bit) < 32) \
     asm volatile ("csrrc %0, " #reg ", %1" : "=r"(__tmp) : "i"(bit)); \
   else \
     asm volatile ("csrrc %0, " #reg ", %1" : "=r"(__tmp) : "r"(bit)); \
@@ -339,12 +348,18 @@
 #define MASK_LR_D  0xf9f0707f
 #define MATCH_SC_D 0x1800302f
 #define MASK_SC_D  0xf800707f
-#define MATCH_SCALL 0x73
-#define MASK_SCALL  0xffffffff
-#define MATCH_SBREAK 0x100073
-#define MASK_SBREAK  0xffffffff
+#define MATCH_ECALL 0x73
+#define MASK_ECALL  0xffffffff
+#define MATCH_EBREAK 0x100073
+#define MASK_EBREAK  0xffffffff
+#define MATCH_URET 0x200073
+#define MASK_URET  0xffffffff
 #define MATCH_SRET 0x10200073
 #define MASK_SRET  0xffffffff
+#define MATCH_HRET 0x20200073
+#define MASK_HRET  0xffffffff
+#define MATCH_MRET 0x30200073
+#define MASK_MRET  0xffffffff
 #define MATCH_SFENCE_VM 0x10400073
 #define MASK_SFENCE_VM  0xfff07fff
 #define MATCH_WFI 0x10500073
@@ -623,23 +638,6 @@
 #define CSR_CYCLE 0xc00
 #define CSR_TIME 0xc01
 #define CSR_INSTRET 0xc02
-#define CSR_STATS 0xc0
-#define CSR_UARCH0 0xcc0
-#define CSR_UARCH1 0xcc1
-#define CSR_UARCH2 0xcc2
-#define CSR_UARCH3 0xcc3
-#define CSR_UARCH4 0xcc4
-#define CSR_UARCH5 0xcc5
-#define CSR_UARCH6 0xcc6
-#define CSR_UARCH7 0xcc7
-#define CSR_UARCH8 0xcc8
-#define CSR_UARCH9 0xcc9
-#define CSR_UARCH10 0xcca
-#define CSR_UARCH11 0xccb
-#define CSR_UARCH12 0xccc
-#define CSR_UARCH13 0xccd
-#define CSR_UARCH14 0xcce
-#define CSR_UARCH15 0xccf
 #define CSR_SSTATUS 0x100
 #define CSR_SIE 0x104
 #define CSR_STVEC 0x105
@@ -658,7 +656,6 @@
 #define CSR_MIDELEG 0x303
 #define CSR_MIE 0x304
 #define CSR_MTVEC 0x305
-#define CSR_MTIMECMP 0x321
 #define CSR_MSCRATCH 0x340
 #define CSR_MEPC 0x341
 #define CSR_MCAUSE 0x342
@@ -680,15 +677,13 @@
 #define CSR_MVENDORID 0xf11
 #define CSR_MARCHID 0xf12
 #define CSR_MIMPID 0xf13
-#define CSR_MCFGADDR 0xf14
-#define CSR_MHARTID 0xf15
+#define CSR_MHARTID 0xf14
 #define CSR_MTOHOST 0x7c0
 #define CSR_MFROMHOST 0x7c1
 #define CSR_MRESET 0x7c2
 #define CSR_CYCLEH 0xc80
 #define CSR_TIMEH 0xc81
 #define CSR_INSTRETH 0xc82
-#define CSR_MTIMECMPH 0x361
 #define CSR_MUCYCLE_DELTAH 0x780
 #define CSR_MUTIME_DELTAH 0x781
 #define CSR_MUINSTRET_DELTAH 0x782
@@ -798,9 +793,12 @@ DECLARE_INSN(amomaxu_d, MATCH_AMOMAXU_D, MASK_AMOMAXU_D)
 DECLARE_INSN(amoswap_d, MATCH_AMOSWAP_D, MASK_AMOSWAP_D)
 DECLARE_INSN(lr_d, MATCH_LR_D, MASK_LR_D)
 DECLARE_INSN(sc_d, MATCH_SC_D, MASK_SC_D)
-DECLARE_INSN(scall, MATCH_SCALL, MASK_SCALL)
-DECLARE_INSN(sbreak, MATCH_SBREAK, MASK_SBREAK)
+DECLARE_INSN(ecall, MATCH_ECALL, MASK_ECALL)
+DECLARE_INSN(ebreak, MATCH_EBREAK, MASK_EBREAK)
+DECLARE_INSN(uret, MATCH_URET, MASK_URET)
 DECLARE_INSN(sret, MATCH_SRET, MASK_SRET)
+DECLARE_INSN(hret, MATCH_HRET, MASK_HRET)
+DECLARE_INSN(mret, MATCH_MRET, MASK_MRET)
 DECLARE_INSN(sfence_vm, MATCH_SFENCE_VM, MASK_SFENCE_VM)
 DECLARE_INSN(wfi, MATCH_WFI, MASK_WFI)
 DECLARE_INSN(csrrw, MATCH_CSRRW, MASK_CSRRW)
@@ -945,23 +943,6 @@ DECLARE_CSR(fcsr, CSR_FCSR)
 DECLARE_CSR(cycle, CSR_CYCLE)
 DECLARE_CSR(time, CSR_TIME)
 DECLARE_CSR(instret, CSR_INSTRET)
-DECLARE_CSR(stats, CSR_STATS)
-DECLARE_CSR(uarch0, CSR_UARCH0)
-DECLARE_CSR(uarch1, CSR_UARCH1)
-DECLARE_CSR(uarch2, CSR_UARCH2)
-DECLARE_CSR(uarch3, CSR_UARCH3)
-DECLARE_CSR(uarch4, CSR_UARCH4)
-DECLARE_CSR(uarch5, CSR_UARCH5)
-DECLARE_CSR(uarch6, CSR_UARCH6)
-DECLARE_CSR(uarch7, CSR_UARCH7)
-DECLARE_CSR(uarch8, CSR_UARCH8)
-DECLARE_CSR(uarch9, CSR_UARCH9)
-DECLARE_CSR(uarch10, CSR_UARCH10)
-DECLARE_CSR(uarch11, CSR_UARCH11)
-DECLARE_CSR(uarch12, CSR_UARCH12)
-DECLARE_CSR(uarch13, CSR_UARCH13)
-DECLARE_CSR(uarch14, CSR_UARCH14)
-DECLARE_CSR(uarch15, CSR_UARCH15)
 DECLARE_CSR(sstatus, CSR_SSTATUS)
 DECLARE_CSR(sie, CSR_SIE)
 DECLARE_CSR(stvec, CSR_STVEC)
@@ -980,7 +961,6 @@ DECLARE_CSR(medeleg, CSR_MEDELEG)
 DECLARE_CSR(mideleg, CSR_MIDELEG)
 DECLARE_CSR(mie, CSR_MIE)
 DECLARE_CSR(mtvec, CSR_MTVEC)
-DECLARE_CSR(mtimecmp, CSR_MTIMECMP)
 DECLARE_CSR(mscratch, CSR_MSCRATCH)
 DECLARE_CSR(mepc, CSR_MEPC)
 DECLARE_CSR(mcause, CSR_MCAUSE)
@@ -1002,7 +982,6 @@ DECLARE_CSR(misa, CSR_MISA)
 DECLARE_CSR(mvendorid, CSR_MVENDORID)
 DECLARE_CSR(marchid, CSR_MARCHID)
 DECLARE_CSR(mimpid, CSR_MIMPID)
-DECLARE_CSR(mcfgaddr, CSR_MCFGADDR)
 DECLARE_CSR(mhartid, CSR_MHARTID)
 DECLARE_CSR(mtohost, CSR_MTOHOST)
 DECLARE_CSR(mfromhost, CSR_MFROMHOST)
@@ -1010,7 +989,6 @@ DECLARE_CSR(mreset, CSR_MRESET)
 DECLARE_CSR(cycleh, CSR_CYCLEH)
 DECLARE_CSR(timeh, CSR_TIMEH)
 DECLARE_CSR(instreth, CSR_INSTRETH)
-DECLARE_CSR(mtimecmph, CSR_MTIMECMPH)
 DECLARE_CSR(mucycle_deltah, CSR_MUCYCLE_DELTAH)
 DECLARE_CSR(mutime_deltah, CSR_MUTIME_DELTAH)
 DECLARE_CSR(muinstret_deltah, CSR_MUINSTRET_DELTAH)
