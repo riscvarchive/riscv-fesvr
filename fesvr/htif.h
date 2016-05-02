@@ -61,6 +61,8 @@ class htif_t
   std::string chroot;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
+  addr_t tohost_addr;
+  addr_t fromhost_addr;
 
   device_list_t device_list;
   syscall_t syscall_proxy;

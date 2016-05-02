@@ -58,7 +58,7 @@ void htif_t::set_chroot(const char* where)
 
 htif_t::htif_t(const std::vector<std::string>& args)
   : exitcode(0), mem(this), seqno(1), started(false), stopped(false),
-    _num_cores(0), sig_addr(0), sig_len(0),
+    _num_cores(0), sig_addr(0), sig_len(0), tohost_addr(0), fromhost_addr(0),
     syscall_proxy(this)
 {
   signal(SIGINT, &handle_signal);
@@ -173,6 +173,13 @@ void htif_t::load_program()
 
   std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem);
 
+  if (symbols.count("tohost") && symbols.count("fromhost")) {
+    tohost_addr = symbols["tohost"];
+    fromhost_addr = symbols["fromhost"];
+  } else {
+    fprintf(stderr, "warning: tohost and fromhost symbols not in ELF; can't communicate with target\n");
+  }
+
   // detect torture tests so we can print the memory signature at the end
   if (symbols.count("begin_signature") && symbols.count("end_signature"))
   {
@@ -284,28 +291,28 @@ reg_t htif_t::write_cr(uint32_t coreid, uint16_t regnum, reg_t val)
 int htif_t::run()
 {
   start();
-  std::vector<std::queue<reg_t>> fromhost(num_cores());
 
   auto enq_func = [](std::queue<reg_t>* q, uint64_t x) { q->push(x); };
-  std::vector<std::function<void(reg_t)>> fromhost_callbacks;
-  for (size_t i = 0; i < num_cores(); i++)
-    fromhost_callbacks.push_back(std::bind(enq_func, &fromhost[i], std::placeholders::_1));
+  std::queue<reg_t> fromhost_queue;
+  std::function<void(reg_t)> fromhost_callback =
+    std::bind(enq_func, &fromhost_queue, std::placeholders::_1);
 
   while (!signal_exit && exitcode == 0)
   {
-    for (uint32_t coreid = 0; coreid < num_cores(); coreid++)
-    {
-      if (auto tohost = write_cr(coreid, CSR_MTOHOST, 0))
-      {
-        command_t cmd(this, tohost, fromhost_callbacks[coreid]);
-        device_list.handle_command(cmd);
-      }
+    if (!tohost_addr)
+      continue;
 
-      device_list.tick();
+    if (auto tohost = mem.read_uint64(tohost_addr)) {
+      mem.write_uint64(tohost_addr, 0);
+      command_t cmd(this, tohost, fromhost_callback);
+      device_list.handle_command(cmd);
+    }
 
-      if (!fromhost[coreid].empty())
-        if (write_cr(coreid, CSR_MFROMHOST, fromhost[coreid].front()) == 0)
-          fromhost[coreid].pop();
+    device_list.tick();
+
+    if (!fromhost_queue.empty() && mem.read_uint64(fromhost_addr) == 0) {
+      mem.write_uint64(fromhost_addr, fromhost_queue.front());
+      fromhost_queue.pop();
     }
   }
 
