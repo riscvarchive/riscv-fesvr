@@ -9,7 +9,6 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <termios.h>
-#include <linux/limits.h>
 #include <sstream>
 #include <iostream>
 using namespace std::placeholders;
@@ -324,8 +323,11 @@ reg_t syscall_t::sys_getmainvars(reg_t pbuf, reg_t limit, reg_t a2, reg_t a3, re
 
 reg_t syscall_t::sys_chdir(reg_t path, reg_t a1, reg_t a2, reg_t a3, reg_t a4, reg_t a5, reg_t a6)
 {
-  std::vector<char> buf(PATH_MAX);
-  for (size_t offset = 0; offset < buf.size(); offset++)
+  size_t size = 0;
+  while (memif->read_uint8(path + size++))
+    ;
+  std::vector<char> buf(size);
+  for (size_t offset = 0;; offset++)
   {
     buf[offset] = memif->read_uint8(path + offset);
     if (!buf[offset])
