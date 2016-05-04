@@ -9,12 +9,18 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <termios.h>
+#ifdef HAVE_LINUX_LIMITS_H
 #include <linux/limits.h>
+#endif
 #include <sstream>
 #include <iostream>
 using namespace std::placeholders;
 
 #define RISCV_AT_FDCWD -100
+
+#ifndef PATH_MAX
+#define PATH_MAX 4096
+#endif
 
 struct riscv_stat
 {

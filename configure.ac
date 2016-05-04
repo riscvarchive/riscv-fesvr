@@ -51,6 +51,8 @@ AC_PROG_CXX
 AC_CHECK_TOOL([AR],[ar])
 AC_CHECK_TOOL([RANLIB],[ranlib])
 
+AC_CHECK_HEADERS_ONCE(linux/limits.h)
+
 #-------------------------------------------------------------------------
 # MCPPBS specific program check
 #-------------------------------------------------------------------------
