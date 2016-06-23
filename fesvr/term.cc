@@ -2,8 +2,8 @@
 #include <termios.h>
 #include <unistd.h>
 #include <poll.h>
-#include <assert.h>
 #include <signal.h>
+#include <stdlib.h>
 
 class canonical_termios_t
 {
@@ -48,5 +48,6 @@ int canonical_terminal_t::read()
 
 void canonical_terminal_t::write(char ch)
 {
-  assert(::write(1, &ch, 1) == 1);
+  if (::write(1, &ch, 1) != 1)
+    abort();
 }

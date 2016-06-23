@@ -1,6 +1,7 @@
 #include "context.h"
 #include <assert.h>
 #include <sched.h>
+#include <stdlib.h>
 
 static __thread context_t* cur;
 
@@ -40,7 +41,7 @@ void context_t::init(void (*f)(void*), void* a)
   creator = current();
 
 #ifdef USE_UCONTEXT
-  assert(getcontext(context.get()) == 0);
+  getcontext(context.get());
   context->uc_link = creator->context.get();
   context->uc_stack.ss_size = 64*1024;
   context->uc_stack.ss_sp = new void*[context->uc_stack.ss_size/sizeof(void*)];
@@ -51,8 +52,9 @@ void context_t::init(void (*f)(void*), void* a)
 
   pthread_mutex_lock(&creator->mutex);
   creator->flag = 0;
-  assert(pthread_create(&thread, NULL, &context_t::wrapper, this) == 0);
-  assert(pthread_detach(thread) == 0);
+  if (pthread_create(&thread, NULL, &context_t::wrapper, this) != 0)
+    abort();
+  pthread_detach(thread);
   while (!creator->flag)
     pthread_cond_wait(&creator->cond, &creator->mutex);
   pthread_mutex_unlock(&creator->mutex);
@@ -70,7 +72,8 @@ void context_t::switch_to()
 #ifdef USE_UCONTEXT
   context_t* prev = cur;
   cur = this;
-  assert(swapcontext(prev->context.get(), context.get()) == 0);
+  if (swapcontext(prev->context.get(), context.get()) != 0)
+    abort();
 #else
   cur->flag = 0;
   this->flag = 1;
@@ -90,7 +93,7 @@ context_t* context_t::current()
   {
     cur = new context_t;
 #ifdef USE_UCONTEXT
-    assert(getcontext(cur->context.get()) == 0);
+    getcontext(cur->context.get());
 #else
     cur->thread = pthread_self();
     cur->flag = 1;
