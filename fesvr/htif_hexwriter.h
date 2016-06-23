@@ -23,9 +23,7 @@ protected:
 
   size_t chunk_max_size() { return width; }
   size_t chunk_align() { return width; }
-
-  ssize_t read(void* buf, size_t max_size) { abort(); }
-  ssize_t write(const void* buf, size_t max_size) { abort(); }
+  void reset() {}
 
   friend std::ostream& operator<< (std::ostream&, const htif_hexwriter_t&);
 };

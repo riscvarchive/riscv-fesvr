@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/stat.h>
+#include <limits.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -85,18 +86,18 @@ syscall_t::syscall_t(htif_t* htif)
 
 std::string syscall_t::do_chroot(const char* fn)
 {
-  if (!htif->chroot.empty() && *fn == '/')
-    return htif->chroot + fn;
+  if (!chroot.empty() && *fn == '/')
+    return chroot + fn;
   return fn;
 }
 
 std::string syscall_t::undo_chroot(const char* fn)
 {
-  if (htif->chroot.empty())
+  if (chroot.empty())
     return fn;
-  if (strncmp(fn, htif->chroot.c_str(), htif->chroot.size()) == 0
-      && (htif->chroot.back() == '/' || fn[htif->chroot.size()] == '/'))
-    return fn + htif->chroot.size() - (htif->chroot.back() == '/');
+  if (strncmp(fn, chroot.c_str(), chroot.size()) == 0
+      && (chroot.back() == '/' || fn[chroot.size()] == '/'))
+    return fn + chroot.size() - (chroot.back() == '/');
   return "/";
 }
 
@@ -374,4 +375,20 @@ int fds_t::lookup(reg_t fd)
   if (int(fd) == RISCV_AT_FDCWD)
     return AT_FDCWD;
   return fd >= fds.size() ? -1 : fds[fd];
+}
+
+void syscall_t::set_chroot(const char* where)
+{
+  char buf1[PATH_MAX], buf2[PATH_MAX];
+
+  if (getcwd(buf1, sizeof(buf1)) == NULL
+      || chdir(where) != 0
+      || getcwd(buf2, sizeof(buf2)) == NULL
+      || chdir(buf1) != 0)
+  {
+    fprintf(stderr, "could not chroot to %s\n", chroot.c_str());
+    exit(-1);
+  }
+
+  chroot = buf2;
 }

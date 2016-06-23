@@ -22,59 +22,46 @@ class htif_t
   bool done();
   int exit_code();
 
-  virtual reg_t read_cr(uint32_t coreid, uint16_t regnum);
-  virtual reg_t write_cr(uint32_t coreid, uint16_t regnum, reg_t val);
-
   virtual memif_t& memif() { return mem; }
   virtual uint32_t num_cores();
 
  protected:
-  virtual void read_chunk(addr_t taddr, size_t len, void* dst);
-  virtual void write_chunk(addr_t taddr, size_t len, const void* src);
+  virtual void reset() = 0;
+
+  virtual void read_chunk(addr_t taddr, size_t len, void* dst) = 0;
+  virtual void write_chunk(addr_t taddr, size_t len, const void* src) = 0;
+  virtual void clear_chunk(addr_t taddr, size_t len);
 
   virtual size_t chunk_align() = 0;
   virtual size_t chunk_max_size() = 0;
-  virtual bool assume0init() { return false; }
-
-  virtual ssize_t read(void* buf, size_t max_size) = 0;
-  virtual ssize_t write(const void* buf, size_t size) = 0;
-
-  const std::vector<std::string>& host_args() { return hargs; }
-  int exitcode;
 
   virtual void load_program();
-  virtual void reset();
+  virtual void idle() {}
 
-  std::string read_config_string(reg_t addr);
+  const std::vector<std::string>& host_args() { return hargs; }
+
   std::string config_string;
 
  private:
   memif_t mem;
   bool writezeros;
-  seqno_t seqno;
-  bool started;
-  bool stopped;
   uint32_t _num_cores;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
   std::string sig_file;
-  std::string chroot;
   addr_t sig_addr; // torture
   addr_t sig_len; // torture
   addr_t tohost_addr;
   addr_t fromhost_addr;
+  int exitcode;
 
   device_list_t device_list;
   syscall_t syscall_proxy;
   bcd_t bcd;
   std::vector<device_t*> dynamic_devices;
 
-  std::vector<char> read_buf;
-  virtual packet_t read_packet(seqno_t expected_seqno);
-  virtual void write_packet(const packet_t& packet);
-
-  void set_chroot(const char* where);
   const std::vector<std::string>& target_args() { return targs; }
+  std::string read_config_string(reg_t addr);
 
   friend class memif_t;
   friend class syscall_t;

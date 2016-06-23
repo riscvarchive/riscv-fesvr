@@ -1,7 +1,6 @@
 #ifndef _DEVICE_H
 #define _DEVICE_H
 
-#include "packet.h"
 #include <vector>
 #include <queue>
 #include <cstring>

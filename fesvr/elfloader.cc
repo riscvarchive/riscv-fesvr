@@ -1,12 +1,13 @@
 // See LICENSE for license details.
 
+#include "elf.h"
+#include "memif.h"
+#include <string.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <assert.h>
 #include <unistd.h>
-#include "elf.h"
-#include "memif.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <vector>

@@ -4,9 +4,9 @@
 #define __SYSCALL_H
 
 #include "device.h"
+#include "memif.h"
 #include <vector>
 #include <string>
-#include <map>
 
 class syscall_t;
 typedef reg_t (syscall_t::*syscall_func_t)(reg_t, reg_t, reg_t, reg_t, reg_t, reg_t, reg_t);
@@ -28,6 +28,8 @@ class syscall_t : public device_t
 {
  public:
   syscall_t(htif_t*);
+
+  void set_chroot(const char* where);
   
  private:
   const char* identity() { return "syscall_proxy"; }
@@ -39,6 +41,8 @@ class syscall_t : public device_t
 
   void handle_syscall(command_t cmd);
   void dispatch(addr_t mm);
+
+  std::string chroot;
   std::string do_chroot(const char* fn);
   std::string undo_chroot(const char* fn);
 

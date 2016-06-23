@@ -2,9 +2,8 @@
 #define _RFB_H
 
 #include "device.h"
+#include "memif.h"
 #include <pthread.h>
-
-class memif_t;
 
 // remote frame buffer
 class rfb_t : public device_t
