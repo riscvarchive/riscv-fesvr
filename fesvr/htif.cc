@@ -41,7 +41,7 @@ static void handle_signal(int sig)
 
 htif_t::htif_t(const std::vector<std::string>& args)
   : mem(this), _num_cores(0), sig_addr(0), sig_len(0),
-    tohost_addr(0), fromhost_addr(0), exitcode(0),
+    tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
     syscall_proxy(this)
 {
   signal(SIGINT, &handle_signal);
@@ -146,6 +146,8 @@ void htif_t::stop()
 
     sigs.close();
   }
+
+  stopped = true;
 }
 
 void htif_t::clear_chunk(addr_t taddr, size_t len)
@@ -227,7 +229,7 @@ uint32_t htif_t::num_cores()
 
 bool htif_t::done()
 {
-  return exitcode & 1;
+  return stopped;
 }
 
 int htif_t::exit_code()

@@ -54,6 +54,7 @@ class htif_t
   addr_t tohost_addr;
   addr_t fromhost_addr;
   int exitcode;
+  bool stopped;
 
   device_list_t device_list;
   syscall_t syscall_proxy;
