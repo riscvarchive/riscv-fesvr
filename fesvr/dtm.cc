@@ -48,13 +48,11 @@ uint64_t dtm_t::do_command(dtm_t::req r)
 
 uint64_t dtm_t::read(uint32_t addr)
 {
-  idle_cycles = 0;
   return do_command((req){addr, 1, 0});
 }
 
 uint64_t dtm_t::write(uint32_t addr, uint64_t data)
 {
-  idle_cycles = 0;
   return do_command((req){addr, 2, data});
 }
 
@@ -241,7 +239,7 @@ void dtm_t::reset()
 
 void dtm_t::idle()
 {
-  while (idle_cycles < max_idle_cycles)
+  for (int idle_cycles = 0; idle_cycles < max_idle_cycles; idle_cycles++)
     nop();
 }
 
@@ -286,8 +284,6 @@ void dtm_t::tick(
   bool      resp_valid,
   resp      resp_bits)
 {
-  idle_cycles++;
-
   if (!resp_wait) {
     if (!req_wait) {
       req_wait = true;

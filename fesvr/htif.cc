@@ -168,11 +168,13 @@ int htif_t::run()
   std::function<void(reg_t)> fromhost_callback =
     std::bind(enq_func, &fromhost_queue, std::placeholders::_1);
 
+  if (tohost_addr == 0) {
+    while (true)
+      idle();
+  }
+
   while (!signal_exit && exitcode == 0)
   {
-    if (!tohost_addr)
-      continue;
-
     if (auto tohost = mem.read_uint64(tohost_addr)) {
       mem.write_uint64(tohost_addr, 0);
       command_t cmd(this, tohost, fromhost_callback);

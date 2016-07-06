@@ -77,7 +77,6 @@ class dtm_t : public htif_t
   uint32_t dminfo;
   uint32_t xlen;
 
-  int idle_cycles;
   static const int max_idle_cycles = 10000;
 
   size_t ram_base() { return 0x400; }
