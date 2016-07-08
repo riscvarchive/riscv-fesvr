@@ -4,6 +4,7 @@
 #include <vector>
 #include <queue>
 #include <cstring>
+#include <string>
 #include <functional>
 
 class htif_t;

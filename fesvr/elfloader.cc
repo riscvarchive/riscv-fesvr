@@ -2,7 +2,8 @@
 
 #include "elf.h"
 #include "memif.h"
-#include <string.h>
+#include <cstring>
+#include <string>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <sys/mman.h>
