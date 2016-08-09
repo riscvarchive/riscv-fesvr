@@ -267,6 +267,7 @@ void dtm_t::start_host_thread()
 
   target = context_t::current();
   host.init(host_thread_main, this);
+  host.switch_to();
 }
 
 dtm_t::dtm_t(const std::vector<std::string>& args)
@@ -300,4 +301,9 @@ void dtm_t::tick(
     resp_buf = resp_bits;
     host.switch_to();
   }
+}
+
+void dtm_t::return_resp(resp resp_bits){
+  resp_buf = resp_bits;
+  host.switch_to();
 }

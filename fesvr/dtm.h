@@ -33,6 +33,10 @@ class dtm_t : public htif_t
     bool  resp_valid,
     resp  resp_bits
   );
+  // Akin to tick, but the target thread returns a response on every invocation
+  void return_resp(
+    resp  resp_bits
+  );
 
   bool req_valid() { return req_wait; }
   req req_bits() { return req_buf; }
