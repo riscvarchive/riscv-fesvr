@@ -10,6 +10,14 @@
 # define USE_UCONTEXT
 # include <ucontext.h>
 # include <memory>
+
+#if (100*GLIB_MAJOR_VERSION+GLIB_MINOR_VERSION < 208)
+#define GLIBC_64BIT_PTR_BUG
+static_assert (sizeof(unsigned int)  == 4, "uint size doesn't match expected 32bit");
+static_assert (sizeof(unsigned long) == 8, "ulong size doesn't match expected 64bit");
+static_assert (sizeof(void*)         == 8, "ptr size doesn't match expected 64bit");
+#endif
+
 #endif
 
 class context_t
@@ -26,7 +34,11 @@ class context_t
   void* arg;
 #ifdef USE_UCONTEXT
   std::unique_ptr<ucontext_t> context;
+#ifndef GLIBC_64BIT_PTR_BUG
   static void wrapper(context_t*);
+#else
+  static void wrapper(unsigned int, unsigned int);
+#endif
 #else
   pthread_t thread;
   pthread_mutex_t mutex;
