@@ -17,8 +17,14 @@ context_t::context_t()
 }
 
 #ifdef USE_UCONTEXT
+#ifndef GLIBC_64BIT_PTR_BUG
 void context_t::wrapper(context_t* ctx)
 {
+#else
+void context_t::wrapper(unsigned int hi, unsigned int lo)
+{
+  context_t* ctx = reinterpret_cast<context_t*>(static_cast<unsigned long>(lo) | (static_cast<unsigned long>(hi) << 32));
+#endif
   ctx->creator->switch_to();
   ctx->func(ctx->arg);
 }
@@ -45,7 +51,13 @@ void context_t::init(void (*f)(void*), void* a)
   context->uc_link = creator->context.get();
   context->uc_stack.ss_size = 64*1024;
   context->uc_stack.ss_sp = new void*[context->uc_stack.ss_size/sizeof(void*)];
+#ifndef GLIBC_64BIT_PTR_BUG
   makecontext(context.get(), (void(*)(void))&context_t::wrapper, 1, this);
+#else
+  unsigned int hi(reinterpret_cast<unsigned long>(this) >> 32);
+  unsigned int lo(reinterpret_cast<unsigned long>(this));
+  makecontext(context.get(), (void(*)(void))&context_t::wrapper, 2, hi, lo);
+#endif
   switch_to();
 #else
   assert(flag == 0);
