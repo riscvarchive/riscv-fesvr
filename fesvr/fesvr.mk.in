@@ -13,6 +13,7 @@ fesvr_hdrs = \
   term.h \
   device.h \
   rfb.h \
+  sai.h \
 
 fesvr_srcs = \
   elfloader.cc \
@@ -28,6 +29,7 @@ fesvr_srcs = \
   dummy.cc \
   option_parser.cc \
   term.cc \
+  sai.cc \
 
 fesvr_install_prog_srcs = \
   elf2hex.cc \
