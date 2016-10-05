@@ -10,13 +10,16 @@
 # define USE_UCONTEXT
 # include <ucontext.h>
 # include <memory>
+#include <limits.h>
 
+#if (ULONG_MAX > UINT_MAX) // 64-bit systems only
 #if (100*GLIB_MAJOR_VERSION+GLIB_MINOR_VERSION < 208)
 #define GLIBC_64BIT_PTR_BUG
 static_assert (sizeof(unsigned int)  == 4, "uint size doesn't match expected 32bit");
 static_assert (sizeof(unsigned long) == 8, "ulong size doesn't match expected 64bit");
 static_assert (sizeof(void*)         == 8, "ptr size doesn't match expected 64bit");
 #endif
+#endif /* ULONG_MAX > UINT_MAX */
 
 #endif
 
