@@ -29,6 +29,11 @@ void sai_t::reset()
   addr_t ipis[NHARTS_MAX];
   int ncores = get_ipi_addrs(ipis);
 
+  if (ncores == 0) {
+      fprintf(stderr, "ERROR: No cores found\n");
+      abort();
+  }
+
   for (int i = 0; i < ncores; i++)
     write_chunk(ipis[i], sizeof(uint32_t), &one);
 }
