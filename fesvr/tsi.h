@@ -15,11 +15,11 @@
 #define SAI_ADDR_CHUNKS 2
 #define SAI_LEN_CHUNKS 2
 
-class sai_t : public htif_t
+class tsi_t : public htif_t
 {
  public:
-  sai_t(const std::vector<std::string>& target_args);
-  virtual ~sai_t();
+  tsi_t(const std::vector<std::string>& target_args);
+  virtual ~tsi_t();
 
   bool data_available();
   void send_word(uint32_t word);
@@ -45,7 +45,7 @@ class sai_t : public htif_t
   void push_addr(addr_t addr);
   void push_len(size_t len);
 
-  static void host_thread(void *sai);
+  static void host_thread(void *tsi);
 };
 
 #endif
