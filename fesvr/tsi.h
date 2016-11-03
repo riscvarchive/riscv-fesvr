@@ -26,6 +26,11 @@ class tsi_t : public htif_t
   uint32_t recv_word();
   void switch_to_host();
 
+  uint32_t in_bits() { return in_data.front(); }
+  bool in_valid() { return !in_data.empty(); }
+  bool out_ready() { return true; }
+  void tick(bool out_valid, uint32_t out_bits, bool in_ready);
+
  protected:
   void reset() override;
   void read_chunk(addr_t taddr, size_t nbytes, void* dst) override;

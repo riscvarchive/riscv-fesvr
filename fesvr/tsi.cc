@@ -119,3 +119,12 @@ int tsi_t::get_ipi_addrs(addr_t *ipis)
     ipis[core] = get_uint(res);
   }
 }
+
+void tsi_t::tick(bool out_valid, uint32_t out_bits, bool in_ready)
+{
+  if (out_valid && out_ready())
+    out_data.push_back(out_bits);
+
+  if (in_valid() && in_ready)
+    in_data.pop_front();
+}
