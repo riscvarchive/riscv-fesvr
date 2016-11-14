@@ -48,7 +48,7 @@ class tsi_t : public htif_t
   std::deque<uint32_t> out_data;
 
   void push_addr(addr_t addr);
-  void push_len(size_t len);
+  void push_len(addr_t len);
 
   static void host_thread(void *tsi);
 };

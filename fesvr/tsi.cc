@@ -46,7 +46,7 @@ void tsi_t::push_addr(addr_t addr)
   }
 }
 
-void tsi_t::push_len(size_t len)
+void tsi_t::push_len(addr_t len)
 {
   for (int i = 0; i < SAI_LEN_CHUNKS; i++) {
     in_data.push_back(len & 0xffffffff);
