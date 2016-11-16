@@ -65,7 +65,7 @@ void tsi_t::read_chunk(addr_t taddr, size_t nbytes, void* dst)
 
   for (size_t i = 0; i < len; i++) {
     while (out_data.empty())
-      target->switch_to();
+      switch_to_target();
     result[i] = out_data.front();
     out_data.pop_front();
   }
@@ -103,6 +103,11 @@ bool tsi_t::data_available(void)
 void tsi_t::switch_to_host(void)
 {
   host.switch_to();
+}
+
+void tsi_t::switch_to_target(void)
+{
+  target->switch_to();
 }
 
 int tsi_t::get_ipi_addrs(addr_t *ipis)
