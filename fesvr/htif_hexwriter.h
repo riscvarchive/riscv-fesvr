@@ -11,9 +11,10 @@
 class htif_hexwriter_t : public htif_t
 {
 public:
-  htif_hexwriter_t(size_t w, size_t d);
+  htif_hexwriter_t(size_t b, size_t w, size_t d);
 
 protected:
+  size_t base;
   size_t width;
   size_t depth;
   std::map<addr_t,std::vector<char> > mem;
