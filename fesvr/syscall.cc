@@ -386,7 +386,7 @@ void syscall_t::set_chroot(const char* where)
       || getcwd(buf2, sizeof(buf2)) == NULL
       || chdir(buf1) != 0)
   {
-    fprintf(stderr, "could not chroot to %s\n", chroot.c_str());
+    fprintf(stderr, "could not chroot to %s\n", where);
     exit(-1);
   }
 
