@@ -12,8 +12,8 @@ void htif_pthread_t::thread_main(void* arg)
     htif->target->switch_to();
 }
 
-htif_pthread_t::htif_pthread_t(const std::vector<std::string>& args)
-  : htif_t(args)
+htif_pthread_t::htif_pthread_t(int argc, char** argv)
+    : htif_t(argc, argv)
 {
   target = context_t::current();
   host.init(thread_main, this);
@@ -27,7 +27,7 @@ ssize_t htif_pthread_t::read(void* buf, size_t max_size)
 {
   while (th_data.size() == 0)
     target->switch_to();
-    
+
   size_t s = std::min(max_size, th_data.size());
   std::copy(th_data.begin(), th_data.begin() + s, (char*)buf);
   th_data.erase(th_data.begin(), th_data.begin() + s);

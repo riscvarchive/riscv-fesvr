@@ -18,7 +18,7 @@
 class tsi_t : public htif_t
 {
  public:
-  tsi_t(const std::vector<std::string>& target_args);
+  tsi_t(int argc, char** argv);
   virtual ~tsi_t();
 
   bool data_available();

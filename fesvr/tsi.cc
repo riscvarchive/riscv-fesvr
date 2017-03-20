@@ -13,7 +13,7 @@ void tsi_t::host_thread(void *arg)
     tsi->target->switch_to();
 }
 
-tsi_t::tsi_t(const std::vector<std::string>& args) : htif_t(args)
+tsi_t::tsi_t(int argc, char** argv) : htif_t(argc, argv)
 {
   target = context_t::current();
   host.init(host_thread, this);

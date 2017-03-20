@@ -10,7 +10,7 @@
 class htif_pthread_t : public htif_t
 {
  public:
-  htif_pthread_t(const std::vector<std::string>& target_args);
+  htif_pthread_t(int argc, char** argv);
   virtual ~htif_pthread_t();
 
   // target inteface

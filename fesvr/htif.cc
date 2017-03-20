@@ -14,6 +14,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <signal.h>
+#include <getopt.h>
 
 /* Attempt to determine the execution prefix automatically.  autoconf
  * sets PREFIX, and pconfigure sets __PCONFIGURE__PREFIX. */
@@ -38,7 +39,7 @@ static void handle_signal(int sig)
   signal(sig, &handle_signal);
 }
 
-htif_t::htif_t(const std::vector<std::string>& args)
+htif_t::htif_t(int argc, char** argv)
   : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
     tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
     syscall_proxy(this)
@@ -47,26 +48,73 @@ htif_t::htif_t(const std::vector<std::string>& args)
   signal(SIGTERM, &handle_signal);
   signal(SIGABRT, &handle_signal); // we still want to call static destructors
 
-  size_t i;
-  for (i = 0; i < args.size(); i++)
-    if (args[i].length() && args[i][0] != '-' && args[i][0] != '+')
-      break;
+  optind = 0; // reset optind as HTIF may run getopt _after_ others
+  while (1) {
+    static struct option long_options[] = { HTIF_LONG_OPTIONS };
+    int option_index = 0;
+    int c = getopt_long(argc, argv, "-c:", long_options, &option_index);
 
-  hargs.insert(hargs.begin(), args.begin(), args.begin() + i);
-  targs.insert(targs.begin(), args.begin() + i, args.end());
+    if (c == -1) break;
+ retry:
+    switch (c) {
+      case '?': break;
+      case HTIF_LONG_OPTIONS_OPTIND:
+        if (optarg) dynamic_devices.push_back(new rfb_t(atoi(optarg)));
+        else        dynamic_devices.push_back(new rfb_t);
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 1:
+        // [TODO] Remove once disks are supported again
+        throw std::invalid_argument("--disk/+disk unsupported (use a ramdisk)");
+        dynamic_devices.push_back(new disk_t(optarg));
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 2:
+        sig_file = optarg;
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 3:
+        syscall_proxy.set_chroot(optarg);
+        break;
+      case 1: {
+        std::string arg = optarg;
+        if (arg == "+rfb") {
+          c = HTIF_LONG_OPTIONS_OPTIND;
+          optarg = nullptr;
+        }
+        else if (arg.find("+rfb=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND;
+          optarg = optarg + 5;
+        }
+        else if (arg.find("+disk=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 1;
+          optarg = optarg + 6;
+        }
+        else if (arg.find("+signature=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 2;
+          optarg = optarg + 11;
+        }
+        else if (arg.find("+chroot=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 3;
+          optarg = optarg + 8;
+        }
+        else {
+          optind--;
+          goto done_processing;
+        }
+        goto retry;
+      }
+      // Special case non-standard VCS options that should be ignored
+      case 'c': // e.g., '-cm line+cond'
+        if (!strcmp(optarg, "m"))
+          optind++;
+        else
+          throw std::invalid_argument("Expected 'm' to follow VCS special case '-c' option");
+    }
+  }
 
-  for (auto& arg : hargs)
-  {
-    if (arg == "+rfb")
-      dynamic_devices.push_back(new rfb_t);
-    else if (arg.find("+rfb=") == 0)
-      dynamic_devices.push_back(new rfb_t(atoi(arg.c_str() + strlen("+rfb="))));
-    else if (arg.find("+disk=") == 0)
-      dynamic_devices.push_back(new disk_t(arg.c_str() + strlen("+disk=")));
-    else if (arg.find("+signature=") == 0)
-      sig_file = arg.c_str() + strlen("+signature=");
-    else if (arg.find("+chroot=") == 0)
-      syscall_proxy.set_chroot(arg.substr(strlen("+chroot=")).c_str());
+done_processing:
+  while (optind < argc)
+    targs.push_back(argv[optind++]);
+  if (!targs.size()) {
+    throw std::invalid_argument("No binary specified for emulator");
   }
 
   device_list.register_device(&syscall_proxy);
