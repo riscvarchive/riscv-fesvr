@@ -1,5 +1,4 @@
 #include "tsi.h"
-#include "configstring.h"
 #include <cstdio>
 #include <cstdlib>
 
@@ -114,17 +113,7 @@ void tsi_t::switch_to_target(void)
 
 int tsi_t::get_ipi_addrs(addr_t *ipis)
 {
-  const char *cfgstr = config_string.c_str();
-  query_result res;
-  char key[32];
-
-  for (int core = 0; ; core++) {
-    snprintf(key, sizeof(key), "core{%d{0{ipi", core);
-    res = query_config_string(cfgstr, key);
-    if (res.start == NULL)
-      return core;
-    ipis[core] = get_uint(res);
-  }
+  abort();
 }
 
 void tsi_t::tick(bool out_valid, uint32_t out_bits, bool in_ready)

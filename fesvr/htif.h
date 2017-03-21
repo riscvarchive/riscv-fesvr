@@ -23,7 +23,6 @@ class htif_t
   int exit_code();
 
   virtual memif_t& memif() { return mem; }
-  virtual uint32_t num_cores();
 
  protected:
   virtual void reset() = 0;
@@ -40,12 +39,9 @@ class htif_t
 
   const std::vector<std::string>& host_args() { return hargs; }
 
-  std::string config_string;
-
  private:
   memif_t mem;
   bool writezeros;
-  uint32_t _num_cores;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;
   std::string sig_file;
@@ -62,7 +58,6 @@ class htif_t
   std::vector<device_t*> dynamic_devices;
 
   const std::vector<std::string>& target_args() { return targs; }
-  std::string read_config_string(reg_t addr);
 
   friend class memif_t;
   friend class syscall_t;
