@@ -1,7 +1,6 @@
 // See LICENSE for license details.
 
 #include "htif.h"
-#include "configstring.h"
 #include "rfb.h"
 #include "elfloader.h"
 #include "encoding.h"
@@ -40,7 +39,7 @@ static void handle_signal(int sig)
 }
 
 htif_t::htif_t(const std::vector<std::string>& args)
-  : mem(this), _num_cores(0), sig_addr(0), sig_len(0),
+  : mem(this), sig_addr(0), sig_len(0),
     tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
     syscall_proxy(this)
 {
@@ -84,8 +83,6 @@ htif_t::~htif_t()
 
 void htif_t::start()
 {
-  config_string = read_config_string(mem.read_uint32(CONFIG_STRING_ADDR));
-
   if (!targs.empty() && targs[0] != "none")
       load_program();
 
@@ -194,39 +191,6 @@ int htif_t::run()
   stop();
 
   return exit_code();
-}
-
-std::string htif_t::read_config_string(reg_t addr)
-{
-  const int quantum = 16;
-  char buf[quantum];
-  std::string res;
-
-  for ( ; ; addr += quantum) {
-    mem.read(addr, quantum, (uint8_t*)buf);
-    if (memchr(buf, 0, quantum))
-      return res + buf;
-    res.append(buf, quantum);
-  }
-}
-
-uint32_t htif_t::num_cores()
-{
-  if (_num_cores == 0) {
-    char buf[64];
-    for (int cores = 0, harts; ; cores++) {
-      for (harts = 0; ; harts++) {
-        sprintf(buf, "core{%d{%d", cores, harts);
-        if (!query_config_string(config_string.c_str(), buf).start)
-          break;
-        _num_cores++;
-      }
-      if (harts == 0)
-        break;
-    }
-    assert(_num_cores);
-  }
-  return _num_cores;
 }
 
 bool htif_t::done()

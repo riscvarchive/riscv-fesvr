@@ -1,5 +1,4 @@
 fesvr_hdrs = \
-  configstring.h \
   elf.h \
   elfloader.h \
   htif.h \
