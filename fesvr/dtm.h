@@ -20,14 +20,12 @@ class dtm_t : public htif_t
   struct req {
     uint32_t addr;
     uint32_t op;
-    // MW: This is only 32 bits now vs 34, but probably fine to keep it as 64
-    uint64_t data;
+    uint32_t data;
   };
 
   struct resp {
     uint32_t resp;
-    // MW: Again only 32 bits now
-    uint64_t data;
+    uint32_t data;
   };
   
   void tick(
@@ -44,8 +42,8 @@ class dtm_t : public htif_t
   req req_bits() { return req_buf; }
   bool resp_ready() { return true; }
 
-  uint64_t read(uint32_t addr);
-  uint64_t write(uint32_t addr, uint64_t data);
+  uint32_t read(uint32_t addr);
+  uint32_t write(uint32_t addr, uint32_t data);
   void nop();
 
   uint64_t read_csr(unsigned which);
@@ -67,7 +65,13 @@ class dtm_t : public htif_t
   req req_buf;
   resp resp_buf;
 
-  uint32_t run_program(const uint32_t program[], size_t n, uint8_t result);
+  uint32_t run_abstract_command(uint32_t command, const uint32_t program[], size_t program_n,
+                                uint32_t data[], size_t data_n);
+
+  void halt();
+  void resume();
+  uint64_t save_reg(unsigned regno);
+  void restore_reg(unsigned regno, uint64_t val);
   
   uint64_t modify_csr(unsigned which, uint64_t data, uint32_t type);
 
@@ -81,49 +85,18 @@ class dtm_t : public htif_t
 
   bool req_wait;
   bool resp_wait;
-  uint32_t dminfo;
-  // [MW] some information you may need is in abstractcs register
-  uint32_t abstractcs;
+  //uint32_t ram_base;
+  uint32_t data_base;
   
   uint32_t xlen;
 
   static const int max_idle_cycles = 10000;
 
-  // [MW] These addresses aren't defined in the spec
-  // anymore. There are ways to figure them out e.g. at
-  // start up by reading some registers or running programs.
-  // Also, you might want to distinguish between ram_base,
-  // which is basically the old ram_base, and "data_base", which
-  // is for data transfer only. You could just ignore data_base and
-  // do everything through ram_base as this code is currently doing,
-  // or you can use the "abstract commands" to do the data transfer to GPRs
-  // which basically means you don't need to figure out any
-  // of these addresses.
-  
-  // Depending how generic you want this to be, 
-  // you might want to determine these by querying the implementation
-  // vs hard-coding them here, or by using abstract commands you don't even
-  // need these.
-  // You can determine this by running doing aiupc to s0, then using the abstract
-  // command to transfer it out. But, again you probably don't even need to
-  // know this if you do use abstract command.
-  size_t ram_base()  { return 0x400; }
-
-  // MW you can read this in hartinfo.
-  size_t data_base() { return 0x400; }
-  
-  // MW you don't need this anymore. Use ebreak to indicate end of programs.
-  // Debugger has to explicitly tell the hart to resume, it can't resume itself
-  // by executing code like this anymore.
-  //size_t rom_ret()  { return 0x804; }
-
-  // [MW] Updated this to match current spec
-  //size_t ram_words() { return ((dminfo >> 10) & 63) + 1; }
-  size_t ram_words() { return ((abstractcs >> 24) & 0x1F) }
-  size_t data_words()    { return ((abstractcs >> 0)  & 0xF) }
+  size_t ram_words;
+  size_t data_words;
                                   
   uint32_t get_xlen();
-  uint64_t do_command(dtm_t::req r);
+  uint32_t do_command(dtm_t::req r);
 
   void parse_args(const std::vector<std::string>& args);
   void register_devices();
