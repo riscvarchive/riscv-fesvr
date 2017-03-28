@@ -64,18 +64,53 @@ void dtm_t::nop()
 
 uint32_t dtm_t::run_program(const uint32_t program[], size_t n, size_t result)
 {
+  // MW many changes here.
+  // I'm writing this assuming you would just use the program
+  // buffer implementation and not use the 'abstract command'
+  // to transfer data. At least that is what this function should mean.
+  
   assert(n <= ram_words());
   assert(result < ram_words());
 
-  uint64_t interrupt_bit = 0x200000000U;
+  // MW -- no longer use the 34-bit data with interrupt bit.
+  // write the program into progbuf, then write COMMAND register
+  // to make it happen.
+  //uint64_t interrupt_bit = 0x200000000U;
   for (size_t i = 0; i < n; i++)
-    write(i, program[i] | (i == n-1 ? interrupt_bit : 0));
+    write(DMI_PROGBUF0 + i, program[i]);//
 
-  while (true) {
-    uint64_t rdata = read(result);
-    if (!(rdata & interrupt_bit))
-      return (uint32_t)rdata;
+  // The current code halted and resumed the hart for every single one of
+  // these accesses. This seems pretty inefficient, but here is what you'd have to do to get the same effect.
+  // (The spec has a "quick access" command which isn't currently implemented that does more of the
+  // old behavior. But I'm still wondering if that's what you really wanted to do anyway for e.g. a
+  // big code download.
+  write(DMI_DMCONTROL, DMCONTROL_HALTREQ);
+  // wait for the hart to actually halt
+  while ((read(DMI_DMCONTROL) & DMI_DMCONTROL_ALLHALTED) == 0);
+  // Your current program assumes that you can just use s0 and s1.
+  // You either need to rewrite those snippets to save s0 and s1 somewhere,
+  // or save them here
+  
+  // Make it execute the program
+  write(DMI_COMMAND, AC_ACCESS_REGISTER_POSTEXEC); // This just executes program buffer without doing anything else.    //| (i == n-1 ? interrupt_bit : 0));
+  // wait for not busy. ROM no longer handles
+  // putting error codes into the RAM automatically
+  uint32_t abstractcs;
+  do { abstractcs = read(DMI_ABSTRACTCS) }
+  while (abstractcs & DMI_ABSTRACTCS_BUSY);
+  if (abstractcs & DMI_ABSTRACTCS_CMDERR) {
+    //handle error e.g. exception
   }
+
+  uint64_t rdata = read(DMI_PROGBUF0 + result);
+
+  // You would need to restore s0 and s1 here given your current program.
+  
+  // Resume the hart
+  write (DMI_COMMAND, DMCONTROL_RESUMEREQ);
+  // wait for it to be running
+  while ((read(DMI_DMCONTROL) & DMI_CONTROL_ALLRUNNING == 0);
+  return uint32_t rdata;
 }
 
 size_t dtm_t::chunk_align()
@@ -91,12 +126,28 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
   int addr_word = result_word;
   int prog_words = addr_word + (xlen/32);
 
+  // This is what I mean about the abstract command.
+  // Since progbuf_base is not really specified, you can
+  // replace it with the abstract command way of doing this
+  // to generate this instruction.
+
+  // Also, the Debug ROM used to automatically save s0 and s1 for you.
+  // That is no longer the case. If your program uses those registers,
+  // then you need to save them either within this program or
+  // before calling this function.
+
+  // Also, we need to actually halt and resume the hart somewhere.
+  // What is calling these functions? Do we really want to halt
+  // and resume the hart for every one of these accesses?
+  
+
   prog[0] = LOAD(xlen, S0, X0, ram_base() + addr_word * 4);
   for (size_t i = 0; i < len/(xlen/8); i++) {
     prog[2*i+1] = LOAD(xlen, S1, S0, i * (xlen/8));
     prog[2*i+2] = STORE(xlen, S1, X0, ram_base() + (result_word * 4) + (i * (xlen/8)));
   }
-  prog[result_word - 1] = JUMP(rom_ret(), ram_base() + (result_word - 1) * 4);
+  // MW this should just be ebreak now, that is how you indicate the end of the program.
+  prog[result_word - 1] = EBREAK;//JUMP(rom_ret(), ram_base() + (result_word - 1) * 4);
   prog[addr_word] = (uint32_t)taddr;
   prog[addr_word + 1] = (uint32_t)(taddr >> 32);
 
@@ -118,7 +169,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
     prog[2*i+1] = LOAD(xlen, S1, X0, ram_base() + (data_word * 4) + (i * (xlen/8)));
     prog[2*i+2] = STORE(xlen, S1, S0, i * (xlen/8));
   }
-  prog[data_word - 1] = JUMP(rom_ret(), ram_base() + (data_word - 1)*4);
+  prog[data_word - 1] = EBREAK; //JUMP(rom_ret(), ram_base() + (data_word - 1)*4);
   memcpy(prog + data_word, src, len);
   prog[addr_word] = (uint32_t)taddr;
   prog[addr_word + 1] = (uint32_t)(taddr >> 32);
@@ -178,7 +229,7 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
     LOAD(xlen, S0, X0, ram_base() + data_word * 4),
     CSRRx(type, S0, which, S0),
     STORE(xlen, S0, X0, ram_base() + data_word * 4),
-    JUMP(rom_ret(), ram_base() + 12),
+    EBREAK(),//JUMP(rom_ret(), ram_base() + 12),
     (uint32_t)data,
     (uint32_t)(data >> 32)
   };
@@ -204,7 +255,7 @@ uint32_t dtm_t::get_xlen()
     ADDI(S1, X0, 62),
     SRL(S0, S0, S1),
     STORE(32, S0, X0, ram_base()),
-    JUMP(rom_ret(), ram_base() + 16)
+    EBREAK//JUMP(rom_ret(), ram_base() + 16)
   };
 
   uint32_t result = run_program(prog, sizeof(prog)/sizeof(*prog), 0);
@@ -219,7 +270,7 @@ void dtm_t::fence_i()
 {
   const uint32_t prog[] = {
     FENCE_I,
-    JUMP(rom_ret(), ram_base() + 4)
+    EBREAK,//JUMP(rom_ret(), ram_base() + 4)
   };
 
   run_program(prog, sizeof(prog)/sizeof(*prog), 0);
