@@ -56,7 +56,6 @@
 
 uint32_t dtm_t::do_command(dtm_t::req r)
 {
-
   req_buf = r;
   target->switch_to();
   assert(resp_buf.resp == 0);
@@ -65,8 +64,7 @@ uint32_t dtm_t::do_command(dtm_t::req r)
 
 uint32_t dtm_t::read(uint32_t addr)
 {
-  uint32_t data = do_command((req){addr, 1, 0});
-  return data;
+  return do_command((req){addr, 1, 0});
 }
 
 uint32_t dtm_t::write(uint32_t addr, uint32_t data)
@@ -85,14 +83,14 @@ void dtm_t::halt()
   while(get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLHALTED) == 0);
 }
 
-void dtm_t::resume(){
-  
+void dtm_t::resume()
+{
   write(DMI_DMCONTROL, DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE);
   while (get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLRUNNING) == 0); 
 }
 
-uint64_t dtm_t::save_reg(unsigned regno){
-
+uint64_t dtm_t::save_reg(unsigned regno)
+{
   uint32_t data[xlen/(8*4)];
   uint32_t command = AC_ACCESS_REGISTER_TRANSFER | AC_AR_SIZE(xlen) | AC_AR_REGNO(regno);
   RUN_AC_OR_DIE(command, 0, 0, data, xlen / (8*4));
@@ -104,8 +102,8 @@ uint64_t dtm_t::save_reg(unsigned regno){
   return result;
 }
 
-void dtm_t::restore_reg(unsigned regno, uint64_t val) {
-
+void dtm_t::restore_reg(unsigned regno, uint64_t val)
+{
   uint32_t data[xlen/(8*4)];
   data[0] = (uint32_t) val;
   if (xlen > 32) {
@@ -124,8 +122,7 @@ void dtm_t::restore_reg(unsigned regno, uint64_t val) {
 uint32_t dtm_t::run_abstract_command(uint32_t command,
                                      const uint32_t program[], size_t program_n,
                                      uint32_t data[], size_t data_n)
-{
-  
+{ 
   assert(program_n <= ram_words);
   assert(data_n    <= data_words);
   
@@ -160,7 +157,6 @@ size_t dtm_t::chunk_align()
 
 void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 {
-  
   uint32_t prog[ram_words];
   uint32_t data[data_words];
 
@@ -207,14 +203,13 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 
   restore_reg(S0, s0);
   restore_reg(S1, s1);
-  
-  resume();
-  
+
+  resume(); 
+
 }
 
 void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
-{
-  
+{  
   uint32_t prog[ram_words];
   uint32_t data[data_words];
 
@@ -258,48 +253,6 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
     RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
     
   }
-//  
-//  /////// READ FOR CHECKING
-//  
-//  uint8_t check[len];
-//
-//  uint8_t* check_curr = check;
-//  prog[0] = LOAD(xlen, S1, S0, 0);
-//  prog[1] = ADDI(S0, S0, xlen/8);
-//  prog[2] = EBREAK;
-//  
-//  data[0] = (uint32_t) taddr;
-//  if (xlen > 32) {
-//    data[1] = (uint32_t) (taddr >> 32);
-//  }
-//  
-//  // Write s0 with the address, then execute program buffer.
-//  // This will get S1 with the data and increment s0.
-//  command = AC_ACCESS_REGISTER_TRANSFER |
-//    AC_ACCESS_REGISTER_WRITE |
-//    AC_ACCESS_REGISTER_POSTEXEC |
-//    AC_AR_SIZE(xlen) | 
-//    AC_AR_REGNO(S0);
-//
-//  RUN_AC_OR_DIE(command, prog, 3, data, xlen/(4*8));
-//
-//  // Read out the data that's in S1, read the next value of S1,
-//  // and increment S0. On the last pass, just read the data in S1.
-//  for (size_t i = 0; i < (len * 8 /  xlen); i++){
-//    command = AC_ACCESS_REGISTER_TRANSFER |
-//      AC_AR_SIZE(xlen) |
-//      AC_AR_REGNO(S1);
-//    if ((i + 1) < (len * 8 / xlen)) {
-//      command |= AC_ACCESS_REGISTER_POSTEXEC;
-//    }
-//    RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
-//
-//    memcpy(check_curr, data, xlen/8);
-//    check_curr += xlen/8;
-//  }
-//
-//  /////// END OF CHECKING
-//  
   restore_reg(S0, s0);
   restore_reg(S1, s1);
 
@@ -307,7 +260,8 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 
 }
 
-void dtm_t::die(uint32_t cmderr){
+void dtm_t::die(uint32_t cmderr)
+{
   const char * codes[] = {
     "OK",
     "BUSY",
@@ -363,7 +317,6 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
   restore_reg(S1, s1);
 
   resume();
-  
 }
 
 uint64_t dtm_t::write_csr(unsigned which, uint64_t data)
@@ -388,11 +341,13 @@ uint64_t dtm_t::read_csr(unsigned which)
 
 uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 {
-  
   halt();
-  
+
+  // This code just uses DSCRATCH to save S0
+  // and data_base to do the transfer so we don't
+  // need to run more commands to save and restore
+  // S0.
   uint32_t prog[] = {
-    // Save S0 so we can use it.
     CSRRx(WRITE, S0, CSR_DSCRATCH, S0),
     LOAD(xlen, S0, X0, data_base),
     CSRRx(type, S0, which, S0),
@@ -403,7 +358,7 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 
   uint32_t adata[] = {(uint32_t) data,
                       (uint32_t) (data >> 32)};
-
+  
   //TODO: Use transfer = 0. For now both HW and OpenOCD
   // ignore transfer bit, so use "store to X0" NOOP.
   uint32_t command = AC_ACCESS_REGISTER_POSTEXEC |
@@ -420,7 +375,6 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
   
   resume();
   return res;  
-
 }
 
 size_t dtm_t::chunk_max_size()
@@ -431,8 +385,7 @@ size_t dtm_t::chunk_max_size()
 
 uint32_t dtm_t::get_xlen()
 {
-
-   // Attempt to read S0 to find out what size it is.
+  // Attempt to read S0 to find out what size it is.
   // You could also attempt to run code, but you need to save registers
   // to do that anyway. If what you really want to do is figure out
   // the size of S0 so you can save it later, then do that.
@@ -460,8 +413,8 @@ uint32_t dtm_t::get_xlen()
   if (cmderr == 0){
     return 32;
   }
-  throw std::runtime_error("FESVR DTM can't determine XLEN. Aborting");
   
+  throw std::runtime_error("FESVR DTM can't determine XLEN. Aborting");
 }
 
 void dtm_t::fence_i()
@@ -493,12 +446,10 @@ void host_thread_main(void* arg)
 
 void dtm_t::reset()
 {
-  fence_i();
-  // set pc. Each of these functions already
+  // Each of these functions already
   // does a halt and resume.
+  fence_i();
   write_csr(0x7b1, 0x80000000U);
-
-  //Do we want reset to actually reset the whole system?
   
 }
 
@@ -510,11 +461,17 @@ void dtm_t::idle()
 
 void dtm_t::producer_thread()
 {
+  // Learn about the Debug Module and assert things we
+  // depend on in this code.
 
+  // These are checked every time we run an abstract command.
   uint32_t abstractcs = read(DMI_ABSTRACTCS);
   ram_words = get_field(abstractcs, DMI_ABSTRACTCS_PROGSIZE);
   data_words = get_field(abstractcs, DMI_ABSTRACTCS_DATACOUNT);
 
+  // These things are only needed for the 'modify_csr' function.
+  // That could be re-written to not use these at some performance
+  // overhead.
   uint32_t hartinfo = read(DMI_HARTINFO);
   assert(get_field(hartinfo, DMI_HARTINFO_NSCRATCH) > 0);
   assert(get_field(hartinfo, DMI_HARTINFO_DATAACCESS));
