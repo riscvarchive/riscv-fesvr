@@ -37,7 +37,7 @@
 #define S1 9
 
 #define AC_AR_REGNO(x) ((0x1000 | x) << AC_ACCESS_REGISTER_REGNO_OFFSET)
-#define AC_AR_SIZE(x)  ((x == 64 ? 3 : 2) << AC_ACCESS_REGISTER_SIZE_OFFSET)
+#define AC_AR_SIZE(x)  (((x == 128)? 4 : (x == 64 ? 3 : 2)) << AC_ACCESS_REGISTER_SIZE_OFFSET)
 
 #define WRITE 1
 #define SET 2
@@ -49,6 +49,7 @@
 
 uint32_t dtm_t::do_command(dtm_t::req r)
 {
+
   req_buf = r;
   target->switch_to();
   assert(resp_buf.resp == 0);
@@ -57,7 +58,8 @@ uint32_t dtm_t::do_command(dtm_t::req r)
 
 uint32_t dtm_t::read(uint32_t addr)
 {
-  return do_command((req){addr, 1, 0});
+  uint32_t data = do_command((req){addr, 1, 0});
+  return data;
 }
 
 uint32_t dtm_t::write(uint32_t addr, uint32_t data)
@@ -72,13 +74,13 @@ void dtm_t::nop()
 
 void dtm_t::halt()
 {
-  write(DMI_DMCONTROL, DMI_DMCONTROL_HALTREQ);
+  write(DMI_DMCONTROL, DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE);
   while(get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLHALTED) == 0);
 }
 
 void dtm_t::resume(){
   
-  write(DMI_DMCONTROL, DMI_DMCONTROL_RESUMEREQ);
+  write(DMI_DMCONTROL, DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE);
   while (get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLRUNNING) == 0); 
 }
 
@@ -115,19 +117,25 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
                                      const uint32_t program[], size_t program_n,
                                      uint32_t data[], size_t data_n)
 {
+
+  //printf("RUNNING ABSTRACT COMMAND\n");
   
   assert(program_n <= ram_words);
   assert(data_n    <= data_words);
   
   for (size_t i = 0; i < program_n; i++) {
     write(DMI_PROGBUF0 + i, program[i]);
+    //printf("    Set DMI_PROGBUF%d to %08x\n", (uint32_t) i, program[i]);
   }
   
   for (size_t i = 0; i < data_n; i++) {
     write(DMI_DATA0 + i, data[i]);
+    //printf("    Set DMI_DATA%d to %08x\n", (uint32_t) i, data[i]);
   }
-  
+
+
   write(DMI_COMMAND, command);
+  //printf("Wrote COMMAND to be %08x\n", command);
   
   // Wait for not busy and then check for error.
   uint32_t abstractcs;
@@ -150,6 +158,8 @@ size_t dtm_t::chunk_align()
 
 void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 {
+
+  printf("READING CHUNK of len %d at addr 0x%08x%08x\n", (uint32_t) len, (uint32_t) (taddr >> 32), (uint32_t) taddr);
   uint32_t prog[ram_words];
   uint32_t data[data_words];
 
@@ -201,6 +211,8 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 {
 
+  printf("WRITING CHUNK of len %d at addr 0x%08x%08x\n", (uint32_t) len, (uint32_t) (taddr >> 32), (uint32_t) taddr);
+
   uint32_t prog[ram_words];
   uint32_t data[data_words];
 
@@ -248,6 +260,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 
 void dtm_t::clear_chunk(uint64_t taddr, size_t len)
 {
+  printf ("CLEARING CHUNK of len %d (%x) at 0x%08x%08x \n", (uint32_t) len, (uint32_t) len, (uint32_t) (taddr >> 32), (uint32_t) taddr);
   uint32_t prog[ram_words];
   uint32_t data[data_words];
   
@@ -312,6 +325,7 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 {
   
   halt();
+  printf ("MODIFY CSR %x\n", which);
   
   uint32_t prog[] = {
     // Save S0 so we can use it.
@@ -348,7 +362,8 @@ size_t dtm_t::chunk_max_size()
 
 uint32_t dtm_t::get_xlen()
 {
-  // Attempt to read S0 to find out what size it is.
+
+   // Attempt to read S0 to find out what size it is.
   // You could also attempt to run code, but you need to save registers
   // to do that anyway. If what you really want to do is figure out
   // the size of S0 so you can save it later, then do that.
@@ -361,6 +376,7 @@ uint32_t dtm_t::get_xlen()
   cmderr = run_abstract_command(command | AC_AR_SIZE(128), prog, 0, data, 0);
   if (cmderr == 0){
     // We don't currently support 128 bit.
+    printf("ABORT. We don't support this.\n");
     abort();
     return 128;
   }
@@ -377,6 +393,7 @@ uint32_t dtm_t::get_xlen()
     return 32;
   }
 
+  printf("Can't determine XLEN. Aborting.");
   abort();
   
 }
@@ -423,13 +440,18 @@ void dtm_t::producer_thread()
   data_words = get_field(abstractcs, DMI_ABSTRACTCS_DATACOUNT);
 
   uint32_t hartinfo = read(DMI_HARTINFO);
-  assert(get_field(hartinfo, DMI_HARTINFO_NSCRATCH) > 1);
+  assert(get_field(hartinfo, DMI_HARTINFO_NSCRATCH) > 0);
   assert(get_field(hartinfo, DMI_HARTINFO_DATAACCESS));
 
   data_base = get_field(hartinfo, DMI_HARTINFO_DATAADDR);
-  
-  xlen = get_xlen();
 
+  // Enable the debugger.
+  write(DMI_DMCONTROL, DMI_DMCONTROL_DMACTIVE);
+  
+  halt();
+  xlen = get_xlen();
+  resume();
+  
   htif_t::run();
 
   while (true)
