@@ -69,7 +69,7 @@ class dtm_t : public htif_t
   uint32_t run_abstract_command(uint32_t command, const uint32_t program[], size_t program_n,
                                 uint32_t data[], size_t data_n);
 
-  void die();
+  void die(uint32_t cmderr);
   void halt();
   void resume();
   uint64_t save_reg(unsigned regno);
