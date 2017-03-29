@@ -270,7 +270,7 @@ void dtm_t::die(uint32_t cmderr)
     "HALT/RESUME"
   };
   const char * msg;
-  if (cmderr <= (sizeof(codes) / sizeof(*codes))){
+  if (cmderr < (sizeof(codes) / sizeof(*codes))){
     msg = codes[cmderr];
   } else {
     msg = "OTHER";
