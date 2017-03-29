@@ -38,6 +38,7 @@ class dtm_t : public htif_t
     resp  resp_bits
   );
 
+  
   bool req_valid() { return req_wait; }
   req req_bits() { return req_buf; }
   bool resp_ready() { return true; }
@@ -68,6 +69,7 @@ class dtm_t : public htif_t
   uint32_t run_abstract_command(uint32_t command, const uint32_t program[], size_t program_n,
                                 uint32_t data[], size_t data_n);
 
+  void die();
   void halt();
   void resume();
   uint64_t save_reg(unsigned regno);

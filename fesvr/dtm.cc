@@ -88,7 +88,9 @@ uint64_t dtm_t::save_reg(unsigned regno){
 
   uint32_t data[xlen/(8*4)];
   uint32_t command = AC_ACCESS_REGISTER_TRANSFER | AC_AR_SIZE(xlen) | AC_AR_REGNO(regno);
-  run_abstract_command(command, 0, 0, data, xlen / (8*4)); 
+  if (run_abstract_command(command, 0, 0, data, xlen / (8*4))) {
+    die();
+  }
   uint64_t result = data[0];
   if (xlen > 32) {
     result |= ((uint64_t)data[1]) << 32;
@@ -109,7 +111,9 @@ void dtm_t::restore_reg(unsigned regno, uint64_t val) {
     AC_AR_SIZE(xlen) |
     AC_AR_REGNO(regno);
   
-  run_abstract_command(command, 0, 0, data, xlen / (8*4)); 
+  if (run_abstract_command(command, 0, 0, data, xlen / (8*4))) {
+    die();
+  }
 
 }
 
@@ -118,24 +122,24 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
                                      uint32_t data[], size_t data_n)
 {
 
-  //printf("RUNNING ABSTRACT COMMAND\n");
+  printf("RUNNING ABSTRACT COMMAND\n");
   
   assert(program_n <= ram_words);
   assert(data_n    <= data_words);
   
   for (size_t i = 0; i < program_n; i++) {
     write(DMI_PROGBUF0 + i, program[i]);
-    //printf("    Set DMI_PROGBUF%d to %08x\n", (uint32_t) i, program[i]);
+    printf("    Set DMI_PROGBUF%d to %08x\n", (uint32_t) i, program[i]);
   }
   
   for (size_t i = 0; i < data_n; i++) {
     write(DMI_DATA0 + i, data[i]);
-    //printf("    Set DMI_DATA%d to %08x\n", (uint32_t) i, data[i]);
+    printf("    Set DMI_DATA%d to %08x\n", (uint32_t) i, data[i]);
   }
 
 
   write(DMI_COMMAND, command);
-  //printf("Wrote COMMAND to be %08x\n", command);
+  printf("Wrote COMMAND to be %08x\n", command);
   
   // Wait for not busy and then check for error.
   uint32_t abstractcs;
@@ -145,6 +149,7 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
   
   for (size_t i = 0; i < data_n; i++){
     data[i] = read(DMI_DATA0 + i);
+    printf("     Read DMI_DATA%d to %08x\n", (uint32_t) i , data[i]);
   }
   
   return get_field(abstractcs, DMI_ABSTRACTCS_CMDERR);
@@ -160,6 +165,7 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 {
 
   printf("READING CHUNK of len %d at addr 0x%08x%08x\n", (uint32_t) len, (uint32_t) (taddr >> 32), (uint32_t) taddr);
+  
   uint32_t prog[ram_words];
   uint32_t data[data_words];
 
@@ -167,7 +173,9 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 
   halt();
 
+  printf("Save S0\n");
   uint64_t s0 = save_reg(S0);
+  printf("Save S1\n");
   uint64_t s1 = save_reg(S1);
   
   prog[0] = LOAD(xlen, S1, S0, 0);
@@ -187,23 +195,38 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
     AC_AR_SIZE(xlen) | 
     AC_AR_REGNO(S0);
 
-  run_abstract_command (command, prog, 3, data, xlen/(4*8));
+  if (run_abstract_command (command, prog, 3, data, xlen/(4*8))) {
+    die();
+  }
 
   // TODO: could use autoexec here.
-  for (size_t i = 0; i < len / (xlen/(4)); i++){
+  for (size_t i = 0; i < (len * 8 / xlen); i++){
     command = AC_ACCESS_REGISTER_TRANSFER |
-      AC_ACCESS_REGISTER_POSTEXEC |
       AC_AR_SIZE(xlen) |
       AC_AR_REGNO(S1);
-    run_abstract_command(command, 0, 0, data, xlen/(4*8));
+    if ((i + 1) < (len * 8 / xlen)) {
+      command |= AC_ACCESS_REGISTER_POSTEXEC;
+    }
+    if (run_abstract_command(command, 0, 0, data, xlen/(4*8))){
+      die();
+    }
 
     memcpy(curr, data, xlen/8);
     curr += xlen/8;
   }
 
-  restore_reg(S0, s0);
-  restore_reg(S1, s1);
 
+  printf("    Read %d bytes: ", (uint32_t) len);
+  for (uint8_t* i = (uint8_t*) dst; i < (uint8_t*) dst + len; i++){
+    printf (" %x ", *i);
+  }
+  printf("\n");
+
+  printf("Restore S0\n");
+  restore_reg(S0, s0);
+  printf("Restore S1\n");
+  restore_reg(S1, s1);
+  
   resume();
   
 }
@@ -211,7 +234,15 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 {
 
+  uint8_t check[len];
+  
   printf("WRITING CHUNK of len %d at addr 0x%08x%08x\n", (uint32_t) len, (uint32_t) (taddr >> 32), (uint32_t) taddr);
+  printf("    Writing %d bytes: ", (uint32_t) len);
+  for (uint8_t* i = (uint8_t*) src; i < (uint8_t*) src + len; i++){
+    printf (" %x ", *i);
+  }
+  printf("\n");
+
 
   uint32_t prog[ram_words];
   uint32_t data[data_words];
@@ -219,43 +250,122 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
   const uint8_t * curr = (const uint8_t*) src;
 
   halt();
+  printf("Save S0\n");
   uint64_t s0 = save_reg(S0);
+  printf("Save S1\n");
   uint64_t s1 = save_reg(S1);
   
   prog[0] = STORE(xlen, S1, S0, 0);
   prog[1] = ADDI(S0, S0, xlen/8);
   prog[2] = EBREAK;
-
+  
   data[0] = (uint32_t) taddr;
   if (xlen > 32) {
     data[1] = (uint32_t) (taddr >> 32);
   }
 
-  // Write s0 with the address.
+  printf("Initial Write\n");
+  // Write the program (not used yet).
+  // Write s0 with the address. 
   uint32_t command = AC_ACCESS_REGISTER_TRANSFER |
     AC_ACCESS_REGISTER_WRITE |
     AC_AR_SIZE(xlen) |
     AC_AR_REGNO(S0);
-  run_abstract_command (command, prog, 3, data, xlen/(4*8));
+  if (run_abstract_command (command, prog, 3, data, xlen/(4*8))) {
+    die();
+  }
 
-  // TODO: could use autoexec here.
-  for (size_t i = 0; i < len / (xlen/8); i++){
-    command = AC_ACCESS_REGISTER_TRANSFER |
-      AC_ACCESS_REGISTER_POSTEXEC |
-      AC_AR_SIZE(xlen) |
-      AC_AR_REGNO(S1);
-    run_abstract_command(command, 0, 0, data, xlen/(4*8));
-
+  printf(" Follow-up Writes\n");
+  // Write S1 with data, then execution stores S1 to
+  // S0 and increments S0.
+  // Each time we write XLEN bits.
+  for (size_t i = 0; i < (len * 8 / xlen); i++){
     memcpy(data, curr, xlen/8);
     curr += xlen/8;
+    command = AC_ACCESS_REGISTER_TRANSFER |
+      AC_ACCESS_REGISTER_POSTEXEC |
+      AC_ACCESS_REGISTER_WRITE | 
+      AC_AR_SIZE(xlen) |
+      AC_AR_REGNO(S1);
+    if (run_abstract_command(command, 0, 0, data, xlen/(4*8))){
+      die();
+    }
     
   }
 
+  /////// READ FOR CHECKING
+
+  printf("  STARTING CHECK READBACK\n");
+  uint8_t* check_curr = check;
+  prog[0] = LOAD(xlen, S1, S0, 0);
+  prog[1] = ADDI(S0, S0, xlen/8);
+  prog[2] = EBREAK;
+  
+  data[0] = (uint32_t) taddr;
+  if (xlen > 32) {
+    data[1] = (uint32_t) (taddr >> 32);
+  }
+  
+  // Write s0 with the address, then execute program buffer.
+  // This will get S1 with the data and increment s0.
+  command = AC_ACCESS_REGISTER_TRANSFER |
+    AC_ACCESS_REGISTER_WRITE |
+    AC_ACCESS_REGISTER_POSTEXEC |
+    AC_AR_SIZE(xlen) | 
+    AC_AR_REGNO(S0);
+
+  if (run_abstract_command (command, prog, 3, data, xlen/(4*8))) {
+    die();
+  }
+
+  // Read out the data that's in S1, read the next value of S1,
+  // and increment S0. On the last pass, just read the data in S1.
+  for (size_t i = 0; i < (len * 8 /  xlen); i++){
+    command = AC_ACCESS_REGISTER_TRANSFER |
+      AC_AR_SIZE(xlen) |
+      AC_AR_REGNO(S1);
+    if ((i + 1) < (len * 8 / xlen)) {
+      command |= AC_ACCESS_REGISTER_POSTEXEC;
+    }
+    if (run_abstract_command(command, 0, 0, data, xlen/(4*8))) {
+      die();
+    }
+
+    memcpy(check_curr, data, xlen/8);
+    check_curr += xlen/8;
+  }
+    
+  printf("    Read %d Check bytes: ", (uint32_t) len);
+  for (uint8_t* i = (uint8_t*) check; i < (uint8_t*) check + len; i++){
+    printf (" %x ", *i);
+  }
+  printf("\n");
+
+  for (size_t i = 0; i < len; i++){
+    if (check[i] != ((uint8_t*) src)[i]) {
+      printf("Mismatch at byte %d, Read %x Wrote %x\n", (uint32_t) i ,
+             check[i],
+             ((uint8_t*) src)[i]);
+      die();
+    }
+  }
+
+  /////// END OF CHECKING
+
+  printf("Restore S0\n");
   restore_reg(S0, s0);
+  printf("Restore S1\n");
   restore_reg(S1, s1);
 
   resume();
 
+}
+
+void dtm_t:: die(){
+  printf("DIE!\n");
+  while(1){
+    idle();
+  }
 }
 
 void dtm_t::clear_chunk(uint64_t taddr, size_t len)
@@ -265,7 +375,9 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
   uint32_t data[data_words];
   
   halt();
+  printf("Save S0\n");
   uint64_t s0 = save_reg(S0);
+  printf("Save S1\n");
   uint64_t s1 = save_reg(S1);
 
   uint32_t command;
@@ -277,7 +389,9 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
     AC_ACCESS_REGISTER_WRITE |
     AC_AR_SIZE(xlen) |
     AC_AR_REGNO(S0);
-  run_abstract_command(command, 0, 0, data, xlen/(4*8)); 
+  if (run_abstract_command(command, 0, 0, data, xlen/(4*8))) {
+    die();
+  }
 
   // S1 = Addr + len, loop until S0 = S1
   prog[0] = STORE(xlen, X0, S0, 0);
@@ -292,7 +406,9 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
     AC_AR_SIZE(xlen) |
     AC_AR_REGNO(S1)  |
     AC_ACCESS_REGISTER_POSTEXEC;
-  run_abstract_command(command, prog, 4, data, xlen/(4*8)); 
+  if (run_abstract_command(command, prog, 4, data, xlen/(4*8))) {
+    die();
+  }
 
   restore_reg(S0, s0);
   restore_reg(S1, s1);
@@ -323,9 +439,10 @@ uint64_t dtm_t::read_csr(unsigned which)
 
 uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 {
+
+  //printf ("MODIFY CSR %x with %08x%08x, type = %d\n", which, (uint32_t) (data >> 32), (uint32_t) data, type);
   
   halt();
-  printf ("MODIFY CSR %x\n", which);
   
   uint32_t prog[] = {
     // Save S0 so we can use it.
@@ -339,10 +456,18 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 
   uint32_t adata[] = {(uint32_t) data,
                       (uint32_t) (data >> 32)};
+
+  //TODO: Use transfer = 0. For now both HW and OpenOCD
+  // ignore transfer bit, so use "store to X0" NOOP.
+  uint32_t command = AC_ACCESS_REGISTER_POSTEXEC |
+    AC_ACCESS_REGISTER_TRANSFER |
+    AC_ACCESS_REGISTER_WRITE |
+    AC_AR_SIZE(xlen) |
+    AC_AR_REGNO(X0);
   
-  uint32_t command = AC_ACCESS_REGISTER_POSTEXEC;
-  
-  run_abstract_command (command, prog, sizeof(prog) / sizeof(*prog), adata, xlen/(4*8));
+  if (run_abstract_command (command, prog, sizeof(prog) / sizeof(*prog), adata, xlen/(4*8))) {
+    die();
+  }
   
   uint64_t res = adata[0];
   if (xlen == 64)
@@ -356,7 +481,7 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 size_t dtm_t::chunk_max_size()
 {
   // Arbitrary choice. 4k Page size seems reasonable.
-  return 4096;
+  return 256;
 
 }
 
@@ -376,7 +501,7 @@ uint32_t dtm_t::get_xlen()
   cmderr = run_abstract_command(command | AC_AR_SIZE(128), prog, 0, data, 0);
   if (cmderr == 0){
     // We don't currently support 128 bit.
-    printf("ABORT. We don't support this.\n");
+    printf("DTM ABORT. We don't support this.\n");
     abort();
     return 128;
   }
@@ -392,21 +517,31 @@ uint32_t dtm_t::get_xlen()
   if (cmderr == 0){
     return 32;
   }
-
-  printf("Can't determine XLEN. Aborting.");
-  abort();
+  throw std::runtime_error("Can't determine XLEN. Aborting");
   
 }
 
 void dtm_t::fence_i()
 {
+  halt();
+
   const uint32_t prog[] = {
     FENCE_I,
     EBREAK
   };
 
-  uint32_t command = AC_ACCESS_REGISTER_POSTEXEC;
-  run_abstract_command(command, prog, sizeof(prog)/sizeof(*prog), 0, 0);
+  //TODO: Use the transfer = 0.
+  uint32_t command = AC_ACCESS_REGISTER_POSTEXEC |
+    AC_ACCESS_REGISTER_TRANSFER |
+    AC_ACCESS_REGISTER_WRITE |
+    AC_AR_SIZE(xlen) |
+    AC_AR_REGNO(X0);
+
+  if (run_abstract_command(command, prog, sizeof(prog)/sizeof(*prog), 0, 0)) {
+    die();
+  }
+  
+  resume();
 
 }
 
