@@ -129,11 +129,14 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
   for (size_t i = 0; i < program_n; i++) {
     write(DMI_PROGBUF0 + i, program[i]);
   }
-  
-  for (size_t i = 0; i < data_n; i++) {
-    write(DMI_DATA0 + i, data[i]);
-  }
 
+  if (get_field(command, AC_ACCESS_REGISTER_WRITE) &&
+      get_field(command, AC_ACCESS_REGISTER_TRANSFER)) {
+    for (size_t i = 0; i < data_n; i++) {
+      write(DMI_DATA0 + i, data[i]);
+    }
+  }
+  
   write(DMI_COMMAND, command);
   
   // Wait for not busy and then check for error.
@@ -141,9 +144,12 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
   do {
     abstractcs = read(DMI_ABSTRACTCS);
   } while (abstractcs & DMI_ABSTRACTCS_BUSY);
-  
-  for (size_t i = 0; i < data_n; i++){
-    data[i] = read(DMI_DATA0 + i);
+
+  if ((get_field(command, AC_ACCESS_REGISTER_WRITE) == 0) &&
+      get_field(command, AC_ACCESS_REGISTER_TRANSFER)) {
+    for (size_t i = 0; i < data_n; i++){
+      data[i] = read(DMI_DATA0 + i);
+    }
   }
   
   return get_field(abstractcs, DMI_ABSTRACTCS_CMDERR);
@@ -238,26 +244,47 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
   
   RUN_AC_OR_DIE(command, prog, 3, data, xlen/(4*8));
 
+  // Use Autoexec for more than one word of transfer.
   // Write S1 with data, then execution stores S1 to
-  // S0 and increments S0.
+  // 0(S0) and increments S0.
   // Each time we write XLEN bits.
-  for (size_t i = 0; i < (len * 8 / xlen); i++){
+  memcpy(data, curr, xlen/8);
+  curr += xlen/8;
+  
+  command = AC_ACCESS_REGISTER_TRANSFER |
+    AC_ACCESS_REGISTER_POSTEXEC |
+    AC_ACCESS_REGISTER_WRITE | 
+    AC_AR_SIZE(xlen) |
+    AC_AR_REGNO(S1);
+
+  RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
+
+  uint32_t abstractcs;
+  for (size_t i = 1; i < (len * 8 / xlen); i++){
+    if (i == 1) {
+      write(DMI_ABSTRACTAUTO, 1 << DMI_ABSTRACTAUTO_AUTOEXECDATA_OFFSET);
+    }
     memcpy(data, curr, xlen/8);
     curr += xlen/8;
-    command = AC_ACCESS_REGISTER_TRANSFER |
-      AC_ACCESS_REGISTER_POSTEXEC |
-      AC_ACCESS_REGISTER_WRITE | 
-      AC_AR_SIZE(xlen) |
-      AC_AR_REGNO(S1);
+    if (xlen == 64) {
+      write(DMI_DATA1, data[1]);
+    }
+    write(DMI_DATA0, data[0]); //Triggers a command w/ autoexec.
     
-    RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
-    
+    do {
+      abstractcs = read(DMI_ABSTRACTCS);
+    } while (abstractcs & DMI_ABSTRACTCS_BUSY);
+    if ( get_field(abstractcs, DMI_ABSTRACTCS_CMDERR)) {
+      die(get_field(abstractcs, DMI_ABSTRACTCS_CMDERR));
+    }
   }
+  if ((len * 8 / xlen) > 1) {
+    write(DMI_ABSTRACTAUTO, 0);
+  }
+  
   restore_reg(S0, s0);
   restore_reg(S1, s1);
-
   resume();
-
 }
 
 void dtm_t::die(uint32_t cmderr)
@@ -356,11 +383,14 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
     EBREAK
   };
 
+  //TODO: Use transfer = 0. For now both HW and OpenOCD
+  // ignore transfer bit, so use "store to X0" NOOP.
+  // We sort of need this anyway because run_abstract_command
+  // needs the DATA to be written so may as well use the WRITE flag.
+  
   uint32_t adata[] = {(uint32_t) data,
                       (uint32_t) (data >> 32)};
   
-  //TODO: Use transfer = 0. For now both HW and OpenOCD
-  // ignore transfer bit, so use "store to X0" NOOP.
   uint32_t command = AC_ACCESS_REGISTER_POSTEXEC |
     AC_ACCESS_REGISTER_TRANSFER |
     AC_ACCESS_REGISTER_WRITE |
@@ -369,9 +399,9 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
   
   RUN_AC_OR_DIE(command, prog, sizeof(prog) / sizeof(*prog), adata, xlen/(4*8));
   
-  uint64_t res = adata[0];
+  uint64_t res = read(DMI_DATA0);//adata[0];
   if (xlen == 64)
-    res |= ((uint64_t) adata[1]) << 32;
+    res |= read(DMI_DATA1);//((uint64_t) adata[1]) << 32;
   
   resume();
   return res;  
