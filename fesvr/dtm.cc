@@ -244,26 +244,47 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
   
   RUN_AC_OR_DIE(command, prog, 3, data, xlen/(4*8));
 
+  // Use Autoexec for more than one word of transfer.
   // Write S1 with data, then execution stores S1 to
-  // S0 and increments S0.
+  // 0(S0) and increments S0.
   // Each time we write XLEN bits.
-  for (size_t i = 0; i < (len * 8 / xlen); i++){
+  memcpy(data, curr, xlen/8);
+  curr += xlen/8;
+  
+  command = AC_ACCESS_REGISTER_TRANSFER |
+    AC_ACCESS_REGISTER_POSTEXEC |
+    AC_ACCESS_REGISTER_WRITE | 
+    AC_AR_SIZE(xlen) |
+    AC_AR_REGNO(S1);
+
+  RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
+
+  uint32_t abstractcs;
+  for (size_t i = 1; i < (len * 8 / xlen); i++){
+    if (i == 1) {
+      write(DMI_ABSTRACTAUTO, 1 << DMI_ABSTRACTAUTO_AUTOEXECDATA_OFFSET);
+    }
     memcpy(data, curr, xlen/8);
     curr += xlen/8;
-    command = AC_ACCESS_REGISTER_TRANSFER |
-      AC_ACCESS_REGISTER_POSTEXEC |
-      AC_ACCESS_REGISTER_WRITE | 
-      AC_AR_SIZE(xlen) |
-      AC_AR_REGNO(S1);
+    if (xlen == 64) {
+      write(DMI_DATA1, data[1]);
+    }
+    write(DMI_DATA0, data[0]); //Triggers a command w/ autoexec.
     
-    RUN_AC_OR_DIE(command, 0, 0, data, xlen/(4*8));
-    
+    do {
+      abstractcs = read(DMI_ABSTRACTCS);
+    } while (abstractcs & DMI_ABSTRACTCS_BUSY);
+    if ( get_field(abstractcs, DMI_ABSTRACTCS_CMDERR)) {
+      die(get_field(abstractcs, DMI_ABSTRACTCS_CMDERR));
+    }
   }
+  if ((len * 8 / xlen) > 1) {
+    write(DMI_ABSTRACTAUTO, 0);
+  }
+  
   restore_reg(S0, s0);
   restore_reg(S1, s1);
-
   resume();
-
 }
 
 void dtm_t::die(uint32_t cmderr)
