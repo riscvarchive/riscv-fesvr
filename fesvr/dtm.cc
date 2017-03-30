@@ -129,11 +129,14 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
   for (size_t i = 0; i < program_n; i++) {
     write(DMI_PROGBUF0 + i, program[i]);
   }
-  
-  for (size_t i = 0; i < data_n; i++) {
-    write(DMI_DATA0 + i, data[i]);
-  }
 
+  if (get_field(command, AC_ACCESS_REGISTER_WRITE) &&
+      get_field(command, AC_ACCESS_REGISTER_TRANSFER)) {
+    for (size_t i = 0; i < data_n; i++) {
+      write(DMI_DATA0 + i, data[i]);
+    }
+  }
+  
   write(DMI_COMMAND, command);
   
   // Wait for not busy and then check for error.
@@ -141,9 +144,12 @@ uint32_t dtm_t::run_abstract_command(uint32_t command,
   do {
     abstractcs = read(DMI_ABSTRACTCS);
   } while (abstractcs & DMI_ABSTRACTCS_BUSY);
-  
-  for (size_t i = 0; i < data_n; i++){
-    data[i] = read(DMI_DATA0 + i);
+
+  if ((get_field(command, AC_ACCESS_REGISTER_WRITE) == 0) &&
+      get_field(command, AC_ACCESS_REGISTER_TRANSFER)) {
+    for (size_t i = 0; i < data_n; i++){
+      data[i] = read(DMI_DATA0 + i);
+    }
   }
   
   return get_field(abstractcs, DMI_ABSTRACTCS_CMDERR);
@@ -356,11 +362,14 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
     EBREAK
   };
 
+  //TODO: Use transfer = 0. For now both HW and OpenOCD
+  // ignore transfer bit, so use "store to X0" NOOP.
+  // We sort of need this anyway because run_abstract_command
+  // needs the DATA to be written so may as well use the WRITE flag.
+  
   uint32_t adata[] = {(uint32_t) data,
                       (uint32_t) (data >> 32)};
   
-  //TODO: Use transfer = 0. For now both HW and OpenOCD
-  // ignore transfer bit, so use "store to X0" NOOP.
   uint32_t command = AC_ACCESS_REGISTER_POSTEXEC |
     AC_ACCESS_REGISTER_TRANSFER |
     AC_ACCESS_REGISTER_WRITE |
@@ -369,9 +378,9 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
   
   RUN_AC_OR_DIE(command, prog, sizeof(prog) / sizeof(*prog), adata, xlen/(4*8));
   
-  uint64_t res = adata[0];
+  uint64_t res = read(DMI_DATA0);//adata[0];
   if (xlen == 64)
-    res |= ((uint64_t) adata[1]) << 32;
+    res |= read(DMI_DATA1);//((uint64_t) adata[1]) << 32;
   
   resume();
   return res;  
