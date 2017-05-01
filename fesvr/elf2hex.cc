@@ -39,7 +39,8 @@ int main(int argc, char** argv)
 
   htif_hexwriter_t htif(base, width, depth);
   memif_t memif(&htif);
-  load_elf(argv[3], &memif);
+  reg_t entry;
+  load_elf(argv[3], &memif, &entry);
   std::cout << htif;
 
   return 0;

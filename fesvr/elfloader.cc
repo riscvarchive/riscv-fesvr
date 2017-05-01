@@ -14,7 +14,7 @@
 #include <vector>
 #include <map>
 
-std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif)
+std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* entry)
 {
   int fd = open(fn, O_RDONLY);
   struct stat s;
@@ -37,6 +37,7 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif)
   #define LOAD_ELF(ehdr_t, phdr_t, shdr_t, sym_t) do { \
     ehdr_t* eh = (ehdr_t*)buf; \
     phdr_t* ph = (phdr_t*)(buf + eh->e_phoff); \
+    *entry = eh->e_entry; \
     assert(size >= eh->e_phoff + eh->e_phnum*sizeof(*ph)); \
     for (unsigned i = 0; i < eh->e_phnum; i++) { \
       if(ph[i].p_type == PT_LOAD && ph[i].p_memsz) { \

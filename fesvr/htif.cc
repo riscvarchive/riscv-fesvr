@@ -39,7 +39,7 @@ static void handle_signal(int sig)
 }
 
 htif_t::htif_t(const std::vector<std::string>& args)
-  : mem(this), sig_addr(0), sig_len(0),
+  : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
     tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
     syscall_proxy(this)
 {
@@ -104,7 +104,7 @@ void htif_t::load_program()
   if (path.empty())
     throw std::runtime_error("could not open " + targs[0]);
 
-  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem);
+  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem, &entry);
 
   if (symbols.count("tohost") && symbols.count("fromhost")) {
     tohost_addr = symbols["tohost"];

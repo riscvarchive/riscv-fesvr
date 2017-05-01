@@ -39,8 +39,11 @@ class htif_t
 
   const std::vector<std::string>& host_args() { return hargs; }
 
+  reg_t get_entry_point() { return entry; }
+
  private:
   memif_t mem;
+  reg_t entry;
   bool writezeros;
   std::vector<std::string> hargs;
   std::vector<std::string> targs;

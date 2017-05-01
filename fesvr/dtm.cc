@@ -479,8 +479,7 @@ void dtm_t::reset()
   // Each of these functions already
   // does a halt and resume.
   fence_i();
-  write_csr(0x7b1, 0x80000000U);
-  
+  write_csr(0x7b1, get_entry_point());
 }
 
 void dtm_t::idle()
