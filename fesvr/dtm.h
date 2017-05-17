@@ -27,7 +27,7 @@ class dtm_t : public htif_t
     uint32_t resp;
     uint32_t data;
   };
-  
+
   void tick(
     bool  req_ready,
     bool  resp_valid,
@@ -87,7 +87,6 @@ class dtm_t : public htif_t
 
   bool req_wait;
   bool resp_wait;
-  //uint32_t ram_base;
   uint32_t data_base;
   
   uint32_t xlen;
@@ -96,7 +95,7 @@ class dtm_t : public htif_t
 
   size_t ram_words;
   size_t data_words;
-                                  
+
   uint32_t get_xlen();
   uint32_t do_command(dtm_t::req r);
 
