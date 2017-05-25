@@ -23,20 +23,14 @@ tsi_t::~tsi_t(void)
 {
 }
 
-// Interrupt each core to make it start executing
+#define MSIP_BASE 0x2000000
+
+// Interrupt core 0 to make it start executing the program in DRAM
 void tsi_t::reset()
 {
   uint32_t one = 1;
-  addr_t ipis[NHARTS_MAX];
-  int ncores = get_ipi_addrs(ipis);
 
-  if (ncores == 0) {
-      fprintf(stderr, "ERROR: No cores found\n");
-      abort();
-  }
-
-  for (int i = 0; i < ncores; i++)
-    write_chunk(ipis[i], sizeof(uint32_t), &one);
+  write_chunk(MSIP_BASE, sizeof(uint32_t), &one);
 }
 
 void tsi_t::push_addr(addr_t addr)
@@ -109,11 +103,6 @@ void tsi_t::switch_to_host(void)
 void tsi_t::switch_to_target(void)
 {
   target->switch_to();
-}
-
-int tsi_t::get_ipi_addrs(addr_t *ipis)
-{
-  abort();
 }
 
 void tsi_t::tick(bool out_valid, uint32_t out_bits, bool in_ready)
