@@ -77,15 +77,44 @@ void dtm_t::nop()
   do_command((req){0, 0, 0});
 }
 
+void dtm_t::select_hart(int hartid) {
+  int dmcontrol = read(DMI_DMCONTROL);
+  write (DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartid));
+}
+
+int dtm_t::halt_all_harts(){
+  int dmstatus;
+  int hartsel = 0;
+  while(1) {
+    int dmcontrol = read(DMI_DMCONTROL);
+    dmstatus = set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel);
+    if (get_field(dmstatus, DMI_DMSTATUS_ANYNONEXISTENT));
+    break;
+    halt();
+    hartsel++; 
+  }
+  return hartsel;
+}
+
+
+void dtm_t::resume_all_harts(){
+  for (int hartsel = 0; hartsel < num_harts; hartsel ++) {
+    select_hart(hartsel);
+    resume();
+  }
+}
+
 void dtm_t::halt()
 {
-  write(DMI_DMCONTROL, DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE);
+  int dmcontrol = read(DMI_DMCONTROL);
+  write(DMI_DMCONTROL, DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE | (DMI_DMCONTROL_HARTSEL & dmcontrol));
   while(get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLHALTED) == 0);
 }
 
 void dtm_t::resume()
 {
-  write(DMI_DMCONTROL, DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE);
+  int dmcontrol = read(DMI_DMCONTROL);
+  write(DMI_DMCONTROL, DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE | (DMI_DMCONTROL_HARTSEL & dmcontrol));
   while (get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLRUNNING) == 0); 
 }
 
@@ -476,11 +505,14 @@ void host_thread_main(void* arg)
 
 void dtm_t::reset()
 {
-  // Each of these functions already
-  // does a halt and resume.
-  fence_i();
-  write_csr(0x7b1, get_entry_point());
-}
+  for (int hartsel = 0; hartsel < num_harts; hartsel ++ ){
+    select_hart(hartsel);
+    // Each of these functions already
+    // does a halt and resume.
+    fence_i();
+    write_csr(0x7b1, get_entry_point());
+  }
+} 
 
 void dtm_t::idle()
 {
@@ -510,9 +542,11 @@ void dtm_t::producer_thread()
   // Enable the debugger.
   write(DMI_DMCONTROL, DMI_DMCONTROL_DMACTIVE);
   
-  halt();
+  num_harts = halt_all_harts();
+  select_hart(0);
   xlen = get_xlen();
-  resume();
+  resume_all_harts();
+  select_hart(0);
   
   htif_t::run();
 
