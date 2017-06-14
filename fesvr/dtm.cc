@@ -77,45 +77,39 @@ void dtm_t::nop()
   do_command((req){0, 0, 0});
 }
 
-void dtm_t::select_hart(int hartid) {
+void dtm_t::select_hart(int hartsel) {
   int dmcontrol = read(DMI_DMCONTROL);
-  write (DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartid));
+  write (DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel));
+  current_hart = hartsel;
 }
 
-int dtm_t::halt_all_harts(){
+int dtm_t::enumerate_harts() {
   int dmstatus;
   int hartsel = 0;
   while(1) {
-    int dmcontrol = read(DMI_DMCONTROL);
-    dmstatus = set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel);
+    select_hart(hartsel);
+    dmstatus = read(DMI_DMSTATUS);
     if (get_field(dmstatus, DMI_DMSTATUS_ANYNONEXISTENT));
     break;
-    halt();
     hartsel++; 
   }
   return hartsel;
 }
 
-
-void dtm_t::resume_all_harts(){
-  for (int hartsel = 0; hartsel < num_harts; hartsel ++) {
-    select_hart(hartsel);
-    resume();
-  }
-}
-
-void dtm_t::halt()
+void dtm_t::halt(int hartsel)
 {
-  int dmcontrol = read(DMI_DMCONTROL);
-  write(DMI_DMCONTROL, DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE | (DMI_DMCONTROL_HARTSEL & dmcontrol));
+  int dmcontrol = DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE;
+  write(DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel));
   while(get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLHALTED) == 0);
+  current_hart = hartsel;
 }
 
-void dtm_t::resume()
+void dtm_t::resume(int hartsel)
 {
-  int dmcontrol = read(DMI_DMCONTROL);
-  write(DMI_DMCONTROL, DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE | (DMI_DMCONTROL_HARTSEL & dmcontrol));
-  while (get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLRUNNING) == 0); 
+  int dmcontrol = DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE;
+  write(DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel));
+  while (get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLRESUMEACK) == 0);
+  current_hart = hartsel;
 }
 
 uint64_t dtm_t::save_reg(unsigned regno)
@@ -197,7 +191,7 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
 
   uint8_t * curr = (uint8_t*) dst;
 
-  halt();
+  halt(current_hart);
 
   uint64_t s0 = save_reg(S0);
   uint64_t s1 = save_reg(S1);
@@ -239,7 +233,7 @@ void dtm_t::read_chunk(uint64_t taddr, size_t len, void* dst)
   restore_reg(S0, s0);
   restore_reg(S1, s1);
 
-  resume(); 
+  resume(current_hart); 
 
 }
 
@@ -250,7 +244,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
 
   const uint8_t * curr = (const uint8_t*) src;
 
-  halt();
+  halt(current_hart);
 
   uint64_t s0 = save_reg(S0);
   uint64_t s1 = save_reg(S1);
@@ -296,7 +290,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
     memcpy(data, curr, xlen/8);
     curr += xlen/8;
     if (xlen == 64) {
-      write(DMI_DATA1, data[1]);
+      write(DMI_DATA0 + 1, data[1]);
     }
     write(DMI_DATA0, data[0]); //Triggers a command w/ autoexec.
     
@@ -313,7 +307,7 @@ void dtm_t::write_chunk(uint64_t taddr, size_t len, const void* src)
   
   restore_reg(S0, s0);
   restore_reg(S1, s1);
-  resume();
+  resume(current_hart);
 }
 
 void dtm_t::die(uint32_t cmderr)
@@ -339,7 +333,7 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
   uint32_t prog[ram_words];
   uint32_t data[data_words];
   
-  halt();
+  halt(current_hart);
   uint64_t s0 = save_reg(S0);
   uint64_t s1 = save_reg(S1);
 
@@ -372,7 +366,7 @@ void dtm_t::clear_chunk(uint64_t taddr, size_t len)
   restore_reg(S0, s0);
   restore_reg(S1, s1);
 
-  resume();
+  resume(current_hart);
 }
 
 uint64_t dtm_t::write_csr(unsigned which, uint64_t data)
@@ -397,7 +391,7 @@ uint64_t dtm_t::read_csr(unsigned which)
 
 uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 {
-  halt();
+  halt(current_hart);
 
   // This code just uses DSCRATCH to save S0
   // and data_base to do the transfer so we don't
@@ -430,9 +424,9 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
   
   uint64_t res = read(DMI_DATA0);//adata[0];
   if (xlen == 64)
-    res |= read(DMI_DATA1);//((uint64_t) adata[1]) << 32;
+    res |= read(DMI_DATA0 + 1);//((uint64_t) adata[1]) << 32;
   
-  resume();
+  resume(current_hart);
   return res;  
 }
 
@@ -478,7 +472,7 @@ uint32_t dtm_t::get_xlen()
 
 void dtm_t::fence_i()
 {
-  halt();
+  halt(current_hart);
 
   const uint32_t prog[] = {
     FENCE_I,
@@ -494,7 +488,7 @@ void dtm_t::fence_i()
 
   RUN_AC_OR_DIE(command, prog, sizeof(prog)/sizeof(*prog), 0, 0);
   
-  resume();
+  resume(current_hart);
 
 }
 
@@ -507,11 +501,14 @@ void dtm_t::reset()
 {
   for (int hartsel = 0; hartsel < num_harts; hartsel ++ ){
     select_hart(hartsel);
-    // Each of these functions already
-    // does a halt and resume.
+    // this command also does a halt and resume
     fence_i();
+    // after this command, the hart will run from _start.
     write_csr(0x7b1, get_entry_point());
   }
+  // In theory any hart can handle the memory accesses,
+  // this will enforce that hart 0 handles them.
+  select_hart(0);
 } 
 
 void dtm_t::idle()
@@ -542,11 +539,12 @@ void dtm_t::producer_thread()
   // Enable the debugger.
   write(DMI_DMCONTROL, DMI_DMCONTROL_DMACTIVE);
   
-  num_harts = halt_all_harts();
-  select_hart(0);
+  num_harts = enumerate_harts();
+  halt(0);
+  // Note: We don't support systems with heterogeneous XLEN.
+  // It's possible to do this at the cost of extra cycles.
   xlen = get_xlen();
-  resume_all_harts();
-  select_hart(0);
+  resume(0);
   
   htif_t::run();
 
