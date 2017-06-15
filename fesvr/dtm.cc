@@ -89,8 +89,9 @@ int dtm_t::enumerate_harts() {
   while(1) {
     select_hart(hartsel);
     dmstatus = read(DMI_DMSTATUS);
-    if (get_field(dmstatus, DMI_DMSTATUS_ANYNONEXISTENT));
-    break;
+    if (get_field(dmstatus, DMI_DMSTATUS_ANYNONEXISTENT)) { 
+      break;
+    }
     hartsel++; 
   }
   return hartsel;
