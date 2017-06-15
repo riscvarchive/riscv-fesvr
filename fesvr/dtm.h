@@ -70,8 +70,10 @@ class dtm_t : public htif_t
                                 uint32_t data[], size_t data_n);
 
   void die(uint32_t cmderr);
-  void halt();
-  void resume();
+  void halt(int);
+  int enumerate_harts();
+  void select_hart(int);
+  void resume(int);
   uint64_t save_reg(unsigned regno);
   void restore_reg(unsigned regno, uint64_t val);
   
@@ -95,7 +97,9 @@ class dtm_t : public htif_t
 
   size_t ram_words;
   size_t data_words;
-
+  int num_harts;
+  int current_hart;
+  
   uint32_t get_xlen();
   uint32_t do_command(dtm_t::req r);
 
