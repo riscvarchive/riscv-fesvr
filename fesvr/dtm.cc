@@ -100,16 +100,28 @@ int dtm_t::enumerate_harts() {
 void dtm_t::halt(int hartsel)
 {
   int dmcontrol = DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE;
-  write(DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel));
-  while(get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLHALTED) == 0);
+  dmcontrol = set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel);
+  write(DMI_DMCONTROL, dmcontrol);
+  int dmstatus;
+  do {
+    dmstatus = read(DMI_DMSTATUS);
+  } while(get_field(dmstatus, DMI_DMSTATUS_ALLHALTED) == 0);
+  dmcontrol &= ~DMI_DMCONTROL_HALTREQ;
+  write(DMI_DMCONTROL, dmcontrol);
   current_hart = hartsel;
 }
 
 void dtm_t::resume(int hartsel)
 {
   int dmcontrol = DMI_DMCONTROL_RESUMEREQ | DMI_DMCONTROL_DMACTIVE;
-  write(DMI_DMCONTROL, set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel));
-  while (get_field(read(DMI_DMSTATUS), DMI_DMSTATUS_ALLRESUMEACK) == 0);
+  dmcontrol = set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel);
+  write(DMI_DMCONTROL, dmcontrol);
+  int dmstatus;
+  do {
+    dmstatus = read(DMI_DMSTATUS);
+  } while (get_field(dmstatus, DMI_DMSTATUS_ALLRESUMEACK) == 0);
+  dmcontrol &= ~DMI_DMCONTROL_RESUMEREQ;
+  write(DMI_DMCONTROL, dmcontrol);
   current_hart = hartsel;
 }
 
@@ -326,7 +338,11 @@ void dtm_t::die(uint32_t cmderr)
   } else {
     msg = "OTHER";
   }
-  throw std::runtime_error("Debug Abstract Command Error #" + std::to_string(cmderr) + "(" +  msg + ")");
+  //throw std::runtime_error("Debug Abstract Command Error #" + std::to_string(cmderr) + "(" +  msg + ")");
+  printf("ERROR: %s:%d, Debug Abstract Command Error #%d (%s)", __FILE__, __LINE__, cmderr, msg);
+  printf("ERROR: %s:%d, Should die, but allowing simulation to continue and fail.", __FILE__, __LINE__);
+  write(DMI_ABSTRACTCS, DMI_ABSTRACTCS_CMDERR);
+
 }
 
 void dtm_t::clear_chunk(uint64_t taddr, size_t len)
