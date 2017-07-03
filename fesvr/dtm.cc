@@ -108,6 +108,8 @@ void dtm_t::halt(int hartsel)
   } while(get_field(dmstatus, DMI_DMSTATUS_ALLHALTED) == 0);
   dmcontrol &= ~DMI_DMCONTROL_HALTREQ;
   write(DMI_DMCONTROL, dmcontrol);
+  // Read dmstatus to avoid back-to-back writes to dmcontrol.
+  read(DMI_DMSTATUS);
   current_hart = hartsel;
 }
 
@@ -122,6 +124,8 @@ void dtm_t::resume(int hartsel)
   } while (get_field(dmstatus, DMI_DMSTATUS_ALLRESUMEACK) == 0);
   dmcontrol &= ~DMI_DMCONTROL_RESUMEREQ;
   write(DMI_DMCONTROL, dmcontrol);
+  // Read dmstatus to avoid back-to-back writes to dmcontrol.
+  read(DMI_DMSTATUS);
   current_hart = hartsel;
 }
 
@@ -526,6 +530,7 @@ void dtm_t::reset()
   // In theory any hart can handle the memory accesses,
   // this will enforce that hart 0 handles them.
   select_hart(0);
+  read(DMI_DMSTATUS);
 } 
 
 void dtm_t::idle()
