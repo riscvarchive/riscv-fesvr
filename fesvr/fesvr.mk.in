@@ -29,6 +29,7 @@ fesvr_srcs = \
   option_parser.cc \
   term.cc \
   tsi.cc \
+  f1_dtm.cc \
 
 fesvr_install_prog_srcs = \
   elf2hex.cc \
