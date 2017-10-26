@@ -13,6 +13,7 @@ fesvr_hdrs = \
   device.h \
   rfb.h \
   tsi.h \
+  f1_dtm.h \
 
 fesvr_srcs = \
   elfloader.cc \
