@@ -14,6 +14,7 @@ class htif_t
  public:
   htif_t();
   htif_t(int argc, char** argv);
+  htif_t(const std::vector<std::string>& args);
   virtual ~htif_t();
 
   virtual void start();
@@ -43,6 +44,9 @@ class htif_t
   reg_t get_entry_point() { return entry; }
 
  private:
+  void parse_arguments(int argc, char ** argv);
+  void register_devices();
+
   memif_t mem;
   reg_t entry;
   bool writezeros;

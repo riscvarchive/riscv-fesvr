@@ -47,95 +47,25 @@ htif_t::htif_t()
   signal(SIGINT, &handle_signal);
   signal(SIGTERM, &handle_signal);
   signal(SIGABRT, &handle_signal); // we still want to call static destructors
-
-  device_list.register_device(&syscall_proxy);
-  device_list.register_device(&bcd);
-  for (auto d : dynamic_devices)
-    device_list.register_device(d);
 }
 
-htif_t::htif_t(int argc, char** argv)
-  : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
-    tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
-    syscall_proxy(this)
+htif_t::htif_t(int argc, char** argv) : htif_t()
 {
-  signal(SIGINT, &handle_signal);
-  signal(SIGTERM, &handle_signal);
-  signal(SIGABRT, &handle_signal); // we still want to call static destructors
+  parse_arguments(argc, argv);
+  register_devices();
+}
 
-  optind = 0; // reset optind as HTIF may run getopt _after_ others
-  while (1) {
-    static struct option long_options[] = { HTIF_LONG_OPTIONS };
-    int option_index = 0;
-    int c = getopt_long(argc, argv, "-c:", long_options, &option_index);
-
-    if (c == -1) break;
- retry:
-    switch (c) {
-      case '?': break;
-      case HTIF_LONG_OPTIONS_OPTIND:
-        if (optarg) dynamic_devices.push_back(new rfb_t(atoi(optarg)));
-        else        dynamic_devices.push_back(new rfb_t);
-        break;
-      case HTIF_LONG_OPTIONS_OPTIND + 1:
-        // [TODO] Remove once disks are supported again
-        throw std::invalid_argument("--disk/+disk unsupported (use a ramdisk)");
-        dynamic_devices.push_back(new disk_t(optarg));
-        break;
-      case HTIF_LONG_OPTIONS_OPTIND + 2:
-        sig_file = optarg;
-        break;
-      case HTIF_LONG_OPTIONS_OPTIND + 3:
-        syscall_proxy.set_chroot(optarg);
-        break;
-      case 1: {
-        std::string arg = optarg;
-        if (arg == "+rfb") {
-          c = HTIF_LONG_OPTIONS_OPTIND;
-          optarg = nullptr;
-        }
-        else if (arg.find("+rfb=") == 0) {
-          c = HTIF_LONG_OPTIONS_OPTIND;
-          optarg = optarg + 5;
-        }
-        else if (arg.find("+disk=") == 0) {
-          c = HTIF_LONG_OPTIONS_OPTIND + 1;
-          optarg = optarg + 6;
-        }
-        else if (arg.find("+signature=") == 0) {
-          c = HTIF_LONG_OPTIONS_OPTIND + 2;
-          optarg = optarg + 11;
-        }
-        else if (arg.find("+chroot=") == 0) {
-          c = HTIF_LONG_OPTIONS_OPTIND + 3;
-          optarg = optarg + 8;
-        }
-        else {
-          optind--;
-          goto done_processing;
-        }
-        goto retry;
-      }
-      // Special case non-standard VCS options that should be ignored
-      case 'c': // e.g., '-cm line+cond'
-        if (!strcmp(optarg, "m"))
-          optind++;
-        else
-          throw std::invalid_argument("Expected 'm' to follow VCS special case '-c' option");
-    }
+htif_t::htif_t(const std::vector<std::string>& args) : htif_t()
+{
+  int argc = args.size() + 1;
+  char * argv[argc];
+  argv[0] = (char *) "htif";
+  for (unsigned int i = 0; i < args.size(); i++) {
+    argv[i+1] = (char *) args[i].c_str();
   }
 
-done_processing:
-  while (optind < argc)
-    targs.push_back(argv[optind++]);
-  if (!targs.size()) {
-    throw std::invalid_argument("No binary specified for emulator");
-  }
-
-  device_list.register_device(&syscall_proxy);
-  device_list.register_device(&bcd);
-  for (auto d : dynamic_devices)
-    device_list.register_device(d);
+  parse_arguments(argc, argv);
+  register_devices();
 }
 
 htif_t::~htif_t()
@@ -264,4 +194,84 @@ bool htif_t::done()
 int htif_t::exit_code()
 {
   return exitcode >> 1;
+}
+
+void htif_t::parse_arguments(int argc, char ** argv)
+{
+  optind = 0; // reset optind as HTIF may run getopt _after_ others
+  while (1) {
+    static struct option long_options[] = { HTIF_LONG_OPTIONS };
+    int option_index = 0;
+    int c = getopt_long(argc, argv, "-c:", long_options, &option_index);
+
+    if (c == -1) break;
+ retry:
+    switch (c) {
+      case '?': break;
+      case HTIF_LONG_OPTIONS_OPTIND:
+        if (optarg) dynamic_devices.push_back(new rfb_t(atoi(optarg)));
+        else        dynamic_devices.push_back(new rfb_t);
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 1:
+        // [TODO] Remove once disks are supported again
+        throw std::invalid_argument("--disk/+disk unsupported (use a ramdisk)");
+        dynamic_devices.push_back(new disk_t(optarg));
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 2:
+        sig_file = optarg;
+        break;
+      case HTIF_LONG_OPTIONS_OPTIND + 3:
+        syscall_proxy.set_chroot(optarg);
+        break;
+      case 1: {
+        std::string arg = optarg;
+        if (arg == "+rfb") {
+          c = HTIF_LONG_OPTIONS_OPTIND;
+          optarg = nullptr;
+        }
+        else if (arg.find("+rfb=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND;
+          optarg = optarg + 5;
+        }
+        else if (arg.find("+disk=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 1;
+          optarg = optarg + 6;
+        }
+        else if (arg.find("+signature=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 2;
+          optarg = optarg + 11;
+        }
+        else if (arg.find("+chroot=") == 0) {
+          c = HTIF_LONG_OPTIONS_OPTIND + 3;
+          optarg = optarg + 8;
+        }
+        else {
+          optind--;
+          goto done_processing;
+        }
+        goto retry;
+      }
+        // Special case non-standard VCS options that should be ignored
+      case 'c': // e.g., '-cm line+cond'
+        if (!strcmp(optarg, "m"))
+          optind++;
+        else
+          throw std::invalid_argument("Expected 'm' to follow VCS special case '-c' option");
+    }
+  }
+
+done_processing:
+  while (optind < argc)
+    targs.push_back(argv[optind++]);
+  if (!targs.size()) {
+    throw std::invalid_argument("No binary specified for host");
+  }
+}
+
+void htif_t::register_devices()
+{
+  device_list.register_device(&syscall_proxy);
+  device_list.register_device(&bcd);
+  for (auto d : dynamic_devices)
+    device_list.register_device(d);
 }
