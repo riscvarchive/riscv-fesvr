@@ -39,6 +39,21 @@ static void handle_signal(int sig)
   signal(sig, &handle_signal);
 }
 
+htif_t::htif_t()
+  : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
+    tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),
+    syscall_proxy(this)
+{
+  signal(SIGINT, &handle_signal);
+  signal(SIGTERM, &handle_signal);
+  signal(SIGABRT, &handle_signal); // we still want to call static destructors
+
+  device_list.register_device(&syscall_proxy);
+  device_list.register_device(&bcd);
+  for (auto d : dynamic_devices)
+    device_list.register_device(d);
+}
+
 htif_t::htif_t(int argc, char** argv)
   : mem(this), entry(DRAM_BASE), sig_addr(0), sig_len(0),
     tohost_addr(0), fromhost_addr(0), exitcode(0), stopped(false),

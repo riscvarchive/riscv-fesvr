@@ -12,6 +12,7 @@
 class htif_t
 {
  public:
+  htif_t();
   htif_t(int argc, char** argv);
   virtual ~htif_t();
 
@@ -66,17 +67,21 @@ class htif_t
   friend class syscall_t;
 };
 
+/* Aligntment guide for emulator.cc options:
+  -x, --long-option        Description with max 80 characters --------------->\n\
+       +plus-arg-equivalent\n\
+ */
 #define HTIF_USAGE_OPTIONS "HOST OPTIONS\n\
-  --rfb=[DISPLAY]            Add new remote frame buffer on display DISPLAY\n\
-       +rfb=[DISPLAY]        to be accessible on 5900 + DISPLAY (default = 0)\n\
-  --signature=[FILE]         Write torture test signature to FILE\n\
-       +signature=[FILE]\n\
-  --chroot=[PATH]            Use PATH as location of syscall-servicing binaries\n\
-       +chroot=[PATH]\n\
+      --rfb=DISPLAY        Add new remote frame buffer on display DISPLAY\n\
+       +rfb=DISPLAY          to be accessible on 5900 + DISPLAY (default = 0)\n\
+      --signature=FILE     Write torture test signature to FILE\n\
+       +signature=FILE\n\
+      --chroot=PATH        Use PATH as location of syscall-servicing binaries\n\
+       +chroot=PATH\n\
 \n\
 HOST OPTIONS (currently unsupported)\n\
-  --disk=[DISK]              Add DISK device. Use a ramdisk since this isn't\n\
-       +disk=[DISK]          supported\n\
+      --disk=DISK          Add DISK device. Use a ramdisk since this isn't\n\
+       +disk=DISK            supported\n\
 \n\
 TARGET (RISC-V BINARY) OPTIONS\n\
   These are the options passed to the program executing on the emulated RISC-V\n\
