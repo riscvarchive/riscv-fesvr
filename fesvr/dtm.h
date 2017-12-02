@@ -14,7 +14,7 @@
 class dtm_t : public htif_t
 {
  public:
-  dtm_t(const std::vector<std::string>& args);
+  dtm_t(int argc, char**argv);
   ~dtm_t();
 
   struct req {

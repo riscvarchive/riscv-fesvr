@@ -5,7 +5,7 @@
 #include "htif_hexwriter.h"
 
 htif_hexwriter_t::htif_hexwriter_t(size_t b, size_t w, size_t d)
-  : htif_t(std::vector<std::string>()), base(b), width(w), depth(d)
+  : htif_t(), base(b), width(w), depth(d)
 {
 }
 

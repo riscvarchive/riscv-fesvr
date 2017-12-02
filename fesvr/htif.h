@@ -12,7 +12,9 @@
 class htif_t
 {
  public:
-  htif_t(const std::vector<std::string>& target_args);
+  htif_t();
+  htif_t(int argc, char** argv);
+  htif_t(const std::vector<std::string>& args);
   virtual ~htif_t();
 
   virtual void start();
@@ -42,6 +44,9 @@ class htif_t
   reg_t get_entry_point() { return entry; }
 
  private:
+  void parse_arguments(int argc, char ** argv);
+  void register_devices();
+
   memif_t mem;
   reg_t entry;
   bool writezeros;
@@ -65,5 +70,33 @@ class htif_t
   friend class memif_t;
   friend class syscall_t;
 };
+
+/* Aligntment guide for emulator.cc options:
+  -x, --long-option        Description with max 80 characters --------------->\n\
+       +plus-arg-equivalent\n\
+ */
+#define HTIF_USAGE_OPTIONS "HOST OPTIONS\n\
+      --rfb=DISPLAY        Add new remote frame buffer on display DISPLAY\n\
+       +rfb=DISPLAY          to be accessible on 5900 + DISPLAY (default = 0)\n\
+      --signature=FILE     Write torture test signature to FILE\n\
+       +signature=FILE\n\
+      --chroot=PATH        Use PATH as location of syscall-servicing binaries\n\
+       +chroot=PATH\n\
+\n\
+HOST OPTIONS (currently unsupported)\n\
+      --disk=DISK          Add DISK device. Use a ramdisk since this isn't\n\
+       +disk=DISK            supported\n\
+\n\
+TARGET (RISC-V BINARY) OPTIONS\n\
+  These are the options passed to the program executing on the emulated RISC-V\n\
+  microprocessor.\n"
+
+#define HTIF_LONG_OPTIONS_OPTIND 1024
+#define HTIF_LONG_OPTIONS                                               \
+{"rfb",       optional_argument, 0, HTIF_LONG_OPTIONS_OPTIND     },     \
+{"disk",      required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 1 },     \
+{"signature", required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 2 },     \
+{"chroot",    required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 3 },     \
+{0, 0, 0, 0}
 
 #endif // __HTIF_H

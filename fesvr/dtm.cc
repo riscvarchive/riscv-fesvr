@@ -584,8 +584,8 @@ void dtm_t::start_host_thread()
   host.switch_to();
 }
 
-dtm_t::dtm_t(const std::vector<std::string>& args)
-  : htif_t(args)
+dtm_t::dtm_t(int argc, char** argv)
+  : htif_t(argc, argv)
 {
   start_host_thread();
 }
