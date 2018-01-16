@@ -246,8 +246,11 @@ void htif_t::parse_arguments(int argc, char ** argv)
           optarg = optarg + 8;
         }
         else {
-          optind--;
-          goto done_processing;
+          if(arg.find("+") != 0) {
+            optind--;
+            goto done_processing;
+          }
+          break;
         }
         goto retry;
       }
