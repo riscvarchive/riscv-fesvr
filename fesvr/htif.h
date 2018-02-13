@@ -71,7 +71,7 @@ class htif_t
   friend class syscall_t;
 };
 
-/* Aligntment guide for emulator.cc options:
+/* Alignment guide for emulator.cc options:
   -x, --long-option        Description with max 80 characters --------------->\n\
        +plus-arg-equivalent\n\
  */
