@@ -76,6 +76,7 @@ class htif_t
        +plus-arg-equivalent\n\
  */
 #define HTIF_USAGE_OPTIONS "HOST OPTIONS\n\
+       +permissive         Ignore any unknown following options\n\
       --rfb=DISPLAY        Add new remote frame buffer on display DISPLAY\n\
        +rfb=DISPLAY          to be accessible on 5900 + DISPLAY (default = 0)\n\
       --signature=FILE     Write torture test signature to FILE\n\

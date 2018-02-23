@@ -199,6 +199,7 @@ int htif_t::exit_code()
 void htif_t::parse_arguments(int argc, char ** argv)
 {
   optind = 0; // reset optind as HTIF may run getopt _after_ others
+  bool permissive = false;
   while (1) {
     static struct option long_options[] = { HTIF_LONG_OPTIONS };
     int option_index = 0;
@@ -245,9 +246,17 @@ void htif_t::parse_arguments(int argc, char ** argv)
           c = HTIF_LONG_OPTIONS_OPTIND + 3;
           optarg = optarg + 8;
         }
+        else if (arg.find("+permissive") == 0) {
+          permissive = true;
+          break;
+        }
         else {
-          optind--;
-          goto done_processing;
+          if (permissive)
+            break;
+          else {
+            optind--;
+            goto done_processing;
+          }
         }
         goto retry;
       }
@@ -264,7 +273,7 @@ done_processing:
   while (optind < argc)
     targs.push_back(argv[optind++]);
   if (!targs.size()) {
-    throw std::invalid_argument("No binary specified for host");
+    throw std::invalid_argument("No binary specified (Did you forget it? Did you forget '--' if running with +permissive?)");
   }
 }
 
