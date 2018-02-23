@@ -9,7 +9,7 @@
 #include <string.h>
 #include <vector>
 
-class htif_t
+class htif_t : public chunked_memif_t
 {
  public:
   htif_t();

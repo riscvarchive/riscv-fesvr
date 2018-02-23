@@ -10,11 +10,21 @@ typedef uint64_t reg_t;
 typedef int64_t sreg_t;
 typedef reg_t addr_t;
 
-class htif_t;
+class chunked_memif_t
+{
+public:
+  virtual void read_chunk(addr_t taddr, size_t len, void* dst) = 0;
+  virtual void write_chunk(addr_t taddr, size_t len, const void* src) = 0;
+  virtual void clear_chunk(addr_t taddr, size_t len) = 0;
+
+  virtual size_t chunk_align() = 0;
+  virtual size_t chunk_max_size() = 0;
+};
+
 class memif_t
 {
 public:
-  memif_t(htif_t* _htif) : htif(_htif) {}
+  memif_t(chunked_memif_t* _cmemif) : cmemif(_cmemif) {}
   virtual ~memif_t(){}
 
   // read and write byte arrays
@@ -46,7 +56,7 @@ public:
   virtual void write_int64(addr_t addr, int64_t val);
 
 protected:
-  htif_t* htif;
+  chunked_memif_t* cmemif;
 };
 
 #endif // __MEMIF_H
