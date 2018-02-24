@@ -203,12 +203,11 @@ void htif_t::parse_arguments(int argc, char ** argv)
   while (1) {
     static struct option long_options[] = { HTIF_LONG_OPTIONS };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "-c:", long_options, &option_index);
+    int c = getopt_long(argc, argv, "-", long_options, &option_index);
 
     if (c == -1) break;
  retry:
     switch (c) {
-      case '?': break;
       case HTIF_LONG_OPTIONS_OPTIND:
         if (optarg) dynamic_devices.push_back(new rfb_t(atoi(optarg)));
         else        dynamic_devices.push_back(new rfb_t);
@@ -224,6 +223,10 @@ void htif_t::parse_arguments(int argc, char ** argv)
       case HTIF_LONG_OPTIONS_OPTIND + 3:
         syscall_proxy.set_chroot(optarg);
         break;
+      case '?':
+        if (permissive)
+          break;
+        throw std::invalid_argument("Unknown argument (did you mean to enable +permissive parsing?)");
       case 1: {
         std::string arg = optarg;
         if (arg == "+rfb") {
@@ -260,12 +263,6 @@ void htif_t::parse_arguments(int argc, char ** argv)
         }
         goto retry;
       }
-        // Special case non-standard VCS options that should be ignored
-      case 'c': // e.g., '-cm line+cond'
-        if (!strcmp(optarg, "m"))
-          optind++;
-        else
-          throw std::invalid_argument("Expected 'm' to follow VCS special case '-c' option");
     }
   }
 
