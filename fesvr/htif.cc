@@ -302,7 +302,7 @@ void htif_t::usage(const char * program_name)
   fputs("\
 Run a BINARY on the Rocket Chip emulator.\n\
 \n\
-Mandatory arguments to long optiosn are mandatory for short options too.\n\
+Mandatory arguments to long options are mandatory for short options too.\n\
 \n\
 EMULATOR OPTIONS\n\
   Consult emulator.cc if using Verilator or VCS documentation if using VCS\n\
