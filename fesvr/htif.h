@@ -46,6 +46,7 @@ class htif_t
  private:
   void parse_arguments(int argc, char ** argv);
   void register_devices();
+  void usage(const char * program_name);
 
   memif_t mem;
   reg_t entry;
@@ -75,8 +76,13 @@ class htif_t
   -x, --long-option        Description with max 80 characters --------------->\n\
        +plus-arg-equivalent\n\
  */
-#define HTIF_USAGE_OPTIONS "HOST OPTIONS\n\
-       +permissive         Ignore any unknown following options\n\
+#define HTIF_USAGE_OPTIONS \
+"HOST OPTIONS\n\
+  -h, --help               Display this help and exit\n\
+       +permissive         The host will ignore any unparsed options up until\n\
+                             +permissive-off (Only needed for VCS)\n\
+       +permissive-off     Stop ignoring options. This is mandatory if using\n\
+                             +permissive (Only needed for VCS)\n\
       --rfb=DISPLAY        Add new remote frame buffer on display DISPLAY\n\
        +rfb=DISPLAY          to be accessible on 5900 + DISPLAY (default = 0)\n\
       --signature=FILE     Write torture test signature to FILE\n\
@@ -94,6 +100,7 @@ TARGET (RISC-V BINARY) OPTIONS\n\
 
 #define HTIF_LONG_OPTIONS_OPTIND 1024
 #define HTIF_LONG_OPTIONS                                               \
+{"help",      no_argument,       0, 'h'                          },     \
 {"rfb",       optional_argument, 0, HTIF_LONG_OPTIONS_OPTIND     },     \
 {"disk",      required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 1 },     \
 {"signature", required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 2 },     \

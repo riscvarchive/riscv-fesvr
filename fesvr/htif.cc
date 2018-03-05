@@ -95,7 +95,9 @@ void htif_t::load_program()
   }
 
   if (path.empty())
-    throw std::runtime_error("could not open " + targs[0]);
+    throw std::runtime_error(
+        "could not open " + targs[0] +
+        " (did you misspell it? If VCS, did you forget +permissive/+permissive-off?)");
 
   std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem, &entry);
 
@@ -203,11 +205,13 @@ void htif_t::parse_arguments(int argc, char ** argv)
   while (1) {
     static struct option long_options[] = { HTIF_LONG_OPTIONS };
     int option_index = 0;
-    int c = getopt_long(argc, argv, "-", long_options, &option_index);
+    int c = getopt_long(argc, argv, "-h", long_options, &option_index);
 
     if (c == -1) break;
  retry:
     switch (c) {
+      case 'h': usage(argv[0]);
+        throw std::invalid_argument("User quered htif_t help text");
       case HTIF_LONG_OPTIONS_OPTIND:
         if (optarg) dynamic_devices.push_back(new rfb_t(atoi(optarg)));
         else        dynamic_devices.push_back(new rfb_t);
@@ -249,7 +253,15 @@ void htif_t::parse_arguments(int argc, char ** argv)
           c = HTIF_LONG_OPTIONS_OPTIND + 3;
           optarg = optarg + 8;
         }
+        else if (arg.find("+permissive-off") == 0) {
+          if (!permissive)
+            throw std::invalid_argument("Found +permissive-off when not parsing permissively");
+          permissive = false;
+          break;
+        }
         else if (arg.find("+permissive") == 0) {
+          if (permissive)
+            throw std::invalid_argument("Found +permissive when already parsing permissively");
           permissive = true;
           break;
         }
@@ -270,7 +282,8 @@ done_processing:
   while (optind < argc)
     targs.push_back(argv[optind++]);
   if (!targs.size()) {
-    throw std::invalid_argument("No binary specified (Did you forget it? Did you forget '--' if running with +permissive?)");
+    usage(argv[0]);
+    throw std::invalid_argument("No binary specified (Did you forget it? Did you forget '+permissive-off' if running with +permissive?)");
   }
 }
 
@@ -280,4 +293,22 @@ void htif_t::register_devices()
   device_list.register_device(&bcd);
   for (auto d : dynamic_devices)
     device_list.register_device(d);
+}
+
+void htif_t::usage(const char * program_name)
+{
+  printf("Usage: %s [EMULATOR OPTION]... [VERILOG PLUSARG]... [HOST OPTION]... BINARY [TARGET OPTION]...\n ",
+         program_name);
+  fputs("\
+Run a BINARY on the Rocket Chip emulator.\n\
+\n\
+Mandatory arguments to long optiosn are mandatory for short options too.\n\
+\n\
+EMULATOR OPTIONS\n\
+  Consult emulator.cc if using Verilator or VCS documentation if using VCS\n\
+    for available options.\n\
+EMUALTOR VERILOG PLUSARGS\n\
+  Consult generated-src*/*.plusArgs for available options\n\
+", stdout);
+  fputs("\n" HTIF_USAGE_OPTIONS, stdout);
 }
