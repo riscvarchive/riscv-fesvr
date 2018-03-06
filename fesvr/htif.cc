@@ -201,7 +201,6 @@ int htif_t::exit_code()
 void htif_t::parse_arguments(int argc, char ** argv)
 {
   optind = 0; // reset optind as HTIF may run getopt _after_ others
-  bool permissive = false;
   while (1) {
     static struct option long_options[] = { HTIF_LONG_OPTIONS };
     int option_index = 0;
@@ -228,7 +227,7 @@ void htif_t::parse_arguments(int argc, char ** argv)
         syscall_proxy.set_chroot(optarg);
         break;
       case '?':
-        if (permissive)
+        if (!opterr)
           break;
         throw std::invalid_argument("Unknown argument (did you mean to enable +permissive parsing?)");
       case 1: {
@@ -254,19 +253,19 @@ void htif_t::parse_arguments(int argc, char ** argv)
           optarg = optarg + 8;
         }
         else if (arg.find("+permissive-off") == 0) {
-          if (!permissive)
+          if (opterr)
             throw std::invalid_argument("Found +permissive-off when not parsing permissively");
-          permissive = false;
+          opterr = 1;
           break;
         }
         else if (arg.find("+permissive") == 0) {
-          if (permissive)
+          if (!opterr)
             throw std::invalid_argument("Found +permissive when already parsing permissively");
-          permissive = true;
+          opterr = 0;
           break;
         }
         else {
-          if (permissive)
+          if (!opterr)
             break;
           else {
             optind--;
