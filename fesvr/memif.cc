@@ -1,5 +1,6 @@
 // See LICENSE for license details.
 
+#include <algorithm>
 #include <stdlib.h>
 #include <string.h>
 #include <stdexcept>
