@@ -16,5 +16,9 @@ declared the RISCV environment variable to point to the RISC-V install path:
 
     $ mkdir build
     $ cd build
-    $ ../configure --prefix=$RISCV
+    $ ../configure --prefix=$RISCV --target=riscv64-unknown-elf
     $ make install
+
+The `--target` flag is optional and defaults to `riscv64-unknown-elf`. The
+target is used to determine the location of loaded programs (e.g. `pk`), so it
+should match the host that `pk` runs on.
