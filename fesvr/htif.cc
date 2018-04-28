@@ -169,7 +169,7 @@ int htif_t::run()
   {
     if (auto tohost = mem.read_uint64(tohost_addr)) {
       mem.write_uint64(tohost_addr, 0);
-      command_t cmd(this, tohost, fromhost_callback);
+      command_t cmd(mem, tohost, fromhost_callback);
       device_list.handle_command(cmd);
     } else {
       idle();

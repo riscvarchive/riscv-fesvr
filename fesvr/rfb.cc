@@ -1,5 +1,5 @@
 #include "rfb.h"
-#include "htif.h"
+#include "memif.h"
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <sched.h>
@@ -225,6 +225,6 @@ void rfb_t::handle_set_address(command_t cmd)
   addr = cmd.payload();
   if (addr % FB_ALIGN != 0)
     throw std::runtime_error("rfb address must be " + std::to_string(FB_ALIGN) + "-byte aligned");
-  memif = &cmd.htif()->memif();
+  memif = &cmd.memif();
   cmd.respond(1);
 }
