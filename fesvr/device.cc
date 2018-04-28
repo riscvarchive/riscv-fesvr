@@ -1,6 +1,6 @@
 #include "device.h"
 #include "term.h"
-#include "htif.h"
+#include "memif.h"
 #include <cassert>
 #include <algorithm>
 #include <climits>
@@ -52,7 +52,7 @@ void device_t::handle_identify(command_t cmd)
   else
     strcpy(id, command_names[what].c_str());
 
-  cmd.htif()->memif().write(addr, IDENTITY_SIZE, id);
+  cmd.memif().write(addr, IDENTITY_SIZE, id);
   cmd.respond(1);
 }
 
@@ -107,23 +107,23 @@ disk_t::~disk_t()
 void disk_t::handle_read(command_t cmd)
 {
   request_t req;
-  cmd.htif()->memif().read(cmd.payload(), sizeof(req), &req);
+  cmd.memif().read(cmd.payload(), sizeof(req), &req);
 
   std::vector<uint8_t> buf(req.size);
   if ((size_t)::pread(fd, &buf[0], buf.size(), req.offset) != req.size)
     throw std::runtime_error("could not read " + id + " @ " + std::to_string(req.offset));
 
-  cmd.htif()->memif().write(req.addr, buf.size(), &buf[0]);
+  cmd.memif().write(req.addr, buf.size(), &buf[0]);
   cmd.respond(req.tag);
 }
 
 void disk_t::handle_write(command_t cmd)
 {
   request_t req;
-  cmd.htif()->memif().read(cmd.payload(), sizeof(req), &req);
+  cmd.memif().read(cmd.payload(), sizeof(req), &req);
 
   std::vector<uint8_t> buf(req.size);
-  cmd.htif()->memif().read(req.addr, buf.size(), &buf[0]);
+  cmd.memif().read(req.addr, buf.size(), &buf[0]);
 
   if ((size_t)::pwrite(fd, &buf[0], buf.size(), req.offset) != req.size)
     throw std::runtime_error("could not write " + id + " @ " + std::to_string(req.offset));

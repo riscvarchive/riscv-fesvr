@@ -7,16 +7,16 @@
 #include <string>
 #include <functional>
 
-class htif_t;
+class memif_t;
 
 class command_t
 {
  public:
   typedef std::function<void(uint64_t)> callback_t;
-  command_t(htif_t* htif, uint64_t tohost, callback_t cb)
-    : _htif(htif), tohost(tohost), cb(cb) {}
+  command_t(memif_t& memif, uint64_t tohost, callback_t cb)
+    : _memif(memif), tohost(tohost), cb(cb) {}
 
-  htif_t* htif() { return _htif; }
+  memif_t& memif() { return _memif; }
   uint8_t device() { return tohost >> 56; }
   uint8_t cmd() { return tohost >> 48; }
   uint64_t payload() { return tohost << 16 >> 16; }
@@ -26,7 +26,7 @@ class command_t
   static const size_t MAX_DEVICES = 256;
 
  private:
-  htif_t* _htif;
+  memif_t& _memif;
   uint64_t tohost;
   callback_t cb;
 };
