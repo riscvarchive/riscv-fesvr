@@ -613,11 +613,14 @@ void dtm_t::tick(
     resp_wait = false;
 
     resp_buf = resp_bits;
+    // update the target with the current context
+    target = context_t::current();
     host.switch_to();
   }
 }
 
 void dtm_t::return_resp(resp resp_bits){
   resp_buf = resp_bits;
+  target = context_t::current();
   host.switch_to();
 }
