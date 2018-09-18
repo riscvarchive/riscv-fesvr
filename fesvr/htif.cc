@@ -99,7 +99,7 @@ void htif_t::load_program()
         "could not open " + targs[0] +
         " (did you misspell it? If VCS, did you forget +permissive/+permissive-off?)");
 
-  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem, &entry);
+  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem, &entry, skiploadmem);
 
   if (symbols.count("tohost") && symbols.count("fromhost")) {
     tohost_addr = symbols["tohost"];
@@ -226,6 +226,9 @@ void htif_t::parse_arguments(int argc, char ** argv)
       case HTIF_LONG_OPTIONS_OPTIND + 3:
         syscall_proxy.set_chroot(optarg);
         break;
+      case HTIF_LONG_OPTIONS_OPTIND + 4:
+        skiploadmem = true;
+        break;
       case '?':
         if (!opterr)
           break;
@@ -251,6 +254,10 @@ void htif_t::parse_arguments(int argc, char ** argv)
         else if (arg.find("+chroot=") == 0) {
           c = HTIF_LONG_OPTIONS_OPTIND + 3;
           optarg = optarg + 8;
+        }
+        else if (arg == "+skiploadmem") {
+          c = HTIF_LONG_OPTIONS_OPTIND + 4;
+          optarg = nullptr;
         }
         else if (arg.find("+permissive-off") == 0) {
           if (opterr)

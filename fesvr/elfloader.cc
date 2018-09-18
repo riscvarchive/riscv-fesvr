@@ -14,7 +14,7 @@
 #include <vector>
 #include <map>
 
-std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* entry)
+std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* entry, bool skiploadmem)
 {
   int fd = open(fn, O_RDONLY);
   struct stat s;
@@ -43,10 +43,12 @@ std::map<std::string, uint64_t> load_elf(const char* fn, memif_t* memif, reg_t* 
       if(ph[i].p_type == PT_LOAD && ph[i].p_memsz) { \
         if (ph[i].p_filesz) { \
           assert(size >= ph[i].p_offset + ph[i].p_filesz); \
-          memif->write(ph[i].p_paddr, ph[i].p_filesz, (uint8_t*)buf + ph[i].p_offset); \
+          if (!skiploadmem) \
+            memif->write(ph[i].p_paddr, ph[i].p_filesz, (uint8_t*)buf + ph[i].p_offset); \
         } \
         zeros.resize(ph[i].p_memsz - ph[i].p_filesz); \
-        memif->write(ph[i].p_paddr + ph[i].p_filesz, ph[i].p_memsz - ph[i].p_filesz, &zeros[0]); \
+        if (!skiploadmem) \
+          memif->write(ph[i].p_paddr + ph[i].p_filesz, ph[i].p_memsz - ph[i].p_filesz, &zeros[0]); \
       } \
     } \
     shdr_t* sh = (shdr_t*)(buf + eh->e_shoff); \

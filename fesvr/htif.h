@@ -60,6 +60,7 @@ class htif_t : public chunked_memif_t
   addr_t fromhost_addr;
   int exitcode;
   bool stopped;
+  bool skiploadmem;
 
   device_list_t device_list;
   syscall_t syscall_proxy;
@@ -89,6 +90,7 @@ class htif_t : public chunked_memif_t
        +signature=FILE\n\
       --chroot=PATH        Use PATH as location of syscall-servicing binaries\n\
        +chroot=PATH\n\
+      --skiploadmem        Skip loading the target memory \n\
 \n\
 HOST OPTIONS (currently unsupported)\n\
       --disk=DISK          Add DISK device. Use a ramdisk since this isn't\n\
@@ -99,12 +101,13 @@ TARGET (RISC-V BINARY) OPTIONS\n\
   microprocessor.\n"
 
 #define HTIF_LONG_OPTIONS_OPTIND 1024
-#define HTIF_LONG_OPTIONS                                               \
-{"help",      no_argument,       0, 'h'                          },     \
-{"rfb",       optional_argument, 0, HTIF_LONG_OPTIONS_OPTIND     },     \
-{"disk",      required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 1 },     \
-{"signature", required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 2 },     \
-{"chroot",    required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 3 },     \
+#define HTIF_LONG_OPTIONS                                                  \
+{"help",         no_argument,       0, 'h'                          },     \
+{"rfb",          optional_argument, 0, HTIF_LONG_OPTIONS_OPTIND     },     \
+{"disk",         required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 1 },     \
+{"signature",    required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 2 },     \
+{"chroot",       required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 3 },     \
+{"skiploadmem",  optional_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 4 },     \
 {0, 0, 0, 0}
 
 #endif // __HTIF_H
