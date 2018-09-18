@@ -107,7 +107,7 @@ TARGET (RISC-V BINARY) OPTIONS\n\
 {"disk",         required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 1 },     \
 {"signature",    required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 2 },     \
 {"chroot",       required_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 3 },     \
-{"skiploadmem",  optional_argument, 0, HTIF_LONG_OPTIONS_OPTIND + 4 },     \
+{"skiploadmem",  no_argument,       0, HTIF_LONG_OPTIONS_OPTIND + 4 },     \
 {0, 0, 0, 0}
 
 #endif // __HTIF_H
