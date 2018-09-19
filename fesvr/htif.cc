@@ -99,7 +99,23 @@ void htif_t::load_program()
         "could not open " + targs[0] +
         " (did you misspell it? If VCS, did you forget +permissive/+permissive-off?)");
 
-  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &mem, &entry);
+  // temporarily construct a memory interface that skips writing bytes
+  // that have already been preloaded through a sideband
+  class preload_aware_memif_t : public memif_t {
+   public:
+    preload_aware_memif_t(htif_t* htif) : memif_t(htif), htif(htif) {}
+
+    void write(addr_t taddr, size_t len, const void* src) override
+    {
+      if (!htif->is_address_preloaded(taddr, len))
+        memif_t::write(taddr, len, src);
+    }
+
+   private:
+    htif_t* htif;
+  } preload_aware_memif(this);
+
+  std::map<std::string, uint64_t> symbols = load_elf(path.c_str(), &preload_aware_memif, &entry);
 
   if (symbols.count("tohost") && symbols.count("fromhost")) {
     tohost_addr = symbols["tohost"];

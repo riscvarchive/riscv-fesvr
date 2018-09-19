@@ -43,6 +43,10 @@ class htif_t : public chunked_memif_t
 
   reg_t get_entry_point() { return entry; }
 
+  // indicates that the initial program load can skip writing this address
+  // range to memory, because it has already been loaded through a sideband
+  virtual bool is_address_preloaded(addr_t taddr, size_t len) { return false; }
+
  private:
   void parse_arguments(int argc, char ** argv);
   void register_devices();
