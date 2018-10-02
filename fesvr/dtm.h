@@ -74,6 +74,7 @@ class dtm_t : public htif_t
   sem_t resp_consume;
   req req_buf;
   resp resp_buf;
+  bool running;
 
   uint32_t run_abstract_command(uint32_t command, const uint32_t program[], size_t program_n,
                                 uint32_t data[], size_t data_n);

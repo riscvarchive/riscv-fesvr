@@ -99,6 +99,12 @@ int dtm_t::enumerate_harts() {
 
 void dtm_t::halt(int hartsel)
 {
+  if (running) {
+    write(DMI_DMCONTROL, DMI_DMCONTROL_DMACTIVE);
+    // Read dmstatus to avoid back-to-back writes to dmcontrol.
+    read(DMI_DMSTATUS);
+  }
+
   int dmcontrol = DMI_DMCONTROL_HALTREQ | DMI_DMCONTROL_DMACTIVE;
   dmcontrol = set_field(dmcontrol, DMI_DMCONTROL_HARTSEL, hartsel);
   write(DMI_DMCONTROL, dmcontrol);
@@ -127,6 +133,12 @@ void dtm_t::resume(int hartsel)
   // Read dmstatus to avoid back-to-back writes to dmcontrol.
   read(DMI_DMSTATUS);
   current_hart = hartsel;
+
+  if (running) {
+    write(DMI_DMCONTROL, 0);
+    // Read dmstatus to avoid back-to-back writes to dmcontrol.
+    read(DMI_DMSTATUS);
+  }
 }
 
 uint64_t dtm_t::save_reg(unsigned regno)
@@ -567,7 +579,9 @@ void dtm_t::producer_thread()
   // It's possible to do this at the cost of extra cycles.
   xlen = get_xlen();
   resume(0);
-  
+
+  running = true;
+
   htif_t::run();
 
   while (true)
@@ -585,7 +599,7 @@ void dtm_t::start_host_thread()
 }
 
 dtm_t::dtm_t(int argc, char** argv)
-  : htif_t(argc, argv)
+  : htif_t(argc, argv), running(false)
 {
   start_host_thread();
 }
