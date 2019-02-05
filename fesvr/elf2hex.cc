@@ -13,16 +13,6 @@ int main(int argc, char** argv)
     return 1;
   }
 
-  unsigned long long int base = 0;
-  if(argc==5) {
-    base = atoll(argv[4]);
-    if((base & (base-1)))
-    {
-      std::cerr << "base must be a power of 2" << std::endl;
-      return 1;
-    }
-  }
-
   unsigned width = atoi(argv[1]);
   if(width == 0 || (width & (width-1)))
   {
@@ -30,10 +20,20 @@ int main(int argc, char** argv)
     return 1;
   }
 
+  unsigned long long int base = 0;
+  if(argc==5) {
+    base = atoll(argv[4]);
+    if(base & (width-1))
+    {
+      std::cerr << "base must be divisible by width" << std::endl;
+      return 1;
+    }
+  }
+
   unsigned depth = atoi(argv[2]);
   if(depth == 0 || (depth & (depth-1)))
   {
-    std::cerr << "depth must be nonzero and a power of 2" << std::endl;
+    std::cerr << "depth must be a power of 2" << std::endl;
     return 1;
   }
 
