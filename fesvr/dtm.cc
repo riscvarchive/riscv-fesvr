@@ -84,15 +84,17 @@ void dtm_t::select_hart(int hartsel) {
 }
 
 int dtm_t::enumerate_harts() {
-  int dmstatus;
-  int hartsel = 0;
-  while(1) {
+  int max_hart = (1 << DMI_DMCONTROL_HARTSEL_LENGTH) - 1;
+  write(DMI_DMCONTROL, set_field(read(DMI_DMCONTROL), DMI_DMCONTROL_HARTSEL, max_hart));
+  read(DMI_DMSTATUS);
+  max_hart = get_field(read(DMI_DMCONTROL), DMI_DMCONTROL_HARTSEL);
+
+  int hartsel;
+  for (hartsel = 0; hartsel <= max_hart; hartsel++) {
     select_hart(hartsel);
-    dmstatus = read(DMI_DMSTATUS);
-    if (get_field(dmstatus, DMI_DMSTATUS_ANYNONEXISTENT)) { 
+    int dmstatus = read(DMI_DMSTATUS);
+    if (get_field(dmstatus, DMI_DMSTATUS_ANYNONEXISTENT))
       break;
-    }
-    hartsel++; 
   }
   return hartsel;
 }
