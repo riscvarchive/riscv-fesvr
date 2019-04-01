@@ -21,20 +21,27 @@
   ((RV_X(x, 1, 10) << 21) | (RV_X(x, 11, 1) << 20) | (RV_X(x, 12, 8) << 12) | (RV_X(x, 20, 1) << 31))
 
 #define LOAD(xlen, dst, base, imm) \
-  (((xlen) == 64 ? 0x00003003 : 0x00002003) \
+  (((xlen) == 64 ? MATCH_LD : MATCH_LW) \
    | ((dst) << 7) | ((base) << 15) | (uint32_t)ENCODE_ITYPE_IMM(imm))
 #define STORE(xlen, src, base, imm) \
-  (((xlen) == 64 ? 0x00003023 : 0x00002023) \
+  (((xlen) == 64 ? MATCH_SD : MATCH_SW) \
    | ((src) << 20) | ((base) << 15) | (uint32_t)ENCODE_STYPE_IMM(imm))
 #define JUMP(there, here) (0x6f | (uint32_t)ENCODE_UJTYPE_IMM((there) - (here)))
-#define BNE(r1, r2, there, here) (0x1063 | ((r1) << 15) | ((r2) << 20) | (uint32_t)ENCODE_SBTYPE_IMM((there) - (here)))
-#define ADDI(dst, src, imm) (0x13 | ((dst) << 7) | ((src) << 15) | (uint32_t)ENCODE_ITYPE_IMM(imm))
-#define SRL(dst, src, sh) (0x5033 | ((dst) << 7) | ((src) << 15) | ((sh) << 20))
-#define FENCE_I 0x100f
-#define EBREAK  0x00100073
+#define BNE(r1, r2, there, here) (MATCH_BNE | ((r1) << 15) | ((r2) << 20) | (uint32_t)ENCODE_SBTYPE_IMM((there) - (here)))
+#define ADDI(dst, src, imm) (MATCH_ADDI | ((dst) << 7) | ((src) << 15) | (uint32_t)ENCODE_ITYPE_IMM(imm))
+#define ANDI(dst, src, imm) (MATCH_ANDI | ((dst) << 7) | ((src) << 15) | (uint32_t)ENCODE_ITYPE_IMM(imm))
+#define SLLI(dst, src, shamt) \
+  (MATCH_SLLI | ((dst) << 7) | ((src) << 15) | (ENCODE_ITYPE_IMM(((xlen) == 64 ? 0x3F : 0x1F) & shamt)))
+#define SRLI(dst, src, shamt) \
+  (MATCH_SRLI | ((dst) << 7) | ((src) << 15) | (ENCODE_ITYPE_IMM(((xlen) == 64 ? 0x3F : 0x1F) & shamt)))
+#define AUIPC(dst, imm) (MATCH_AUIPC | ((dst) << 7) | (uint32_t)ENCODE_UTYPE_IMM(imm))
+#define SRL(dst, src, sh) (MATCH_SRL | ((dst) << 7) | ((src) << 15) | ((sh) << 20))
+#define FENCE_I MATCH_FENCE_I
+#define EBREAK  MATCH_EBREAK
 #define X0 0
 #define S0 8
 #define S1 9
+#define A0 10
 
 #define AC_AR_REGNO(x) ((0x1000 | x) << AC_ACCESS_REGISTER_REGNO_OFFSET)
 #define AC_AR_SIZE(x)  (((x == 128)? 4 : (x == 64 ? 3 : 2)) << AC_ACCESS_REGISTER_SIZE_OFFSET)
@@ -428,16 +435,19 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
 {
   halt(current_hart);
 
-  // This code just uses DSCRATCH to save S0
-  // and data_base to do the transfer so we don't
-  // need to run more commands to save and restore
-  // S0.
+  uint64_t s0 = save_reg(S0);
+  uint64_t a0 = save_reg(A0);
+
   uint32_t prog[] = {
-    CSRRx(WRITE, S0, CSR_DSCRATCH, S0),
-    LOAD(xlen, S0, X0, data_base),
+    // get current pc
+    // chop off lower 12 bits to get
+    // platform dependent offset of DM
+    AUIPC(A0, 0),
+    SRLI(A0,A0,12),
+    SLLI(A0,A0,12),
+    LOAD(xlen, S0, A0, data_base),
     CSRRx(type, S0, which, S0),
-    STORE(xlen, S0, X0, data_base),
-    CSRRx(WRITE, S0, CSR_DSCRATCH, S0),
+    STORE(xlen, S0, A0, data_base),
     EBREAK
   };
 
@@ -460,7 +470,9 @@ uint64_t dtm_t::modify_csr(unsigned which, uint64_t data, uint32_t type)
   uint64_t res = read(DMI_DATA0);//adata[0];
   if (xlen == 64)
     res |= read(DMI_DATA0 + 1);//((uint64_t) adata[1]) << 32;
-  
+
+  restore_reg(S0, s0);
+  restore_reg(A0, a0);  
   resume(current_hart);
   return res;  
 }
